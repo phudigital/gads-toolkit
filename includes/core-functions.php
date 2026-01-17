@@ -290,4 +290,13 @@ function tkgadm_add_admin_menu() {
         'tkgad-maintenance',
         'tkgadm_render_maintenance_page'
     );
+    
+    add_submenu_page(
+        'tkgad-moi',
+        'Cấu hình Thông báo',
+        'Cấu hình Thông báo',
+        'manage_options',
+        'tkgad-notifications',
+        'tkgadm_render_notifications_page'
+    );
 }

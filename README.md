@@ -1,6 +1,6 @@
-# Fraud Prevention for Google Ads - v2.2.0
+# Fraud Prevention for Google Ads - v2.4.0
 
-Plugin WordPress toàn diện giúp theo dõi, phân tích và ngăn chặn click ảo (Fraud Click) từ Google Ads.
+Plugin WordPress toàn diện giúp theo dõi, phân tích và ngăn chặn click ảo (Fraud Click) từ Google Ads. Tích hợp hệ thống cảnh báo đa kênh qua Email và Telegram.
 
 ## 🎯 Tính năng chính
 
@@ -15,7 +15,7 @@ Plugin WordPress toàn diện giúp theo dõi, phân tích và ngăn chặn clic
 - Xem chi tiết phiên truy cập: URL, gclid, time on page
 - Filter theo khoảng ngày
 
-### 2. **Phân tích Traffic** (Submenu mới - v2.2.0)
+### 2. **Phân tích Traffic** (Submenu)
 
 - Biểu đồ cột chồng (stacked bar chart) so sánh:
   - 🎯 Google Ads Traffic (có gclid/gbraid)
@@ -24,7 +24,21 @@ Plugin WordPress toàn diện giúp theo dõi, phân tích và ngăn chặn clic
 - Quick filters: 7 ngày, 30 ngày, 90 ngày
 - Summary cards: Tổng visits, Ads visits, Organic visits, Tỷ lệ %
 
-### 3. **Quản lý Dữ liệu** (Submenu mới - v2.2.0)
+### 3. **Cấu hình Thông báo** (Submenu mới - v2.4.0)
+
+Hệ thống cảnh báo và báo cáo tự động đa nền tảng:
+
+- **Cảnh báo IP nghi ngờ (Suspicious IP):**
+  - Tự động phát hiện IP có số lượng click Ads vượt ngưỡng cho phép trong 1 giờ.
+  - Gửi cảnh báo tức thì qua Email/Telegram để admin kịp thời chặn.
+- **Báo cáo hàng ngày (Daily Report):**
+  - Gửi tổng hợp traffic, tỷ lệ Ads/Organic, số IP đã chặn vào mỗi sáng.
+- **Đa kênh hỗ trợ:**
+  - 📧 **Email:** Hỗ trợ gửi qua SMTP mặc định hoặc **SMTP Client riêng biệt** tích hợp sẵn (Gmail, Outlook, v.v.).
+  - 📱 **Telegram:** Gửi tin nhắn trực tiếp qua Telegram Bot.
+- **Công cụ Test:** Tích hợp module "Deep Test" để kiểm tra kết nối SMTP/Telegram ngay trong admin.
+
+### 4. **Quản lý Dữ liệu** (Submenu)
 
 - Thống kê dung lượng database (MB)
 - Xóa dữ liệu theo khoảng ngày
@@ -63,8 +77,10 @@ gads-toolkit/
 ├── includes/
 │   ├── core-functions.php (Database, tracking, helpers)
 │   ├── ajax-functions.php (Tất cả AJAX handlers)
+│   ├── notification-functions.php (Logic gửi mail/telegram, cron jobs)
 │   ├── admin-dashboard.php (Menu: Thống kê IP)
 │   ├── admin-analytics.php (Submenu: Phân tích Traffic)
+│   ├── admin-notifications.php (Submenu: Cấu hình thông báo)
 │   └── admin-maintenance.php (Submenu: Quản lý dữ liệu)
 └── assets/
     ├── admin-style.css
@@ -78,6 +94,7 @@ gads-toolkit/
 1. Upload thư mục `gads-toolkit` vào `/wp-content/plugins/`
 2. Activate plugin trong WordPress Admin
 3. Truy cập **GAds Toolkit** trong menu admin
+4. (Tùy chọn) Vào **Cấu hình thông báo** để thiết lập Telegram/SMTP.
 
 ## 📈 Tracking Logic
 
@@ -127,12 +144,22 @@ Plugin tự động tracking khi URL có **BẤT KỲ** tham số nào sau:
 - `tkgadm_get_visit_details` - Lấy chi tiết phiên truy cập
 - `tkgadm_get_traffic_data` - Lấy dữ liệu traffic analytics
 - `tkgadm_delete_data` - Xóa dữ liệu thống kê
+- `tkgadm_run_deep_test` - Chạy test gửi mail/telegram
+- `tkgadm_save_notifications` - Lưu cấu hình thông báo
 
 ### Cho Frontend (Public):
 
 - `tkgadm_update_time_on_page` - Cập nhật thời gian ở lại trang
 
 ## 📝 Changelog
+
+### v2.4.0 (2026-01-17)
+
+- ✨ **NEW**: Hệ thống thông báo đa kênh (Email & Telegram).
+- ✨ **NEW**: Cảnh báo IP nghi ngờ click nhiều (Suspicious IP Alert).
+- ✨ **NEW**: Báo cáo tổng hợp traffic hàng ngày tự động.
+- ✨ **NEW**: Tích hợp SMTP Client độc lập (không cần plugin SMTP khác).
+- 🔧 Cải thiện cấu trúc code module hóa (notifications).
 
 ### v2.2.0 (2026-01-17)
 
