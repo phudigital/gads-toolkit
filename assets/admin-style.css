@@ -87,6 +87,10 @@
 .tkgadm-table td {
   padding: 12px 15px;
   border-bottom: 1px solid #f0f0f0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 300px;
 }
 .tkgadm-table tbody tr:hover {
   background: #f8f9ff;
@@ -124,11 +128,12 @@
 }
 
 /* Toggle Switch Styles */
+/* Toggle Switch Styles - Redesigned */
 .tkgadm-toggle-switch {
   position: relative;
   display: inline-block;
-  width: 60px;
-  height: 28px;
+  width: 64px;
+  height: 30px;
   vertical-align: middle;
 }
 .tkgadm-toggle-switch input {
@@ -143,46 +148,62 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: #28a745;
-  transition: 0.3s;
-  border-radius: 28px;
+  background-color: #28a745; /* Mặc định là Hoạt động (Xanh) */
+  transition: .4s;
+  border-radius: 34px;
+  box-shadow: inset 0 0 5px rgba(0,0,0,0.2);
 }
 .tkgadm-toggle-slider:before {
   position: absolute;
   content: "";
-  height: 20px;
-  width: 20px;
+  height: 22px;
+  width: 22px;
   left: 4px;
   bottom: 4px;
   background-color: white;
-  transition: 0.3s;
+  transition: .4s;
   border-radius: 50%;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+  z-index: 2;
 }
+
+/* Checked state (Blocked - Red) */
 input:checked + .tkgadm-toggle-slider {
   background-color: #dc3545;
 }
 input:checked + .tkgadm-toggle-slider:before {
-  transform: translateX(32px);
+  transform: translateX(34px);
 }
+
+/* Text ON/OFF inside slider */
 .tkgadm-toggle-slider:after {
-  content: "ON";
+  content: "OK"; /* Hoạt động */
   position: absolute;
-  left: 8px;
-  top: 5px;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
   color: white;
-  font-size: 10px;
-  font-weight: bold;
+  font-size: 11px;
+  font-weight: 800;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.2);
 }
 input:checked + .tkgadm-toggle-slider:after {
   content: "OFF";
-  left: auto;
-  right: 6px;
+  left: 8px;
+  right: auto;
+  font-size: 9px;
+  letter-spacing: 0.5px;
 }
+
+/* Label text bên cạnh */
 .tkgadm-toggle-label {
-  margin-left: 8px;
-  font-size: 12px;
-  font-weight: 600;
+  display: inline-block;
+  margin-left: 10px;
+  font-size: 13px;
+  font-weight: 700;
   vertical-align: middle;
+  min-width: 80px; /* Cố định độ rộng để tránh nhảy dòng */
+  text-transform: uppercase;
 }
 .tkgadm-toggle-label.blocked {
   color: #dc3545;
@@ -222,13 +243,28 @@ input:checked + .tkgadm-toggle-slider:after {
   border-bottom: 2px solid #667eea;
 }
 .tkgadm-modal-close {
-  font-size: 32px;
+  position: fixed;
+  top: 5%;
+  right: 10%;
+  font-size: 40px;
   font-weight: bold;
   cursor: pointer;
   color: #999;
+  z-index: 1000000;
+  background: white;
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+  transition: all 0.3s ease;
 }
 .tkgadm-modal-close:hover {
-  color: #333;
+  color: #fff;
+  background: #dc3545;
+  transform: rotate(90deg);
 }
 .tkgadm-url-item {
   background: #f8f9ff;

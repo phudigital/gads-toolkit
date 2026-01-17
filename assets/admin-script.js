@@ -23,6 +23,36 @@ jQuery(document).ready(function ($) {
     window.location.href = "?page=tkgad-moi";
   });
 
+  // Copy blocked IPs
+  $("#copy-blocked-ips").on("click", function () {
+    const textarea = document.getElementById("blocked-ips-textarea");
+    if (!textarea || !textarea.value) {
+      alert("Chưa có IP nào bị chặn!");
+      return;
+    }
+
+    textarea.select();
+    document.execCommand("copy");
+
+    const originalText = $(this).html();
+    $(this).html("✅ Đã copy!");
+    setTimeout(() => {
+      $(this).html(originalText);
+    }, 2000);
+  });
+
+  // Toggle blocked view
+  $("#toggle-blocked-view").on("click", function () {
+    const currentShow = $(this).data("show");
+    if (currentShow === "1" || currentShow === 1) {
+      // Đang hiện IP chặn -> chuyển sang hiện tất cả
+      window.location.href = "?page=tkgad-moi";
+    } else {
+      // Đang hiện tất cả -> chuyển sang chỉ hiện IP chặn
+      window.location.href = "?page=tkgad-moi&show_blocked=1";
+    }
+  });
+
   // Open popup modals
   $("#open-manage-ip").on("click", function () {
     $("#manage-ip-modal").fadeIn();
@@ -115,7 +145,7 @@ jQuery(document).ready(function ($) {
             $row.find(".tkgadm-badge-danger").remove();
             var badge = $("<span>")
               .addClass("tkgadm-badge tkgadm-badge-danger")
-              .html("🚫 Đã chặn");
+              .html("🚫");
             $row.find("td:first strong").after(" ", badge);
             $label.removeClass("active").addClass("blocked").text("Đã chặn");
           } else {
@@ -140,9 +170,16 @@ jQuery(document).ready(function ($) {
 
   // View details modal with chart
   let visitChart = null;
-  $(".view-details").on("click", function () {
+  $(".view-details").on("click", function (e) {
+    e.preventDefault(); // Ngăn link navigate
+
     const ip = $(this).data("ip");
-    const urls = $(this).data("urls").split("|||");
+    const urlsData = $(this).data("urls");
+    const urls = urlsData ? urlsData.toString().split("|||") : [];
+
+    console.log("Opening modal for IP:", ip);
+    console.log("URLs data:", urlsData);
+    console.log("Chart.js available:", typeof Chart !== "undefined");
 
     $("#modal-title").text("📋 Chi tiết của IP: " + ip);
 
@@ -150,7 +187,7 @@ jQuery(document).ready(function ($) {
     $("#url-list")
       .empty()
       .append(
-        $("<p>").css("text-align", "center").text("⏳ Đang tải biểu đồ...")
+        $("<p>").css("text-align", "center").text("⏳ Đang tải biểu đồ..."),
       );
     $("#url-modal").fadeIn();
 
@@ -164,12 +201,34 @@ jQuery(document).ready(function ($) {
         nonce: tkgadm_vars.nonce_chart,
       },
       success: function (response) {
+        console.log("AJAX Response:", response);
+
         if (response.success) {
           // Destroy old chart
-          if (visitChart) visitChart.destroy();
+          if (visitChart) {
+            console.log("Destroying old chart");
+            visitChart.destroy();
+          }
+
+          // Check if Chart.js is loaded
+          if (typeof Chart === "undefined") {
+            console.error("Chart.js is not loaded!");
+            $("#url-list").html(
+              "<p style='color:red;'>Lỗi: Chart.js chưa được tải. Vui lòng tải lại trang.</p>",
+            );
+            return;
+          }
 
           // Create new chart
-          const ctx = document.getElementById("visit-chart").getContext("2d");
+          const canvas = document.getElementById("visit-chart");
+          if (!canvas) {
+            console.error("Canvas element not found!");
+            return;
+          }
+
+          const ctx = canvas.getContext("2d");
+          console.log("Creating chart with data:", response.data);
+
           visitChart = new Chart(ctx, {
             type: "line",
             data: {
@@ -197,44 +256,166 @@ jQuery(document).ready(function ($) {
               },
             },
           });
+
+          console.log("Chart created successfully");
         } else {
+          console.error("AJAX error:", response.data);
           $("#url-list").html(
-            "<p style='color:red;'>Lỗi tải biểu đồ: " + response.data + "</p>"
+            "<p style='color:red;'>Lỗi tải biểu đồ: " + response.data + "</p>",
           );
         }
 
-        // Show URLs
-        var urlHeader = $("<h3>")
-          .css("margin-top", "20px")
-          .text("🔗 Danh sách URLs");
-        $("#url-list").empty().append(urlHeader);
+        // Load chi tiết phiên truy cập
+        $.ajax({
+          url: tkgadm_vars.ajaxurl,
+          type: "POST",
+          data: {
+            action: "tkgadm_get_visit_details",
+            ip: ip,
+            nonce: tkgadm_vars.nonce_chart,
+          },
+          success: function (detailResponse) {
+            console.log("Visit details:", detailResponse);
 
-        function extractUtmTerm(url) {
-          try {
-            const urlObj = new URL(url);
-            const params = new URLSearchParams(urlObj.search);
-            return params.get("utm_term") || "-";
-          } catch (e) {
-            return "-";
-          }
-        }
+            if (detailResponse.success && detailResponse.data.visits) {
+              const visits = detailResponse.data.visits;
 
-        urls.forEach(function (url, index) {
-          const utmTerm = extractUtmTerm(url);
-          var urlItem = $("<div>").addClass("tkgadm-url-item");
-          urlItem.append($("<strong>").text("URL " + (index + 1) + ":"));
-          urlItem.append($("<br>"));
-          urlItem.append($("<small>").text(url));
-          urlItem.append($("<br>"));
-          urlItem.append($("<strong>").text("UTM Term: "));
-          urlItem.append($("<span>").css("color", "#667eea").text(utmTerm));
-          $("#url-list").append(urlItem);
+              var visitHeader = $("<h3>")
+                .css("margin-top", "20px")
+                .text(
+                  "📋 Chi tiết phiên truy cập (" + visits.length + " phiên)",
+                );
+              $("#url-list").empty().append(visitHeader);
+
+              if (visits.length === 0) {
+                $("#url-list").append("<p>Chưa có dữ liệu phiên truy cập.</p>");
+                return;
+              }
+
+              // Tạo bảng chi tiết
+              var table = $("<table>")
+                .addClass("tkgadm-table")
+                .css({ "margin-top": "15px", "font-size": "13px" });
+
+              var thead = $("<thead>").html(
+                "<tr>" +
+                  "<th>⏰ Thời gian</th>" +
+                  "<th>🔗 URL</th>" +
+                  "<th>🏷️ UTM Term</th>" +
+                  "<th>⏱️ Time on Page</th>" +
+                  "<th>🔄 Lượt xem</th>" +
+                  "</tr>",
+              );
+
+              var tbody = $("<tbody>");
+              visits.forEach(function (visit) {
+                var timeOnPage =
+                  visit.time_on_page > 0
+                    ? visit.time_on_page + "s"
+                    : "<span style='color:#999;'>N/A</span>";
+
+                // Rút gọn URL để hiển thị
+                var displayUrl =
+                  visit.url.length > 60
+                    ? visit.url.substring(0, 60) + "..."
+                    : visit.url;
+
+                var row = $("<tr>");
+                row.append($("<td>").text(visit.visit_time));
+
+                // Cột URL: hiển thị rút gọn, double-click để copy
+                var urlCell = $("<td>")
+                  .addClass("url-copy-cell")
+                  .attr("title", "Double-click để copy URL đầy đủ")
+                  .css({
+                    cursor: "pointer",
+                    transition: "background 0.2s",
+                  })
+                  .html(
+                    "<small style='word-break:break-all; color: #007cba;'>" +
+                      displayUrl +
+                      "</small>",
+                  )
+                  .data("full-url", visit.url);
+
+                row.append(urlCell);
+                row.append($("<td>").text(visit.utm_term));
+                row.append($("<td>").html(timeOnPage));
+                row.append($("<td>").text(visit.visit_count));
+                tbody.append(row);
+              });
+
+              table.append(thead).append(tbody);
+              $("#url-list").append(table);
+
+              // Event delegation cho double-click copy URL
+              $("#url-list")
+                .off("dblclick", ".url-copy-cell")
+                .on("dblclick", ".url-copy-cell", function () {
+                  var $cell = $(this);
+                  var fullUrl = $cell.data("full-url");
+
+                  // Visual feedback
+                  $cell.css("background", "#ffffcc");
+
+                  // Copy to clipboard
+                  if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard
+                      .writeText(fullUrl)
+                      .then(function () {
+                        alert("✅ Đã copy URL:\n" + fullUrl);
+                        $cell.css("background", "");
+                      })
+                      .catch(function (err) {
+                        console.error("Copy failed:", err);
+                        fallbackCopy(fullUrl, $cell);
+                      });
+                  } else {
+                    fallbackCopy(fullUrl, $cell);
+                  }
+
+                  function fallbackCopy(text, cell) {
+                    var temp = $("<textarea>")
+                      .val(text)
+                      .css({ position: "fixed", left: "-9999px" })
+                      .appendTo("body");
+                    temp[0].select();
+                    try {
+                      document.execCommand("copy");
+                      alert("✅ Đã copy URL:\n" + text);
+                    } catch (err) {
+                      alert(
+                        "❌ Không thể copy. Vui lòng copy thủ công:\n" + text,
+                      );
+                    }
+                    temp.remove();
+                    cell.css("background", "");
+                  }
+                });
+            } else {
+              $("#url-list").append(
+                "<p style='color:red;'>Lỗi tải chi tiết phiên truy cập.</p>",
+              );
+            }
+          },
+          error: function (xhr, status, error) {
+            console.error("Failed to load visit details:", error);
+            $("#url-list").append(
+              "<p style='color:red;'>Lỗi tải chi tiết: " + error + "</p>",
+            );
+          },
         });
       },
-      error: function () {
+      error: function (xhr, status, error) {
+        console.error("AJAX request failed:", status, error);
+        console.error("XHR:", xhr);
         $("#url-list")
           .empty()
-          .append($("<p>").css("color", "red").text("Lỗi tải biểu đồ"));
+          .append(
+            $("<p>")
+              .css("color", "red")
+              .text("Lỗi tải biểu đồ: " + error),
+          );
       },
     });
   });
