@@ -173,14 +173,14 @@ function tkgadm_send_daily_report() {
     $table_stats = $wpdb->prefix . 'gads_toolkit_stats';
     $table_blocked = $wpdb->prefix . 'gads_toolkit_blocked';
     
-    // Thống kê hôm qua
+    // Thống kê hôm qua (Organic chỉ đếm records có time_on_page hợp lệ để lọc bot)
     // phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
     $stats = $wpdb->get_row("
         SELECT 
             COUNT(DISTINCT CASE WHEN gclid IS NOT NULL AND gclid != '' THEN ip_address END) as ads_ips,
-            COUNT(DISTINCT CASE WHEN gclid IS NULL OR gclid = '' THEN ip_address END) as organic_ips,
+            COUNT(DISTINCT CASE WHEN (gclid IS NULL OR gclid = '') AND time_on_page IS NOT NULL AND time_on_page > 0 THEN ip_address END) as organic_ips,
             SUM(CASE WHEN gclid IS NOT NULL AND gclid != '' THEN visit_count ELSE 0 END) as ads_visits,
-            SUM(CASE WHEN gclid IS NULL OR gclid = '' THEN visit_count ELSE 0 END) as organic_visits,
+            SUM(CASE WHEN (gclid IS NULL OR gclid = '') AND time_on_page IS NOT NULL AND time_on_page > 0 THEN visit_count ELSE 0 END) as organic_visits,
             COUNT(DISTINCT CASE WHEN gclid IS NOT NULL AND gclid != '' THEN gclid END) as unique_clicks
         FROM $table_stats
         WHERE DATE(visit_time) = CURDATE() - INTERVAL 1 DAY

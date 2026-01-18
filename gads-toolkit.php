@@ -2,8 +2,8 @@
 /**
  * Plugin Name: Fraud Prevention for Google Ads
  * Plugin URI:  https://github.com/phudigital/gads-toolkit
- * Description: Giải pháp toàn diện giúp theo dõi và ngăn chặn click ảo (Fraud Click) từ Google Ads. Plugin tự động ghi log IP truy cập từ quảng cáo (chứa tham số gad_source), phân tích hành vi truy cập và cho phép chặn IP/dải IP thông minh bằng Wildcard.
- * Version:     2.4.0
+ * Description: Giải pháp toàn diện giúp theo dõi và ngăn chặn click ảo (Fraud Click) từ Google Ads.
+ * Version:     2.5.0
  * Author:      Phú Digital
  * Author URI:  https://pdl.vn
  * License:     GPLv2 or later
@@ -16,7 +16,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Define plugin constants
-define('GADS_TOOLKIT_VERSION', '2.2.0');
+define('GADS_TOOLKIT_VERSION', '2.5.0');
 define('GADS_TOOLKIT_PATH', plugin_dir_path(__FILE__));
 define('GADS_TOOLKIT_URL', plugin_dir_url(__FILE__));
 

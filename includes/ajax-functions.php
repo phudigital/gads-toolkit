@@ -245,12 +245,15 @@ function tkgadm_ajax_get_traffic_data() {
                   GROUP BY period
                   ORDER BY period ASC";
     
-    // Query cho organic traffic (không có gclid)
+    // Query cho organic traffic (không có gclid VÀ có time_on_page hợp lệ để lọc bot)
     // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
     $query_organic = "SELECT DATE_FORMAT(visit_time, '$date_format') as period,
                              SUM(visit_count) as total
                       FROM $table
-                      WHERE $where AND (gclid IS NULL OR gclid = '')
+                      WHERE $where 
+                        AND (gclid IS NULL OR gclid = '')
+                        AND time_on_page IS NOT NULL
+                        AND time_on_page > 0
                       GROUP BY period
                       ORDER BY period ASC";
     
@@ -319,7 +322,8 @@ function tkgadm_ajax_get_period_details() {
     if ($type === 'ads') {
         $where_type = "AND (gclid IS NOT NULL AND gclid != '')";
     } else {
-        $where_type = "AND (gclid IS NULL OR gclid = '')";
+        // Organic: không có gclid VÀ có time_on_page hợp lệ (lọc bot)
+        $where_type = "AND (gclid IS NULL OR gclid = '') AND time_on_page IS NOT NULL AND time_on_page > 0";
     }
     
     // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared

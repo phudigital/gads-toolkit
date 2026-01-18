@@ -117,6 +117,71 @@ jQuery(document).ready(function ($) {
     });
   });
 
+  // Confirm block IP - Hỗ trợ nhiều IP
+  $("#confirm-block-ip").on("click", function () {
+    const ipInput = $("#ip-to-block").val().trim();
+
+    if (!ipInput) {
+      alert("Vui lòng nhập ít nhất một IP!");
+      return;
+    }
+
+    // Split by newline, comma, or space
+    const ips = ipInput
+      .split(/[\n,\s]+/)
+      .map((ip) => ip.trim())
+      .filter((ip) => ip.length > 0);
+
+    if (ips.length === 0) {
+      alert("Không tìm thấy IP hợp lệ!");
+      return;
+    }
+
+    const $button = $(this);
+    $button.prop("disabled", true).text("⏳ Đang xử lý...");
+
+    let successCount = 0;
+    let errorCount = 0;
+
+    // Block từng IP
+    const blockPromises = ips.map((ip) => {
+      return $.ajax({
+        url: tkgadm_vars.ajaxurl,
+        type: "POST",
+        data: {
+          action: "tkgadm_toggle_block_ip",
+          ip: ip,
+          nonce: tkgadm_vars.nonce_block,
+        },
+      }).then(
+        (response) => {
+          if (response.success) {
+            successCount++;
+          } else {
+            errorCount++;
+          }
+        },
+        (error) => {
+          errorCount++;
+        },
+      );
+    });
+
+    // Đợi tất cả requests hoàn thành
+    Promise.all(blockPromises).finally(() => {
+      $button.prop("disabled", false).text("🚫 Chặn tất cả IP");
+
+      if (successCount > 0) {
+        alert(`✅ Đã chặn thành công ${successCount} IP!`);
+        $("#ip-to-block").val("");
+        $("#manage-ip-modal").fadeOut();
+        location.reload();
+      } else {
+        alert(`❌ Không thể chặn IP. Vui lòng kiểm tra lại!`);
+      }
+    });
+  });
+
   // Toggle block/unblock - Công tắc đơn giản
   $(".toggle-block").on("change", function () {
     const ip = $(this).data("ip");

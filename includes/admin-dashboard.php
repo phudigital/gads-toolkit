@@ -64,11 +64,27 @@ function tkgadm_render_dashboard_page() {
     // phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
     $blocked_ips = $wpdb->get_col("SELECT ip_address FROM $table_blocked");
     
-    // Filter nếu chỉ xem IP blocked
+    // Nếu chỉ xem IP blocked, query lại để lấy TẤT CẢ IP blocked (kể cả không có trong stats)
     if ($show_blocked_only) {
-        $results = array_filter($results, function($row) use ($blocked_ips) {
-            return in_array($row->ip_address, $blocked_ips);
-        });
+        // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+        $query = "SELECT 
+                    b.ip_address,
+                    COALESCE(MAX(s.visit_time), b.blocked_time) as last_visit,
+                    COALESCE(SUM(s.visit_count), 0) as total_visits,
+                    COUNT(DISTINCT CASE WHEN s.gclid IS NOT NULL AND s.gclid != '' THEN s.gclid END) as ad_clicks,
+                    GROUP_CONCAT(DISTINCT s.url_visited SEPARATOR '|||') as urls
+                  FROM $table_blocked b
+                  LEFT JOIN $table_stats s ON b.ip_address = s.ip_address AND $where
+                  GROUP BY b.ip_address
+                  ORDER BY last_visit DESC";
+        
+        if (!empty($params)) {
+            // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+            $query = $wpdb->prepare($query, ...$params);
+        }
+        
+        // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.DirectDatabaseQuery
+        $results = $wpdb->get_results($query);
     }
     
     // Get plugin version
@@ -163,7 +179,7 @@ function tkgadm_render_dashboard_page() {
                                         $toggle_class = $is_blocked ? 'blocked' : 'active';
                                         ?>
                                         <label class="tkgadm-toggle-switch">
-                                            <input type="checkbox" class="toggle-block-ip" data-ip="<?php echo esc_attr($row->ip_address); ?>" <?php checked($is_blocked); ?>>
+                                            <input type="checkbox" class="toggle-block" data-ip="<?php echo esc_attr($row->ip_address); ?>" <?php checked($is_blocked); ?>>
                                             <span class="tkgadm-toggle-slider"></span>
                                         </label>
                                         <span class="tkgadm-toggle-label <?php echo esc_attr($toggle_class); ?>"><?php echo esc_html($toggle_label); ?></span>
@@ -184,11 +200,11 @@ function tkgadm_render_dashboard_page() {
                     <span class="tkgadm-modal-close">&times;</span>
                 </div>
                 <div style="margin: 20px 0;">
-                    <label style="display: block; margin-bottom: 8px; font-weight: 600;">Nhập IP hoặc dải IP (hỗ trợ wildcard):</label>
-                    <input type="text" id="ip-to-block" placeholder="Ví dụ: 192.168.1.1 hoặc 192.168.1.* hoặc 2402:800:6310:c2ff:c91c:18eb:f87c:75a3" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px;">
-                    <small style="color: #666; display: block; margin-top: 5px;">Hỗ trợ IPv4, IPv6 và wildcard (*) cho IPv4</small>
+                    <label style="display: block; margin-bottom: 8px; font-weight: 600;">Nhập danh sách IP (mỗi IP một dòng):</label>
+                    <textarea id="ip-to-block" rows="6" placeholder="Ví dụ:&#10;192.168.1.1&#10;192.168.1.*&#10;103.82.36.122&#10;2402:800:6310:c2ff:c91c:18eb:f87c:75a3" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px; font-family: monospace; font-size: 13px;"></textarea>
+                    <small style="color: #666; display: block; margin-top: 5px;">✓ Hỗ trợ IPv4, IPv6 và wildcard (*) cho IPv4<br>✓ Mỗi IP một dòng, có thể nhập nhiều IP cùng lúc</small>
                 </div>
-                <button id="confirm-block-ip" class="tkgadm-btn tkgadm-btn-primary" style="width: 100%;">Chặn IP</button>
+                <button id="confirm-block-ip" class="tkgadm-btn tkgadm-btn-primary" style="width: 100%;">🚫 Chặn tất cả IP</button>
             </div>
         </div>
 

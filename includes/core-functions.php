@@ -246,7 +246,8 @@ function tkgadm_enqueue_admin_assets($hook) {
     wp_localize_script('tkgadm-admin-script', 'tkgadm_vars', array(
         'ajaxurl' => admin_url('admin-ajax.php'),
         'nonce' => wp_create_nonce('tkgadm_nonce'),
-        'nonce_chart' => wp_create_nonce('tkgadm_chart')
+        'nonce_chart' => wp_create_nonce('tkgadm_chart'),
+        'nonce_block' => wp_create_nonce('tkgadm_nonce') // Dùng chung nonce
     ));
 }
 
