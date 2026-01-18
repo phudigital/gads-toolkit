@@ -1,0 +1,30 @@
+# Operating System Files
+.DS_Store
+Thumbs.db
+._*
+
+# Logs
+*.log
+debug.log
+error.log
+
+# IDE / Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*.sublime-project
+*.sublime-workspace
+
+# Dependency Directories
+node_modules/
+vendor/
+
+# Backup files
+*.bak
+*.old
+*~
+
+# WordPress specific
+wp-config.php
+wp-content/uploads/
