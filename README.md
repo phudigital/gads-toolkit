@@ -1,4 +1,4 @@
-# Fraud Prevention for Google Ads - v2.4.0
+# Fraud Prevention for Google Ads - v2.5.0
 
 Plugin WordPress toàn diện giúp theo dõi, phân tích và ngăn chặn click ảo (Fraud Click) từ Google Ads. Tích hợp hệ thống cảnh báo đa kênh qua Email và Telegram.
 
@@ -10,6 +10,7 @@ Plugin WordPress toàn diện giúp theo dõi, phân tích và ngăn chặn clic
 - Đếm số lần click ads (dựa trên gclid/gbraid unique)
 - Hiển thị tổng lượt truy cập, UTM term, thời gian truy cập cuối
 - Chặn/Bỏ chặn IP với toggle switch
+- **Hỗ trợ chặn nhiều IP cùng lúc (Bulk Block)**
 - Hỗ trợ wildcard cho IPv4 (ví dụ: `192.168.1.*`)
 - Hỗ trợ đầy đủ IPv6
 - Xem chi tiết phiên truy cập: URL, gclid, time on page
@@ -19,7 +20,7 @@ Plugin WordPress toàn diện giúp theo dõi, phân tích và ngăn chặn clic
 
 - Biểu đồ cột chồng (stacked bar chart) so sánh:
   - 🎯 Google Ads Traffic (có gclid/gbraid)
-  - 🌱 Organic Traffic (không có gclid/gbraid)
+  - 🌱 Organic Traffic (không có gclid/gbraid, **đã lọc bot**)
 - Thống kê theo: Ngày / Tuần / Tháng / Quý
 - Quick filters: 7 ngày, 30 ngày, 90 ngày
 - Summary cards: Tổng visits, Ads visits, Organic visits, Tỷ lệ %
@@ -121,7 +122,7 @@ Plugin tự động tracking khi URL có **BẤT KỲ** tham số nào sau:
 ### Cách chặn:
 
 1. Click toggle switch bên cạnh IP
-2. Hoặc click nút "➕ Chặn IP" để nhập thủ công
+2. Hoặc click nút "➕ Chặn IP" để nhập thủ công (Hỗ trợ nhập nhiều IP mỗi dòng)
 
 ### Hỗ trợ Wildcard (chỉ IPv4):
 
@@ -152,6 +153,13 @@ Plugin tự động tracking khi URL có **BẤT KỲ** tham số nào sau:
 - `tkgadm_update_time_on_page` - Cập nhật thời gian ở lại trang
 
 ## 📝 Changelog
+
+### v2.5.0 (2026-01-18)
+
+- ✨ **NEW**: Hỗ trợ chặn nhiều IP cùng lúc (Bulk Block) trong modal quản lý.
+- ⚡ **IMPROVE**: Cải thiện độ chính xác Organic Traffic: lọc bot truy cập dựa trên Time on Page và User Agent.
+- 🔧 Thêm `.gitignore` chuẩn cho dự án.
+- 🐛 Sửa lỗi nhỏ và tối ưu hiệu năng.
 
 ### v2.4.0 (2026-01-17)
 

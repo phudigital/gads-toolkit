@@ -28,3 +28,5 @@ vendor/
 # WordPress specific
 wp-config.php
 wp-content/uploads/
+gads-toolkit.zip
+.DS_Store
