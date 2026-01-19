@@ -6,6 +6,9 @@
 
 if (!defined('ABSPATH')) exit;
 
+require_once plugin_dir_path(__FILE__) . 'google-ads-api.php';
+require_once plugin_dir_path(__FILE__) . 'admin-google-ads.php';
+
 /**
  * Tạo bảng database khi activate plugin
  */
@@ -299,5 +302,14 @@ function tkgadm_add_admin_menu() {
         'manage_options',
         'tkgad-notifications',
         'tkgadm_render_notifications_page'
+    );
+
+    add_submenu_page(
+        'tkgad-moi',
+        'Cấu hình Google Ads',
+        'Cấu hình Google Ads',
+        'manage_options',
+        'tkgad-google-ads',
+        'tkgadm_render_google_ads_page'
     );
 }

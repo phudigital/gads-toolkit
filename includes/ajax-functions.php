@@ -40,9 +40,60 @@ function tkgadm_ajax_toggle_block_ip() {
     } else {
         // Block
         // phpcs:ignore WordPress.DB.DirectDatabaseQuery
-        $wpdb->insert($table, ['ip_address' => $ip]);
+        $inserted = $wpdb->insert($table, ['ip_address' => $ip]);
+        
+        // Auto Sync on Block Logic
+        if ($inserted && get_option('tkgadm_auto_sync_on_block')) {
+            require_once plugin_dir_path(__FILE__) . 'google-ads-api.php';
+            // Sync this specific IP immediately
+            tkgadm_sync_ip_to_google_ads([$ip]);
+        }
+
         wp_send_json_success(['message' => 'Đã chặn IP: ' . $ip, 'blocked' => true]);
     }
+}
+
+/**
+ * Handle Manual Sync from Admin Settings
+ */
+add_action('wp_ajax_tkgadm_manual_sync_gads', 'tkgadm_ajax_manual_sync_gads');
+function tkgadm_ajax_manual_sync_gads() {
+    check_ajax_referer('tkgadm_sync_gads', 'nonce');
+    
+    if (!current_user_can('manage_options')) {
+        wp_send_json_error('Không có quyền truy cập.');
+    }
+    
+    require_once plugin_dir_path(__FILE__) . 'google-ads-api.php';
+    
+    $result = tkgadm_do_sync_process();
+    
+    // Update last sync status
+    update_option('tkgadm_last_sync_time', time());
+    update_option('tkgadm_last_sync_message', $result['message']);
+    
+    if ($result['success']) {
+        wp_send_json_success(['message' => $result['message']]);
+    } else {
+        wp_send_json_error($result['message']);
+    }
+}
+
+/**
+ * Handle Hourly Sync Cron Job
+ */
+add_action('tkgadm_hourly_sync_event', 'tkgadm_handle_hourly_sync');
+function tkgadm_handle_hourly_sync() {
+    if (!get_option('tkgadm_auto_sync_hourly')) {
+        return;
+    }
+    
+    require_once plugin_dir_path(__FILE__) . 'google-ads-api.php';
+    $result = tkgadm_do_sync_process();
+    
+    // Log result
+    update_option('tkgadm_last_sync_time', time());
+    update_option('tkgadm_last_sync_message', '(Auto) ' . $result['message']);
 }
 
 /**
