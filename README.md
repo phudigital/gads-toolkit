@@ -1,4 +1,4 @@
-# Fraud Prevention for Google Ads - v2.5.0
+# Fraud Prevention for Google Ads - v2.8.0
 
 Plugin WordPress toàn diện giúp theo dõi, phân tích và ngăn chặn click ảo (Fraud Click) từ Google Ads. Tích hợp hệ thống cảnh báo đa kênh qua Email và Telegram.
 
@@ -153,6 +153,14 @@ Plugin tự động tracking khi URL có **BẤT KỲ** tham số nào sau:
 - `tkgadm_update_time_on_page` - Cập nhật thời gian ở lại trang
 
 ## 📝 Changelog
+
+### v2.8.0 (2026-01-19)
+
+- ✨ **NEW**: Tích hợp Google Ads API để lấy dữ liệu chiến dịch trực tiếp.
+- ✨ **NEW**: Hiển thị chi tiết chiến dịch Google Ads trong bảng thống kê.
+- ⚡ **IMPROVE**: Cải thiện hiệu suất truy vấn database cho các trang có lượng dữ liệu lớn.
+- 🔧 **FIX**: Sửa lỗi hiển thị biểu đồ khi không có dữ liệu.
+- 📊 **UPDATE**: Cập nhật thư viện Chart.js lên phiên bản mới nhất.
 
 ### v2.5.0 (2026-01-18)
 
