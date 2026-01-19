@@ -128,18 +128,19 @@ function tkgadm_track_visit() {
 
     $ip = sanitize_text_field(wp_unslash($_SERVER['REMOTE_ADDR']));
     $visit_time = current_time('mysql');
-    $url = esc_url_raw(home_url(sanitize_text_field(wp_unslash($_SERVER['REQUEST_URI']))));
+    
+    // FIX: Construct URL đúng cách để giữ query string
+    $request_uri = wp_unslash($_SERVER['REQUEST_URI']);
+    $url = esc_url_raw(home_url($request_uri));
+    
     $user_agent = isset($_SERVER['HTTP_USER_AGENT']) ? sanitize_textarea_field(wp_unslash($_SERVER['HTTP_USER_AGENT'])) : '';
     
-    // Trích xuất gclid hoặc gbraid
+    // FIX: Trích xuất gclid/gbraid trực tiếp từ $_GET (reliable hơn parse URL)
     $gclid = '';
-    $parsed = wp_parse_url($url);
-    if (isset($parsed['query'])) {
-        parse_str($parsed['query'], $params);
-        $gclid = isset($params['gclid']) ? sanitize_text_field($params['gclid']) : '';
-        if (empty($gclid) && isset($params['gbraid'])) {
-            $gclid = sanitize_text_field($params['gbraid']);
-        }
+    if (isset($_GET['gclid'])) {
+        $gclid = sanitize_text_field(wp_unslash($_GET['gclid']));
+    } elseif (isset($_GET['gbraid'])) {
+        $gclid = sanitize_text_field(wp_unslash($_GET['gbraid']));
     }
 
     // Xác định loại truy cập
