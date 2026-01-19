@@ -19,8 +19,9 @@ function tkgadm_render_dashboard_page() {
         FROM $table_stats
         WHERE gclid IS NOT NULL AND gclid != ''");
     
-    $default_from = $date_range && $date_range->oldest ? $date_range->oldest : date('Y-m-d', strtotime('-30 days'));
-    $default_to = $date_range && $date_range->newest ? $date_range->newest : date('Y-m-d');
+    // Mặc định hiển thị 30 ngày gần nhất
+    $default_from = date('Y-m-d', strtotime('-30 days'));
+    $default_to = date('Y-m-d');
     
     // Lấy tham số filter (nếu user đã chọn thì dùng, không thì dùng default)
     $date_from = isset($_GET['date_from']) ? sanitize_text_field(wp_unslash($_GET['date_from'])) : $default_from;
@@ -135,7 +136,7 @@ function tkgadm_render_dashboard_page() {
                             <th>🌐 IP Address</th>
                             <th>🏷️ UTM Term</th>
                             <th>⏰ Lần truy cập cuối</th>
-                            <th>📊 Thống kê truy cập</th>
+                            <th style="cursor:pointer;" class="sortable" data-sort="visits" title="Click để sắp xếp">📊 Thống kê truy cập <span class="sort-icon">⇅</span></th>
                             <th>⚙️ Hành động</th>
                         </tr>
                     </thead>
@@ -158,7 +159,7 @@ function tkgadm_render_dashboard_page() {
                                 }
                                 $utm_display = strlen($utm_term) > 30 ? substr($utm_term, 0, 30) . '...' : $utm_term;
                             ?>
-                                <tr class="<?php echo esc_attr($row_class); ?>" data-ip="<?php echo esc_attr($row->ip_address); ?>">
+                                <tr class="<?php echo esc_attr($row_class); ?>" data-ip="<?php echo esc_attr($row->ip_address); ?>" data-visits="<?php echo intval($row->total_visits); ?>" data-ad-clicks="<?php echo intval($row->ad_clicks); ?>">
                                     <td><strong><?php echo esc_html($row->ip_address); ?></strong>
                                         <?php if ($is_blocked): ?>
                                             <span class="tkgadm-badge tkgadm-badge-danger">🚫</span>

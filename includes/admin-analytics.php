@@ -17,8 +17,9 @@ function tkgadm_render_analytics_page() {
         DATE(MAX(visit_time)) as newest
         FROM $table");
     
-    $default_from = $date_range && $date_range->oldest ? $date_range->oldest : date('Y-m-d', strtotime('-30 days'));
-    $default_to = $date_range && $date_range->newest ? $date_range->newest : date('Y-m-d');
+    // Mặc định hiển thị 30 ngày gần đây
+    $default_from = date('Y-m-d', strtotime('-30 days'));
+    $default_to = date('Y-m-d');
     
     ?>
     <div class="wrap">
@@ -263,37 +264,85 @@ function tkgadm_render_analytics_page() {
             });
         }
 
-        // Render bảng visits
+        // Render bảng visits với collapse theo IP
         function renderVisitsTable(visits) {
             if (visits.length === 0) {
                 $('#period-details-content').html('<p>Không có dữ liệu</p>');
                 return;
             }
 
+            // Group visits theo IP
+            const groupedByIP = {};
+            visits.forEach(visit => {
+                if (!groupedByIP[visit.ip_address]) {
+                    groupedByIP[visit.ip_address] = [];
+                }
+                groupedByIP[visit.ip_address].push(visit);
+            });
+
             let html = '<table class="tkgadm-table" style="width:100%;">';
             html += '<thead><tr>';
-            html += '<th>🌐 IP</th>';
-            html += '<th>⏰ Thời gian</th>';
-            html += '<th>🔗 URL</th>';
-            html += '<th>⏱️ Time on Page</th>';
-            html += '<th>📊 Lượt xem</th>';
+            html += '<th style="width:30px;"></th>'; // Expand icon
+            html += '<th>🌐 IP Address</th>';
+            html += '<th>📊 Số phiên</th>';
+            html += '<th>⏰ Lần truy cập cuối</th>';
             html += '</tr></thead><tbody>';
 
-            visits.forEach(visit => {
-                const timeOnPage = visit.time_on_page > 0 ? visit.time_on_page + 's' : '-';
-                const url = visit.url_visited.length > 50 ? visit.url_visited.substring(0, 50) + '...' : visit.url_visited;
+            Object.keys(groupedByIP).forEach((ip, index) => {
+                const sessions = groupedByIP[ip];
+                const sessionCount = sessions.length;
+                const lastVisit = sessions[0].visit_time; // Đã sort DESC từ server
                 
-                html += '<tr>';
-                html += `<td><strong>${visit.ip_address}</strong></td>`;
-                html += `<td>${visit.visit_time}</td>`;
-                html += `<td title="${visit.url_visited}"><small>${url}</small></td>`;
-                html += `<td>${timeOnPage}</td>`;
-                html += `<td>${visit.visit_count}</td>`;
+                // Row chính (IP summary)
+                html += `<tr class="ip-row" data-ip-index="${index}" style="cursor:pointer; background:#f9f9f9;">`;
+                html += `<td><span class="expand-icon">▶</span></td>`;
+                html += `<td><strong>${ip}</strong></td>`;
+                html += `<td><span class="tkgadm-badge tkgadm-badge-info">${sessionCount} phiên</span></td>`;
+                html += `<td>${lastVisit}</td>`;
                 html += '</tr>';
+
+                // Rows chi tiết (ẩn mặc định)
+                sessions.forEach((visit, sessionIndex) => {
+                    const timeOnPage = visit.time_on_page > 0 ? visit.time_on_page + 's' : '-';
+                    const url = visit.url_visited.length > 60 ? visit.url_visited.substring(0, 60) + '...' : visit.url_visited;
+                    const isAds = visit.gclid && visit.gclid !== '';
+                    const typeBadge = isAds 
+                        ? '<span class="tkgadm-badge tkgadm-badge-warning" style="background:#ff9800;">🎯 Ads</span>' 
+                        : '<span class="tkgadm-badge tkgadm-badge-success" style="background:#4caf50;">🌱 Organic</span>';
+                    
+                    html += `<tr class="session-detail session-${index}" style="display:none; background:#fff;">`;
+                    html += '<td></td>'; // Empty expand column
+                    html += `<td colspan="3" style="padding-left:30px;">`;
+                    html += '<div style="display:flex; gap:15px; align-items:center; font-size:13px;">';
+                    html += typeBadge;
+                    html += `<span style="color:#666;">Phiên ${sessionIndex + 1}</span>`;
+                    html += `<span>⏰ ${visit.visit_time}</span>`;
+                    html += `<span>⏱️ ${timeOnPage}</span>`;
+                    html += `<span>📊 ${visit.visit_count} lượt</span>`;
+                    html += `<span title="${visit.url_visited}" style="color:#007cba; max-width:400px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">🔗 ${url}</span>`;
+                    html += '</div>';
+                    html += '</td>';
+                    html += '</tr>';
+                });
             });
 
             html += '</tbody></table>';
             $('#period-details-content').html(html);
+
+            // Add click handler for expand/collapse
+            $('.ip-row').on('click', function() {
+                const index = $(this).data('ip-index');
+                const $sessions = $(`.session-${index}`);
+                const $icon = $(this).find('.expand-icon');
+                
+                if ($sessions.is(':visible')) {
+                    $sessions.slideUp(200);
+                    $icon.text('▶');
+                } else {
+                    $sessions.slideDown(200);
+                    $icon.text('▼');
+                }
+            });
         }
 
         // Close modal

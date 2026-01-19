@@ -53,6 +53,37 @@ jQuery(document).ready(function ($) {
     }
   });
 
+  // Sort table by visits
+  let sortOrder = "desc"; // Mặc định giảm dần (nhiều nhất trước)
+  $('.sortable[data-sort="visits"]').on("click", function () {
+    const $table = $(this).closest("table");
+    const $tbody = $table.find("tbody");
+    const $rows = $tbody.find("tr").get();
+
+    // Toggle sort order
+    sortOrder = sortOrder === "desc" ? "asc" : "desc";
+
+    // Update icon
+    $(".sort-icon").text(sortOrder === "desc" ? "▼" : "▲");
+
+    // Sort rows by ad clicks
+    $rows.sort(function (a, b) {
+      const aVal = parseInt($(a).data("ad-clicks")) || 0;
+      const bVal = parseInt($(b).data("ad-clicks")) || 0;
+
+      if (sortOrder === "desc") {
+        return bVal - aVal; // Giảm dần
+      } else {
+        return aVal - bVal; // Tăng dần
+      }
+    });
+
+    // Re-append sorted rows
+    $.each($rows, function (index, row) {
+      $tbody.append(row);
+    });
+  });
+
   // Open popup modals
   $("#open-manage-ip").on("click", function () {
     $("#manage-ip-modal").fadeIn();

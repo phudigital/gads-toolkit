@@ -236,24 +236,33 @@ function tkgadm_ajax_get_traffic_data() {
         $params[] = $to . ' 23:59:59';
     }
     
-    // Query cho ads traffic (có gclid/gbraid)
+    // Query cho ads traffic: Đếm unique IP có ít nhất 1 phiên có gclid
     // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
     $query_ads = "SELECT DATE_FORMAT(visit_time, '$date_format') as period,
-                         SUM(visit_count) as total
+                         COUNT(DISTINCT ip_address) as total
                   FROM $table
-                  WHERE $where AND gclid IS NOT NULL AND gclid != ''
+                  WHERE $where 
+                    AND ip_address IN (
+                        SELECT DISTINCT ip_address 
+                        FROM $table 
+                        WHERE gclid IS NOT NULL AND gclid != ''
+                    )
                   GROUP BY period
                   ORDER BY period ASC";
     
-    // Query cho organic traffic (không có gclid VÀ có time_on_page hợp lệ để lọc bot)
+    // Query cho organic traffic: Đếm unique IP KHÔNG CÓ phiên nào có gclid VÀ có time_on_page hợp lệ
     // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
     $query_organic = "SELECT DATE_FORMAT(visit_time, '$date_format') as period,
-                             SUM(visit_count) as total
+                             COUNT(DISTINCT ip_address) as total
                       FROM $table
                       WHERE $where 
-                        AND (gclid IS NULL OR gclid = '')
                         AND time_on_page IS NOT NULL
                         AND time_on_page > 0
+                        AND ip_address NOT IN (
+                            SELECT DISTINCT ip_address 
+                            FROM $table 
+                            WHERE gclid IS NOT NULL AND gclid != ''
+                        )
                       GROUP BY period
                       ORDER BY period ASC";
     
@@ -318,20 +327,33 @@ function tkgadm_ajax_get_period_details() {
         $params = [(int)$year, (int)$quarter];
     }
     
-    // Điều kiện type (Ads hoặc Organic)
+    // Điều kiện type: Lấy TẤT CẢ phiên của IP thuộc nhóm
     if ($type === 'ads') {
-        $where_type = "AND (gclid IS NOT NULL AND gclid != '')";
+        // Ads: Lấy tất cả phiên của IP có ít nhất 1 phiên có gclid
+        $where_type = "AND ip_address IN (
+            SELECT DISTINCT ip_address 
+            FROM $table 
+            WHERE gclid IS NOT NULL AND gclid != ''
+        )";
     } else {
-        // Organic: không có gclid VÀ có time_on_page hợp lệ (lọc bot)
-        $where_type = "AND (gclid IS NULL OR gclid = '') AND time_on_page IS NOT NULL AND time_on_page > 0";
+        // Organic: Lấy tất cả phiên của IP KHÔNG CÓ phiên nào có gclid VÀ có time_on_page hợp lệ
+        $where_type = "AND ip_address NOT IN (
+            SELECT DISTINCT ip_address 
+            FROM $table 
+            WHERE gclid IS NOT NULL AND gclid != ''
+        ) AND ip_address IN (
+            SELECT DISTINCT ip_address
+            FROM $table
+            WHERE time_on_page IS NOT NULL AND time_on_page > 0
+        )";
     }
     
     // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
     $query = "SELECT ip_address, visit_time, url_visited, time_on_page, visit_count, gclid
               FROM $table
               WHERE $where_period $where_type
-              ORDER BY visit_time DESC
-              LIMIT 200";
+              ORDER BY ip_address, visit_time DESC
+              LIMIT 500";
     
     // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
     $query = $wpdb->prepare($query, ...$params);
