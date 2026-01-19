@@ -60,6 +60,33 @@ function tkgadm_render_google_ads_page() {
             wp_unschedule_event($timestamp, 'tkgadm_hourly_sync_event');
         }
 
+        // Save Auto Block Settings
+        $auto_block = isset($_POST['tkgadm_auto_block_enabled']) ? 1 : 0;
+        update_option('tkgadm_auto_block_enabled', $auto_block);
+
+        $rules = [];
+        if (isset($_POST['rules']) && is_array($_POST['rules'])) {
+            foreach ($_POST['rules'] as $rule) {
+                if (!empty($rule['limit']) && !empty($rule['duration'])) {
+                        $rules[] = [
+                            'limit' => intval($rule['limit']),
+                            'duration' => intval($rule['duration']),
+                            'unit' => sanitize_text_field($rule['unit'])
+                        ];
+                }
+            }
+        }
+        update_option('tkgadm_auto_block_rules', array_values($rules));
+
+        // Handle Auto Block Cron
+        $cron_hook_block = 'tkgadm_auto_block_scan_event';
+        $timestamp_block = wp_next_scheduled($cron_hook_block);
+        if ($auto_block && !$timestamp_block) {
+            wp_schedule_event(time(), 'tkgadm_15_minutes', $cron_hook_block);
+        } elseif (!$auto_block && $timestamp_block) {
+            wp_unschedule_event($timestamp_block, $cron_hook_block);
+        }
+
         echo '<div class="notice notice-success is-dismissible"><p>Đã lưu cài đặt.</p></div>';
     }
 
@@ -178,9 +205,106 @@ function tkgadm_render_google_ads_page() {
                         <div class="form-group" style="margin-bottom: 15px;">
                             <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
                                 <input type="checkbox" name="sync_on_block" value="1" <?php checked($sync_on_block, 1); ?>>
-                                <span style="font-weight: 500;">Đồng bộ ngay khi phát hiện nghi vấn</span>
+                                <span style="font-weight: 500;">Đồng bộ ngay khi bật Chặn</span>
                             </label>
                         </div>
+                        
+                        <hr style="margin: 25px 0; border: 0; border-top: 1px solid #eee;">
+
+                        <!-- Auto Block Settings -->
+                        <?php 
+                        $auto_block_enabled = get_option('tkgadm_auto_block_enabled');
+                        $auto_block_rules = get_option('tkgadm_auto_block_rules', []);
+                        if (!is_array($auto_block_rules)) $auto_block_rules = [];
+                        $is_connected = !empty($refresh_token);
+                        ?>
+                        
+                        <h2 style="margin-bottom: 20px; display: flex; align-items: center; gap: 10px;">
+                            🛡️ Chặn Click Ảo Tự Động
+                            <?php if (!$is_connected): ?>
+                                <span style="font-size: 12px; background: #eee; color: #666; padding: 2px 8px; border-radius: 4px; font-weight: normal;">Yêu cầu kết nối Google Ads</span>
+                            <?php endif; ?>
+                        </h2>
+
+                        <?php if ($is_connected): ?>
+                            <div class="form-group" style="margin-bottom: 20px;">
+                                <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+                                    <input type="checkbox" name="tkgadm_auto_block_enabled" value="1" <?php checked($auto_block_enabled, 1); ?>>
+                                    <span style="font-weight: 500;">Kích hoạt chặn tự động dựa trên hành vi</span>
+                                </label>
+                                <p class="description" style="margin-left: 25px;">Hệ thống sẽ quét định kỳ (15 phút/lần) và tự động chặn + đồng bộ các IP thỏa mãn điều kiện bên dưới.</p>
+                            </div>
+
+                            <div id="tkgadm-auto-block-rules" style="background: #f9f9f9; padding: 15px; border-radius: 5px; border: 1px solid #ddd; <?php echo $auto_block_enabled ? '' : 'opacity: 0.6; pointer-events: none;'; ?>">
+                                <label style="display: block; font-weight: 500; margin-bottom: 10px;">Quy tắc chặn (Rules):</label>
+                                
+                                <div id="rules-container">
+                                    <?php if (empty($auto_block_rules)): ?>
+                                        <!-- Default Empty Row if needed or handled by JS -->
+                                    <?php endif; ?>
+                                    
+                                    <?php foreach ($auto_block_rules as $index => $rule): ?>
+                                        <div class="rule-row" style="display: flex; gap: 10px; align-items: center; margin-bottom: 10px;">
+                                            <span>Đạt</span>
+                                            <input type="number" name="rules[<?php echo $index; ?>][limit]" value="<?php echo esc_attr($rule['limit']); ?>" style="width: 70px;" min="1" required>
+                                            <span>click trong</span>
+                                            <input type="number" name="rules[<?php echo $index; ?>][duration]" value="<?php echo esc_attr($rule['duration']); ?>" style="width: 70px;" min="1" required>
+                                            <select name="rules[<?php echo $index; ?>][unit]" style="width: 100px;">
+                                                <option value="hour" <?php selected($rule['unit'], 'hour'); ?>>Giờ</option>
+                                                <option value="day" <?php selected($rule['unit'], 'day'); ?>>Ngày</option>
+                                                <option value="week" <?php selected($rule['unit'], 'week'); ?>>Tuần</option>
+                                            </select>
+                                            <button type="button" class="button remove-rule" style="color: #a00; border-color: #a00;">Xóa</button>
+                                        </div>
+                                    <?php endforeach; ?>
+                                </div>
+                                
+                                <button type="button" id="add-rule-btn" class="button button-small">+ Thêm điều kiện</button>
+                            </div>
+                        <?php else: ?>
+                            <div class="notice notice-warning inline">
+                                <p>Tính năng này yêu cầu kết nối Google Ads thành công (để đồng bộ danh sách chặn).</p>
+                            </div>
+                        <?php endif; ?>
+
+                        <script>
+                        jQuery(document).ready(function($) {
+                            // Toggle rules opacity
+                            $('input[name="tkgadm_auto_block_enabled"]').on('change', function() {
+                                if ($(this).is(':checked')) {
+                                    $('#tkgadm-auto-block-rules').css({'opacity': '1', 'pointer-events': 'auto'});
+                                } else {
+                                    $('#tkgadm-auto-block-rules').css({'opacity': '0.6', 'pointer-events': 'none'});
+                                }
+                            });
+
+                            // Add Rule
+                            $('#add-rule-btn').on('click', function() {
+                                const index = $('#rules-container .rule-row').length;
+                                const row = `
+                                    <div class="rule-row" style="display: flex; gap: 10px; align-items: center; margin-bottom: 10px;">
+                                        <span>Đạt</span>
+                                        <input type="number" name="rules[${index}][limit]" value="3" style="width: 70px;" min="1" required>
+                                        <span>click trong</span>
+                                        <input type="number" name="rules[${index}][duration]" value="1" style="width: 70px;" min="1" required>
+                                        <select name="rules[${index}][unit]" style="width: 100px;">
+                                            <option value="hour">Giờ</option>
+                                            <option value="day">Ngày</option>
+                                            <option value="week">Tuần</option>
+                                        </select>
+                                        <button type="button" class="button remove-rule" style="color: #a00; border-color: #a00;">Xóa</button>
+                                    </div>
+                                `;
+                                $('#rules-container').append(row);
+                            });
+
+                            // Remove Rule
+                            $(document).on('click', '.remove-rule', function() {
+                                $(this).closest('.rule-row').remove();
+                                // Re-index? Not strictly necessary for PHP array parsing as long as keys are unique or just array_values used on server.
+                            });
+                        });
+                        </script>
                         
                          <div style="margin-top: 20px;">
                             <button type="submit" name="tkgadm_gads_save" class="button button-secondary">Cập nhật tùy chọn</button>

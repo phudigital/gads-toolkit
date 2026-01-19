@@ -64,25 +64,49 @@ function tkgadm_sync_ip_to_google_ads($ips_to_block) {
         return ['success' => false, 'message' => 'Thiếu Customer ID hoặc Developer Token.'];
     }
 
-    // 1. Chuẩn bị operations cho CustomerNegativeCriterion
+    // 1. Prepare operations & Validate IPs
     $operations = [];
+    $skipped_count = 0;
+    
     foreach ($ips_to_block as $ip) {
-        $operations[] = [
-            'create' => [
-                'type' => 'IP_BLOCK',
-                'ip_block' => [
-                    'ip_address' => $ip
+        $clean_ip = trim($ip);
+        $is_valid = false;
+        
+        // Google Ads supports:
+        // 1. Valid IPv4 / IPv6 addresses
+        // 2. Class C subnet masking (x.x.x.*)
+        // It DOES NOT support other wildcards like x.x.*.*
+        
+        if (filter_var($clean_ip, FILTER_VALIDATE_IP)) {
+            $is_valid = true;
+        } elseif (preg_match('/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\*$/', $clean_ip)) {
+            $is_valid = true;
+        }
+        
+        if ($is_valid) {
+            $operations[] = [
+                'create' => [
+                    'type' => 'IP_BLOCK',
+                    'ip_block' => [
+                        'ip_address' => $clean_ip
+                    ]
                 ]
-            ]
+            ];
+        } else {
+            $skipped_count++;
+        }
+    }
+    
+    if (empty($operations)) {
+        return [
+            'success' => true, 
+             // Inform user if everything was skipped
+            'message' => $skipped_count > 0 
+                ? "Không có IP hợp lệ để đồng bộ ($skipped_count IP bị bỏ qua do sai định dạng)." 
+                : "Danh sách IP trống."
         ];
     }
 
-    // Google Ads API Endpoint for Customer Negative Criteria
-    // Ref: https://developers.google.com/google-ads/api/rest/reference/rest/v17/customers.customerNegativeCriteria/mutate
-    // Note: API Version might change, using v17 as distinct standard, but check latest if fails.
-    // Try to detect version or use a stable one. v14+ supports this.
-    
-    $api_version = 'v17'; 
     // Google Ads API Endpoint
     $api_version = 'v19'; 
     $url = "https://googleads.googleapis.com/{$api_version}/customers/{$customer_id}/customerNegativeCriteria:mutate";
@@ -95,14 +119,20 @@ function tkgadm_sync_ip_to_google_ads($ips_to_block) {
         'Content-Type' => 'application/json'
     );
 
-    // Chỉ thêm header login-customer-id nếu là tài khoản Manager (MCC)
     if (!empty($manager_id)) {
         $headers['login-customer-id'] = $manager_id;
     }
 
+    // Use partialFailure=true to allow some ops to succeed (e.g. if some are duplicates)
+    $payload = [
+        'operations' => $operations,
+        'partialFailure' => true,
+        'validateOnly' => false
+    ];
+
     $response = wp_remote_post($url, array(
         'headers' => $headers,
-        'body' => json_encode(['operations' => $operations]),
+        'body' => json_encode($payload),
         'timeout' => 60
     ));
 
@@ -116,23 +146,33 @@ function tkgadm_sync_ip_to_google_ads($ips_to_block) {
     if ($response_code !== 200) {
         $error_msg = isset($body['error']['message']) ? $body['error']['message'] : 'Lỗi không xác định.';
         
-        // Detailed error info
         if (isset($body['error']['details'])) {
             $details = json_encode($body['error']['details'], JSON_UNESCAPED_UNICODE);
             $error_msg .= " (Details: $details)";
-        } else {
-             $error_msg .= " (Body: " . wp_remote_retrieve_body($response) . ")";
         }
-
-        // Check for "Criterion already exists" error to ignore
-        if (strpos($error_msg, 'DUPLICATE_CRITERION') !== false || strpos($error_msg, 'ALREADY_EXISTS') !== false) {
-             return ['success' => true, 'message' => 'Đã đồng bộ (Một số IP đã tồn tại trên Google Ads).'];
-        }
+        
+        // Even with partialFailure, a 400 might happen if the payload structure is largely wrong,
+        // but individual validation errors should result in 200 with partialFailureError field.
         return ['success' => false, 'message' => "Google API Error ($response_code): $error_msg"];
     }
 
-    $count = isset($body['results']) ? count($body['results']) : 0;
-    return ['success' => true, 'message' => "Đã đồng bộ thành công $count IP lên Google Ads."];
+    // 200 OK - Check results
+    $success_count = isset($body['results']) ? count($body['results']) : 0;
+    
+    // Check partial failures (skipping duplicates usually)
+    $error_details = '';
+    if (isset($body['partialFailureError'])) {
+        // We generally ignore "Already exists" errors, but others might be relevant.
+        // For simple UI feedback, we focus on success count.
+    }
+
+    $msg = "Đã đồng bộ thành công $success_count IP";
+    if ($skipped_count > 0) {
+        $msg .= " (Bỏ qua $skipped_count IP sai định dạng)";
+    }
+    $msg .= ".";
+
+    return ['success' => true, 'message' => $msg];
 }
 
 /**

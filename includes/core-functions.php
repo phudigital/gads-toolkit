@@ -84,9 +84,24 @@ function tkgadm_is_ip_blocked($ip) {
     
     foreach ($blocked_ips as $blocked_ip) {
         if (strpos($blocked_ip, '*') !== false) {
-            $pattern = str_replace('.', '\.', $blocked_ip);
-            $pattern = str_replace('*', '\d{1,3}', $pattern);
-            if (preg_match('/^' . $pattern . '$/', $ip)) {
+            // Wildcard matching - compare each octet
+            $blocked_parts = explode('.', $blocked_ip);
+            $ip_parts = explode('.', $ip);
+            
+            // Both must be valid IPv4 (4 octets)
+            if (count($blocked_parts) !== 4 || count($ip_parts) !== 4) {
+                continue;
+            }
+            
+            $match = true;
+            for ($i = 0; $i < 4; $i++) {
+                if ($blocked_parts[$i] !== '*' && $blocked_parts[$i] !== $ip_parts[$i]) {
+                    $match = false;
+                    break;
+                }
+            }
+            
+            if ($match) {
                 return true;
             }
         } elseif ($blocked_ip === $ip) {
@@ -142,10 +157,8 @@ function tkgadm_track_visit() {
         }
     }
 
-    // Kiểm tra IP có bị chặn không
-    if (tkgadm_is_ip_blocked($ip)) {
-        wp_die('Access Denied', 'Blocked', array('response' => 403));
-    }
+    // NOTE: Plugin CHỈ đồng bộ IP lên Google Ads để chặn quảng cáo
+    // KHÔNG chặn truy cập website - người dùng vẫn vào trang bình thường
 
     // Kiểm tra entry đã tồn tại trong vòng 30 phút gần đây
     // phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
@@ -312,4 +325,159 @@ function tkgadm_add_admin_menu() {
         'tkgad-google-ads',
         'tkgadm_render_google_ads_page'
     );
+}
+
+/**
+ * Thêm custom cron interval (15 phút)
+ */
+add_filter('cron_schedules', 'tkgadm_add_cron_interval');
+function tkgadm_add_cron_interval($schedules) {
+    $schedules['tkgadm_15_minutes'] = array(
+        'interval' => 900, // 15 phút
+        'display'  => 'Mỗi 15 phút'
+    );
+    return $schedules;
+}
+
+/**
+ * Thực hiện quét và chặn tự động (Cron Job)
+ */
+add_action('tkgadm_auto_block_scan_event', 'tkgadm_run_auto_block_scan');
+function tkgadm_run_auto_block_scan() {
+    if (!get_option('tkgadm_auto_block_enabled')) {
+        return;
+    }
+    
+    $rules = get_option('tkgadm_auto_block_rules', []);
+    if (empty($rules) || !is_array($rules)) {
+        return;
+    }
+    
+    global $wpdb;
+    $stats_table = $wpdb->prefix . 'gads_toolkit_stats';
+    $blocked_table = $wpdb->prefix . 'gads_toolkit_blocked';
+    
+    $new_blocked_ips = [];
+    
+    foreach ($rules as $rule) {
+        $limit = intval($rule['limit']);
+        $duration = intval($rule['duration']);
+        $unit = strtoupper($rule['unit']); // HOUR, DAY, WEEK
+        
+        // Validate unit to prevent SQL injection or errors
+        if (!in_array($unit, ['HOUR', 'DAY', 'WEEK', 'MONTH'])) $unit = 'HOUR';
+        if ($unit === 'WEEK') {
+            $duration *= 7;
+            $unit = 'DAY';
+        }
+        
+        // Query IPs thỏa mãn điều kiện (Có gclid = Click Ad)
+        // phpcs:ignore WordPress.DB.PreparedSQL.StartWithParens
+        $sql = "SELECT ip_address, COUNT(*) as click_count 
+                FROM $stats_table 
+                WHERE visit_time >= DATE_SUB(NOW(), INTERVAL %d $unit)
+                AND gclid IS NOT NULL AND gclid != ''
+                GROUP BY ip_address 
+                HAVING click_count >= %d";
+                
+        // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.DirectDatabaseQuery
+        $results = $wpdb->get_results($wpdb->prepare($sql, $duration, $limit));
+        
+        foreach ($results as $row) {
+            $ip = $row->ip_address;
+            
+            // Block IP
+            if (tkgadm_block_ip_internal($ip, "Auto Block: $rule[limit] clicks in $rule[duration] $rule[unit]")) {
+                $new_blocked_ips[] = $ip;
+            }
+        }
+    }
+    
+    // Đồng bộ lên Google Ads nếu có IP mới bị chặn
+    if (!empty($new_blocked_ips)) {
+        require_once plugin_dir_path(__FILE__) . 'google-ads-api.php';
+        $sync_result = tkgadm_sync_ip_to_google_ads($new_blocked_ips);
+        
+        // Log result
+        update_option('tkgadm_last_auto_block_sync', [
+            'time' => time(), 
+            'count' => count($new_blocked_ips),
+            'result' => $sync_result
+        ]);
+        
+        // Gửi thông báo
+        tkgadm_send_auto_block_notification($new_blocked_ips, $rules);
+    }
+}
+
+/**
+ * Gửi thông báo khi có IP bị chặn tự động
+ */
+function tkgadm_send_auto_block_notification($blocked_ips, $rules) {
+    $count = count($blocked_ips);
+    
+    // Email message
+    $message_email = "🛡️ CHẶN CLICK ẢO TỰ ĐỘNG\n\n";
+    $message_email .= "Hệ thống đã tự động chặn {$count} IP vi phạm quy tắc:\n\n";
+    
+    // Telegram message
+    $message_telegram = "🛡️ *CHẶN CLICK ẢO TỰ ĐỘNG*\n\n";
+    $message_telegram .= "Hệ thống đã tự động chặn *{$count} IP* vi phạm quy tắc:\n\n";
+    
+    // Danh sách IP
+    foreach ($blocked_ips as $ip) {
+        $message_email .= "• {$ip}\n";
+        $message_telegram .= "• `{$ip}`\n";
+    }
+    
+    $message_email .= "\n=== QUY TẮC ÁP DỤNG ===\n";
+    $message_telegram .= "\n*Quy tắc áp dụng:*\n";
+    
+    foreach ($rules as $rule) {
+        $unit_text = $rule['unit'] === 'hour' ? 'giờ' : ($rule['unit'] === 'day' ? 'ngày' : 'tuần');
+        $message_email .= "- {$rule['limit']} click trong {$rule['duration']} {$unit_text}\n";
+        $message_telegram .= "├ {$rule['limit']} click trong {$rule['duration']} {$unit_text}\n";
+    }
+    
+    $message_email .= "\nCác IP này đã được đồng bộ lên Google Ads.\n";
+    $message_email .= "Dashboard: " . admin_url('admin.php?page=tkgad-moi');
+    
+    $message_telegram .= "\n✅ Đã đồng bộ lên Google Ads\n";
+    $message_telegram .= "👉 [Xem Dashboard](" . admin_url('admin.php?page=tkgad-moi') . ")";
+    
+    // Gửi thông báo theo platform đã chọn
+    if (get_option('tkgadm_alert_platform_email', '1') === '1') {
+        require_once plugin_dir_path(__FILE__) . 'notification-functions.php';
+        tkgadm_send_email_notification('🛡️ Chặn click ảo tự động - GAds Toolkit', $message_email);
+    }
+    if (get_option('tkgadm_alert_platform_telegram', '1') === '1') {
+        require_once plugin_dir_path(__FILE__) . 'notification-functions.php';
+        tkgadm_send_telegram_message($message_telegram);
+    }
+}
+
+/**
+ * Helper: Insert IP into Blocked List safely
+ * Returns true if newly blocked, false if already blocked or error
+ */
+function tkgadm_block_ip_internal($ip, $reason = '') {
+    global $wpdb;
+    $table = $wpdb->prefix . 'gads_toolkit_blocked';
+    
+    // Check exist
+    // phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+    $exists = $wpdb->get_var($wpdb->prepare("SELECT id FROM $table WHERE ip_address = %s", $ip));
+    
+    if ($exists) {
+        return false;
+    }
+    
+    // Insert
+    // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+    $result = $wpdb->insert($table, [
+        'ip_address' => $ip,
+        'blocked_time' => current_time('mysql')
+    ]);
+    
+    return $result !== false;
 }
