@@ -1,9 +1,194 @@
 <?php
 /**
- * Admin Screen: Cấu hình Google Ads
+ * Module: Google Ads Integration
+ * Connects to Google Ads API, manages settings, and handles IP synchronization.
  */
 
 if (!defined('ABSPATH')) exit;
+
+/**
+ * ============================================================================
+ * 1. API & OAUTH FUNCTIONS
+ * ============================================================================
+ */
+
+/**
+ * Get Access Token from Refresh Token
+ */
+function tkgadm_get_google_access_token() {
+    $client_id = get_option('tkgadm_gads_client_id');
+    $client_secret = get_option('tkgadm_gads_client_secret');
+    $refresh_token = get_option('tkgadm_gads_refresh_token');
+
+    if (!$client_id || !$client_secret || !$refresh_token) {
+        return new WP_Error('missing_creds', 'Vui lòng nhập đầy đủ thông tin API trong Cấu hình Google Ads.');
+    }
+
+    $url = 'https://oauth2.googleapis.com/token';
+    $body = array(
+        'client_id' => $client_id,
+        'client_secret' => $client_secret,
+        'refresh_token' => $refresh_token,
+        'grant_type' => 'refresh_token'
+    );
+
+    $response = wp_remote_post($url, array(
+        'body' => $body,
+        'timeout' => 30
+    ));
+
+    if (is_wp_error($response)) {
+        return $response;
+    }
+
+    $data = json_decode(wp_remote_retrieve_body($response), true);
+
+    if (isset($data['error'])) {
+        return new WP_Error('api_error', 'Lỗi lấy Token: ' . ($data['error_description'] ?? $data['error']));
+    }
+
+    return $data['access_token'];
+}
+
+/**
+ * Sync IPs to Google Ads (Account Level)
+ */
+function tkgadm_sync_ip_to_google_ads($ips_to_block) {
+    if (empty($ips_to_block)) {
+        return ['success' => true, 'message' => 'Không có IP nào cần đồng bộ.'];
+    }
+
+    $access_token = tkgadm_get_google_access_token();
+    if (is_wp_error($access_token)) {
+        return ['success' => false, 'message' => $access_token->get_error_message()];
+    }
+
+    $customer_id = str_replace('-', '', get_option('tkgadm_gads_customer_id'));
+    $developer_token = get_option('tkgadm_gads_developer_token');
+    
+    if (!$customer_id || !$developer_token) {
+        return ['success' => false, 'message' => 'Thiếu Customer ID hoặc Developer Token.'];
+    }
+
+    // 1. Prepare operations & Validate IPs
+    $operations = [];
+    $skipped_count = 0;
+    
+    foreach ($ips_to_block as $ip) {
+        $clean_ip = trim($ip);
+        $is_valid = false;
+        
+        // Google Ads supports:
+        // 1. Valid IPv4 / IPv6 addresses
+        // 2. Class C subnet masking (x.x.x.*)
+        if (filter_var($clean_ip, FILTER_VALIDATE_IP)) {
+            $is_valid = true;
+        } elseif (preg_match('/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\*$/', $clean_ip)) {
+            $is_valid = true;
+        }
+        
+        if ($is_valid) {
+            $operations[] = [
+                'create' => [
+                    'type' => 'IP_BLOCK',
+                    'ip_block' => [
+                        'ip_address' => $clean_ip
+                    ]
+                ]
+            ];
+        } else {
+            $skipped_count++;
+        }
+    }
+    
+    if (empty($operations)) {
+        return [
+            'success' => true, 
+            'message' => $skipped_count > 0 
+                ? "Không có IP hợp lệ để đồng bộ ($skipped_count IP bị bỏ qua do sai định dạng)." 
+                : "Danh sách IP trống."
+        ];
+    }
+
+    // Google Ads API Endpoint (v19)
+    $api_version = 'v19'; 
+    $url = "https://googleads.googleapis.com/{$api_version}/customers/{$customer_id}/customerNegativeCriteria:mutate";
+
+    $manager_id = str_replace('-', '', get_option('tkgadm_gads_manager_id'));
+    
+    $headers = array(
+        'Authorization' => 'Bearer ' . $access_token,
+        'developer-token' => $developer_token,
+        'Content-Type' => 'application/json'
+    );
+
+    if (!empty($manager_id)) {
+        $headers['login-customer-id'] = $manager_id;
+    }
+
+    $payload = [
+        'operations' => $operations,
+        'partialFailure' => true,
+        'validateOnly' => false
+    ];
+
+    $response = wp_remote_post($url, array(
+        'headers' => $headers,
+        'body' => json_encode($payload),
+        'timeout' => 60
+    ));
+
+    if (is_wp_error($response)) {
+        return ['success' => false, 'message' => 'Lỗi kết nối Google: ' . $response->get_error_message()];
+    }
+
+    $response_code = wp_remote_retrieve_response_code($response);
+    $body = json_decode(wp_remote_retrieve_body($response), true);
+
+    if ($response_code !== 200) {
+        $error_msg = isset($body['error']['message']) ? $body['error']['message'] : 'Lỗi không xác định.';
+        if (isset($body['error']['details'])) {
+            $details = json_encode($body['error']['details'], JSON_UNESCAPED_UNICODE);
+            $error_msg .= " (Details: $details)";
+        }
+        return ['success' => false, 'message' => "Google API Error ($response_code): $error_msg"];
+    }
+
+    // 200 OK - Check results
+    $success_count = isset($body['results']) ? count($body['results']) : 0;
+    
+    $msg = "Đã đồng bộ thành công $success_count IP";
+    if ($skipped_count > 0) {
+        $msg .= " (Bỏ qua $skipped_count IP sai định dạng)";
+    }
+    $msg .= ".";
+
+    return ['success' => true, 'message' => $msg];
+}
+
+/**
+ * Main Sync Function (Called by Cron or Manual)
+ */
+function tkgadm_do_sync_process() {
+    global $wpdb;
+    $blocking_table = $wpdb->prefix . 'gads_toolkit_blocked';
+    
+    // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+    $blocked_ips = $wpdb->get_col("SELECT ip_address FROM $blocking_table ORDER BY blocked_time DESC LIMIT 500");
+
+    if (empty($blocked_ips)) {
+        return ['success' => true, 'message' => 'Danh sách chặn trống.'];
+    }
+
+    return tkgadm_sync_ip_to_google_ads($blocked_ips);
+}
+
+
+/**
+ * ============================================================================
+ * 2. ADMIN UI (SETTINGS PAGE)
+ * ============================================================================
+ */
 
 function tkgadm_render_google_ads_page() {
     // 1. Handle OAuth Callback
@@ -80,11 +265,11 @@ function tkgadm_render_google_ads_page() {
 
         // Handle Auto Block Cron
         $cron_hook_block = 'tkgadm_auto_block_scan_event';
-        $timestamp_block = wp_next_scheduled($cron_hook_block);
-        if ($auto_block && !$timestamp_block) {
+        $blocked_timestamp = wp_next_scheduled($cron_hook_block);
+        if ($auto_block && !$blocked_timestamp) {
             wp_schedule_event(time(), 'tkgadm_15_minutes', $cron_hook_block);
-        } elseif (!$auto_block && $timestamp_block) {
-            wp_unschedule_event($timestamp_block, $cron_hook_block);
+        } elseif (!$auto_block && $blocked_timestamp) {
+            wp_unschedule_event($blocked_timestamp, $cron_hook_block);
         }
 
         echo '<div class="notice notice-success is-dismissible"><p>Đã lưu cài đặt.</p></div>';
@@ -93,7 +278,7 @@ function tkgadm_render_google_ads_page() {
     // 3. Prepare Data
     $client_id = get_option('tkgadm_gads_client_id');
     $client_secret = get_option('tkgadm_gads_client_secret');
-    $refresh_token = get_option('tkgadm_gads_refresh_token'); // Hidden, managed via OAuth
+    $refresh_token = get_option('tkgadm_gads_refresh_token'); 
     $developer_token = get_option('tkgadm_gads_developer_token');
     $customer_id = get_option('tkgadm_gads_customer_id');
     $manager_id = get_option('tkgadm_gads_manager_id');
@@ -114,8 +299,9 @@ function tkgadm_render_google_ads_page() {
         );
         $auth_url = 'https://accounts.google.com/o/oauth2/v2/auth?' . http_build_query($params);
     }
+    
+    // Render HTML
     ?>
-
     <div class="wrap">
         <div class="tkgadm-wrap">
             <div class="tkgadm-header">
@@ -132,7 +318,7 @@ function tkgadm_render_google_ads_page() {
                         
                         <h2 style="margin-top: 0; margin-bottom: 20px;">🔑 Thiết lập API</h2>
                         
-                        <!-- Step 1: Client ID/Secret -->
+                        <!-- Client ID/Secret -->
                         <div class="form-group" style="margin-bottom: 15px;">
                             <label style="display: block; font-weight: 500; margin-bottom: 5px;">Client ID</label>
                             <input type="text" name="client_id" value="<?php echo esc_attr($client_id); ?>" class="widefat" style="padding: 8px;">
@@ -157,7 +343,7 @@ function tkgadm_render_google_ads_page() {
                          <div class="form-group" style="margin-bottom: 15px;">
                             <label style="display: block; font-weight: 500; margin-bottom: 5px;">Manager Account ID (Nếu dùng MCC)</label>
                             <input type="text" name="manager_id" value="<?php echo esc_attr($manager_id); ?>" class="widefat" placeholder="xxx-xxx-xxxx" style="padding: 8px;">
-                            <p class="description">Nếu bạn đăng nhập bằng tài khoản MCC, hãy nhập ID của MCC vào đây (Login-Customer-Id). Nếu dùng tài khoản thường thì để trống.</p>
+                            <p class="description">Nếu bạn đăng nhập bằng tài khoản MCC, hãy nhập ID của MCC vào đây. Nếu dùng tài khoản thường thì để trống.</p>
                         </div>
                         
                         <div style="margin-top: 20px; margin-bottom: 30px;">
@@ -166,20 +352,19 @@ function tkgadm_render_google_ads_page() {
 
                         <hr style="margin: 25px 0; border: 0; border-top: 1px solid #eee;">
                         
-                        <!-- Step 2: Connect Google -->
+                        <!-- Connect Google -->
                         <h2 style="margin-bottom: 15px;">🔗 Kết nối Google Ads</h2>
                         
                         <?php if ($refresh_token): ?>
                             <div style="padding: 15px; background: #d4edda; border: 1px solid #c3e6cb; border-radius: 5px; color: #155724; margin-bottom: 15px;">
                                 <strong>✅ Đã kết nối thành công!</strong>
-                                <p style="margin: 5px 0 0;">Plugin đã có quyền truy cập API của bạn.</p>
                             </div>
                             <?php if ($auth_url): ?>
-                                <a href="<?php echo esc_url($auth_url); ?>" class="button button-secondary">Kết nối lại (Re-connect)</a>
+                                <a href="<?php echo esc_url($auth_url); ?>" class="button button-secondary">Kết nối lại</a>
                             <?php endif; ?>
                         <?php else: ?>
                             <?php if ($client_id): ?>
-                                <p>Vui lòng thêm Redirect URI này vào Console Google Cloud của bạn:</p>
+                                <p>Vui lòng thêm Redirect URI này vào Console Google Cloud:</p>
                                 <code style="display: block; padding: 10px; background: #f0f0f1; margin-bottom: 15px; overflow-wrap: break-word;">
                                     <?php echo esc_url(admin_url('admin.php?page=tkgad-google-ads')); ?>
                                 </code>
@@ -239,10 +424,6 @@ function tkgadm_render_google_ads_page() {
                                 <label style="display: block; font-weight: 500; margin-bottom: 10px;">Quy tắc chặn (Rules):</label>
                                 
                                 <div id="rules-container">
-                                    <?php if (empty($auto_block_rules)): ?>
-                                        <!-- Default Empty Row if needed or handled by JS -->
-                                    <?php endif; ?>
-                                    
                                     <?php foreach ($auto_block_rules as $index => $rule): ?>
                                         <div class="rule-row" style="display: flex; gap: 10px; align-items: center; margin-bottom: 10px;">
                                             <span>Đạt</span>
@@ -280,7 +461,7 @@ function tkgadm_render_google_ads_page() {
 
                             // Add Rule
                             $('#add-rule-btn').on('click', function() {
-                                const index = $('#rules-container .rule-row').length;
+                                const index = $('#rules-container .rule-row').length + Math.floor(Math.random() * 1000);
                                 const row = `
                                     <div class="rule-row" style="display: flex; gap: 10px; align-items: center; margin-bottom: 10px;">
                                         <span>Đạt</span>
@@ -301,7 +482,6 @@ function tkgadm_render_google_ads_page() {
                             // Remove Rule
                             $(document).on('click', '.remove-rule', function() {
                                 $(this).closest('.rule-row').remove();
-                                // Re-index? Not strictly necessary for PHP array parsing as long as keys are unique or just array_values used on server.
                             });
                         });
                         </script>
@@ -391,4 +571,50 @@ function tkgadm_render_google_ads_page() {
     });
     </script>
     <?php
+}
+
+/**
+ * ============================================================================
+ * 3. AJAX HANDLERS
+ * ============================================================================
+ */
+
+/**
+ * Handle Manual Sync from Admin Settings
+ */
+add_action('wp_ajax_tkgadm_manual_sync_gads', 'tkgadm_ajax_manual_sync_gads');
+function tkgadm_ajax_manual_sync_gads() {
+    check_ajax_referer('tkgadm_sync_gads', 'nonce');
+    
+    if (!current_user_can('manage_options')) {
+        wp_send_json_error('Không có quyền truy cập.');
+    }
+    
+    $result = tkgadm_do_sync_process();
+    
+    // Update last sync status
+    update_option('tkgadm_last_sync_time', time());
+    update_option('tkgadm_last_sync_message', $result['message']);
+    
+    if ($result['success']) {
+        wp_send_json_success(['message' => $result['message']]);
+    } else {
+        wp_send_json_error($result['message']);
+    }
+}
+
+/**
+ * Handle Hourly Sync Cron Job
+ */
+add_action('tkgadm_hourly_sync_event', 'tkgadm_handle_hourly_sync');
+function tkgadm_handle_hourly_sync() {
+    if (!get_option('tkgadm_auto_sync_hourly')) {
+        return;
+    }
+    
+    $result = tkgadm_do_sync_process();
+    
+    // Log result
+    update_option('tkgadm_last_sync_time', time());
+    update_option('tkgadm_last_sync_message', '(Auto) ' . $result['message']);
 }

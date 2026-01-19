@@ -39,6 +39,24 @@ Hệ thống cảnh báo và báo cáo tự động đa nền tảng:
   - 📱 **Telegram:** Gửi tin nhắn trực tiếp qua Telegram Bot.
 - **Công cụ Test:** Tích hợp module "Deep Test" để kiểm tra kết nối SMTP/Telegram ngay trong admin.
 
+### 4. **Cấu hình Đồng Bộ Google Ads** (Submenu mới - v2.8.0)
+
+Tích hợp API Google Ads để tự động đẩy IP bị chặn vào danh sách loại trừ cấp tài khoản:
+
+- **Tự động đồng bộ:**
+  - Đẩy danh sách IP bị chặn vào Google Ads theo lịch trình (mỗi giờ) hoặc ngay khi chặn.
+  - Hỗ trợ cả tài khoản Google Ads thường và MCC (Manager Account).
+- **Chặn Click Ảo Tự Động:**
+  - Tự động phát hiện và chặn IP có hành vi bất thường dựa trên quy tắc cấu hình.
+  - Đồng bộ IP bị chặn tự động vào Google Ads.
+- **Thông số API cần thiết:**
+  - **Client ID:** Lấy từ Google Cloud Console.
+  - **Client Secret:** Lấy từ Google Cloud Console.
+  - **Refresh Token:** Tự động lấy sau khi kết nối tài khoản Google.
+  - **Developer Token:** Lấy từ Google Ads Manager Account.
+  - **Customer ID:** ID tài khoản Google Ads bạn muốn chặn IP vào.
+  - **Manager ID (tùy chọn):** ID của MCC nếu bạn sử dụng tài khoản quản lý.
+
 ### 4. **Quản lý Dữ liệu** (Submenu)
 
 - Thống kê dung lượng database (MB)
@@ -76,13 +94,11 @@ Hệ thống cảnh báo và báo cáo tự động đa nền tảng:
 gads-toolkit/
 ├── gads-toolkit.php (Bootstrap chính)
 ├── includes/
-│   ├── core-functions.php (Database, tracking, helpers)
-│   ├── ajax-functions.php (Tất cả AJAX handlers)
-│   ├── notification-functions.php (Logic gửi mail/telegram, cron jobs)
-│   ├── admin-dashboard.php (Menu: Thống kê IP)
-│   ├── admin-analytics.php (Submenu: Phân tích Traffic)
-│   ├── admin-notifications.php (Submenu: Cấu hình thông báo)
-│   └── admin-maintenance.php (Submenu: Quản lý dữ liệu)
+│   ├── core-engine.php (Database, tracking, helpers)
+│   ├── module-analytics.php (Logic phân tích traffic)
+│   ├── module-data.php (Quản lý dữ liệu, cron jobs)
+│   ├── module-google-ads.php (Tích hợp Google Ads API)
+│   └── module-notifications.php (Logic gửi mail/telegram, cron jobs)
 └── assets/
     ├── admin-style.css
     ├── admin-script.js
@@ -96,6 +112,7 @@ gads-toolkit/
 2. Activate plugin trong WordPress Admin
 3. Truy cập **GAds Toolkit** trong menu admin
 4. (Tùy chọn) Vào **Cấu hình thông báo** để thiết lập Telegram/SMTP.
+5. (Tùy chọn) Vào **Cấu hình Đồng Bộ Google Ads** để kết nối API và tự động đẩy IP bị chặn vào Google Ads.
 
 ## 📈 Tracking Logic
 
@@ -147,6 +164,7 @@ Plugin tự động tracking khi URL có **BẤT KỲ** tham số nào sau:
 - `tkgadm_delete_data` - Xóa dữ liệu thống kê
 - `tkgadm_run_deep_test` - Chạy test gửi mail/telegram
 - `tkgadm_save_notifications` - Lưu cấu hình thông báo
+- `tkgadm_manual_sync_gads` - Đồng bộ IP bị chặn lên Google Ads thủ công
 
 ### Cho Frontend (Public):
 

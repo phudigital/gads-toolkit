@@ -1,13 +1,16 @@
 <?php
 /**
- * Core Functions
- * Database, Tracking, Validation, Helpers
+ * Core Engine
+ * Contains: Database, Tracking, Auto-Block, Admin Assets & Menu
  */
 
 if (!defined('ABSPATH')) exit;
 
-require_once plugin_dir_path(__FILE__) . 'google-ads-api.php';
-require_once plugin_dir_path(__FILE__) . 'admin-google-ads.php';
+/**
+ * ============================================================================
+ * 1. DATABASE & HELPERS
+ * ============================================================================
+ */
 
 /**
  * Tạo bảng database khi activate plugin
@@ -113,6 +116,39 @@ function tkgadm_is_ip_blocked($ip) {
 }
 
 /**
+ * Helper: Insert IP into Blocked List safely
+ * Returns true if newly blocked, false if already blocked or error
+ */
+function tkgadm_block_ip_internal($ip, $reason = '') {
+    global $wpdb;
+    $table = $wpdb->prefix . 'gads_toolkit_blocked';
+    
+    // Check exist
+    // phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+    $exists = $wpdb->get_var($wpdb->prepare("SELECT id FROM $table WHERE ip_address = %s", $ip));
+    
+    if ($exists) {
+        return false;
+    }
+    
+    // Insert
+    // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+    $result = $wpdb->insert($table, [
+        'ip_address' => $ip,
+        'blocked_time' => current_time('mysql')
+    ]);
+    
+    return $result !== false;
+}
+
+
+/**
+ * ============================================================================
+ * 2. TRACKING SYSTEM
+ * ============================================================================
+ */
+
+/**
  * Ghi log truy cập (hook vào wp_head)
  */
 add_action('wp_head', 'tkgadm_track_visit');
@@ -157,9 +193,6 @@ function tkgadm_track_visit() {
             }
         }
     }
-
-    // NOTE: Plugin CHỈ đồng bộ IP lên Google Ads để chặn quảng cáo
-    // KHÔNG chặn truy cập website - người dùng vẫn vào trang bình thường
 
     // Kiểm tra entry đã tồn tại trong vòng 30 phút gần đây
     // phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
@@ -227,46 +260,12 @@ function tkgadm_enqueue_time_tracker() {
     ));
 }
 
+
 /**
- * Enqueue admin assets
+ * ============================================================================
+ * 3. ADMIN INIT (MENU & ASSETS)
+ * ============================================================================
  */
-add_action('admin_enqueue_scripts', 'tkgadm_enqueue_admin_assets');
-function tkgadm_enqueue_admin_assets($hook) {
-    // Load trên tất cả trang của plugin
-    if (strpos($hook, 'tkgad') === false) {
-        return;
-    }
-
-    wp_enqueue_style(
-        'tkgadm-admin-style',
-        GADS_TOOLKIT_URL . 'assets/admin-style.css',
-        array(),
-        GADS_TOOLKIT_VERSION
-    );
-
-    wp_enqueue_script(
-        'tkgadm-chart',
-        GADS_TOOLKIT_URL . 'assets/chart.umd.min.js',
-        array(),
-        '4.4.0',
-        true
-    );
-
-    wp_enqueue_script(
-        'tkgadm-admin-script',
-        GADS_TOOLKIT_URL . 'assets/admin-script.js',
-        array('jquery', 'tkgadm-chart'),
-        GADS_TOOLKIT_VERSION,
-        true
-    );
-
-    wp_localize_script('tkgadm-admin-script', 'tkgadm_vars', array(
-        'ajaxurl' => admin_url('admin-ajax.php'),
-        'nonce' => wp_create_nonce('tkgadm_nonce'),
-        'nonce_chart' => wp_create_nonce('tkgadm_chart'),
-        'nonce_block' => wp_create_nonce('tkgadm_nonce') // Dùng chung nonce
-    ));
-}
 
 /**
  * Thêm menu admin
@@ -329,6 +328,54 @@ function tkgadm_add_admin_menu() {
 }
 
 /**
+ * Enqueue admin assets
+ */
+add_action('admin_enqueue_scripts', 'tkgadm_enqueue_admin_assets');
+function tkgadm_enqueue_admin_assets($hook) {
+    // Load trên tất cả trang của plugin
+    if (strpos($hook, 'tkgad') === false) {
+        return;
+    }
+
+    wp_enqueue_style(
+        'tkgadm-admin-style',
+        GADS_TOOLKIT_URL . 'assets/admin-style.css',
+        array(),
+        GADS_TOOLKIT_VERSION
+    );
+
+    wp_enqueue_script(
+        'tkgadm-chart',
+        GADS_TOOLKIT_URL . 'assets/chart.umd.min.js',
+        array(),
+        '4.4.0',
+        true
+    );
+
+    wp_enqueue_script(
+        'tkgadm-admin-script',
+        GADS_TOOLKIT_URL . 'assets/admin-script.js',
+        array('jquery', 'tkgadm-chart'),
+        GADS_TOOLKIT_VERSION,
+        true
+    );
+
+    wp_localize_script('tkgadm-admin-script', 'tkgadm_vars', array(
+        'ajaxurl' => admin_url('admin-ajax.php'),
+        'nonce' => wp_create_nonce('tkgadm_nonce'),
+        'nonce_chart' => wp_create_nonce('tkgadm_chart'),
+        'nonce_block' => wp_create_nonce('tkgadm_nonce') // Dùng chung nonce
+    ));
+}
+
+
+/**
+ * ============================================================================
+ * 4. AUTO-BLOCK SYSTEM
+ * ============================================================================
+ */
+
+/**
  * Thêm custom cron interval (15 phút)
  */
 add_filter('cron_schedules', 'tkgadm_add_cron_interval');
@@ -356,7 +403,6 @@ function tkgadm_run_auto_block_scan() {
     
     global $wpdb;
     $stats_table = $wpdb->prefix . 'gads_toolkit_stats';
-    $blocked_table = $wpdb->prefix . 'gads_toolkit_blocked';
     
     $new_blocked_ips = [];
     
@@ -396,15 +442,17 @@ function tkgadm_run_auto_block_scan() {
     
     // Đồng bộ lên Google Ads nếu có IP mới bị chặn
     if (!empty($new_blocked_ips)) {
-        require_once plugin_dir_path(__FILE__) . 'google-ads-api.php';
-        $sync_result = tkgadm_sync_ip_to_google_ads($new_blocked_ips);
-        
-        // Log result
-        update_option('tkgadm_last_auto_block_sync', [
-            'time' => time(), 
-            'count' => count($new_blocked_ips),
-            'result' => $sync_result
-        ]);
+        // Assume module-google-ads.php is present via main plugin loader
+        if (function_exists('tkgadm_sync_ip_to_google_ads')) {
+            $sync_result = tkgadm_sync_ip_to_google_ads($new_blocked_ips);
+            
+            // Log result
+            update_option('tkgadm_last_auto_block_sync', [
+                'time' => time(), 
+                'count' => count($new_blocked_ips),
+                'result' => $sync_result
+            ]);
+        }
         
         // Gửi thông báo
         tkgadm_send_auto_block_notification($new_blocked_ips, $rules);
@@ -415,6 +463,8 @@ function tkgadm_run_auto_block_scan() {
  * Gửi thông báo khi có IP bị chặn tự động
  */
 function tkgadm_send_auto_block_notification($blocked_ips, $rules) {
+    if (empty($blocked_ips)) return;
+
     $count = count($blocked_ips);
     
     // Email message
@@ -448,37 +498,13 @@ function tkgadm_send_auto_block_notification($blocked_ips, $rules) {
     
     // Gửi thông báo theo platform đã chọn
     if (get_option('tkgadm_alert_platform_email', '1') === '1') {
-        require_once plugin_dir_path(__FILE__) . 'notification-functions.php';
-        tkgadm_send_email_notification('🛡️ Chặn click ảo tự động - GAds Toolkit', $message_email);
+        if (function_exists('tkgadm_send_email_notification')) {
+            tkgadm_send_email_notification('🛡️ Chặn click ảo tự động - GAds Toolkit', $message_email);
+        }
     }
     if (get_option('tkgadm_alert_platform_telegram', '1') === '1') {
-        require_once plugin_dir_path(__FILE__) . 'notification-functions.php';
-        tkgadm_send_telegram_message($message_telegram);
+        if (function_exists('tkgadm_send_telegram_message')) {
+            tkgadm_send_telegram_message($message_telegram);
+        }
     }
-}
-
-/**
- * Helper: Insert IP into Blocked List safely
- * Returns true if newly blocked, false if already blocked or error
- */
-function tkgadm_block_ip_internal($ip, $reason = '') {
-    global $wpdb;
-    $table = $wpdb->prefix . 'gads_toolkit_blocked';
-    
-    // Check exist
-    // phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-    $exists = $wpdb->get_var($wpdb->prepare("SELECT id FROM $table WHERE ip_address = %s", $ip));
-    
-    if ($exists) {
-        return false;
-    }
-    
-    // Insert
-    // phpcs:ignore WordPress.DB.DirectDatabaseQuery
-    $result = $wpdb->insert($table, [
-        'ip_address' => $ip,
-        'blocked_time' => current_time('mysql')
-    ]);
-    
-    return $result !== false;
 }

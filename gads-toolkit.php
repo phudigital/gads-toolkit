@@ -16,25 +16,22 @@ if (!defined('ABSPATH')) {
 }
 
 // Define plugin constants
-define('GADS_TOOLKIT_VERSION', '2.5.0');
+define('GADS_TOOLKIT_VERSION', '2.8.1');
 define('GADS_TOOLKIT_PATH', plugin_dir_path(__FILE__));
 define('GADS_TOOLKIT_URL', plugin_dir_url(__FILE__));
 
-// Load core functions (database, tracking, helpers)
-require_once GADS_TOOLKIT_PATH . 'includes/core-functions.php';
+// Load core functions (database, validation, helpers)
+// 1. Core Engine (Database, Tracking, Auto-Block, Admin Init)
+require_once GADS_TOOLKIT_PATH . 'includes/core-engine.php';
 
-// Load AJAX handlers
-require_once GADS_TOOLKIT_PATH . 'includes/ajax-functions.php';
+// 2. Functional Modules (API, Cron, Background Logic)
+require_once GADS_TOOLKIT_PATH . 'includes/module-google-ads.php';
+require_once GADS_TOOLKIT_PATH . 'includes/module-notifications.php';
 
-// Load notification functions
-require_once GADS_TOOLKIT_PATH . 'includes/notification-functions.php';
-
-// Load admin pages
+// 3. Admin & Data Modules (Admin UI & AJAX)
 if (is_admin()) {
-    require_once GADS_TOOLKIT_PATH . 'includes/admin-dashboard.php';
-    require_once GADS_TOOLKIT_PATH . 'includes/admin-analytics.php';
-    require_once GADS_TOOLKIT_PATH . 'includes/admin-maintenance.php';
-    require_once GADS_TOOLKIT_PATH . 'includes/admin-notifications.php';
+    require_once GADS_TOOLKIT_PATH . 'includes/module-analytics.php';
+    require_once GADS_TOOLKIT_PATH . 'includes/module-data.php';
 }
 
 // Activation hook
