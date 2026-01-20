@@ -584,7 +584,7 @@ function tkgadm_render_notifications_page() {
                     <h3 style="margin: 0 0 10px 0; font-size: 14px;">📊 Thông tin IP hiện tại</h3>
                     <div style="background: #f9f9f9; padding: 12px; border-radius: 5px; border: 1px solid #ddd; font-family: monospace; font-size: 13px;">
                         <?php
-                        $current_ip = $_SERVER['REMOTE_ADDR'] ?? 'Unknown';
+                        $current_ip = tkgadm_get_real_user_ip();
                         $is_ipv6 = filter_var($current_ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV6);
                         $is_ipv4 = filter_var($current_ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4);
                         ?>

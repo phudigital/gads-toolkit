@@ -8,11 +8,13 @@
 
 **Fraud Prevention for Google Ads** (gads-toolkit) là plugin WordPress chuyên nghiệp giúp:
 
-- Theo dõi và phân tích traffic từ Google Ads (dựa trên `gclid`/`gbraid`)
-- Phát hiện và chặn click ảo (fraud clicks) tự động hoặc thủ công
-- Tích hợp Google Ads API để đồng bộ danh sách IP bị chặn vào account-level exclusions
-- Gửi cảnh báo qua Email và Telegram khi phát hiện hành vi nghi ngờ
-- Phân tích traffic với biểu đồ so sánh Ads vs Organic
+- **Theo dõi Real-time:** Ghi lại mọi lượt truy cập từ Google Ads (dựa trên `gclid`/`gbraid`) kèm thông tin thiết bị và hành vi
+- **Chặn IP Tức thì (Real-time Auto-Block):** Tự động chặn IP ngay khi phát hiện vi phạm quy tắc (số click/thời gian) mà không cần chờ cron job
+- **Smart Cross-IP Blocking:** Sử dụng Cookie Tagging để nhận diện và chặn kẻ tấn công ngay cả khi họ đổi từ IPv4 sang IPv6 hoặc ngược lại
+- **Hỗ trợ Dual-Stack (IPv4 + IPv6):** Thu thập và chặn đầy đủ cả hai loại IP address
+- **Tích hợp Google Ads API:** Tự động đồng bộ danh sách IP bị chặn vào account-level exclusions
+- **Thông báo đa kênh:** Cảnh báo qua Email và Telegram kèm báo cáo traffic hàng ngày
+- **Phân tích traffic:** Biểu đồ so sánh Ads vs Organic với Chart.js
 
 ### Công nghệ chính:
 
@@ -21,6 +23,7 @@
 - **Database**: MySQL/MariaDB (WordPress `$wpdb`)
 - **External APIs**: Google Ads API v19, Telegram Bot API
 - **Build Tools**: **KHÔNG CÓ** - Plugin này không sử dụng build tool (Webpack, Vite, v.v.). Tất cả assets đều là vanilla JS/CSS.
+- **Security**: Cookie-based device tracking, Nonce verification, Capability checks
 
 ---
 
@@ -28,10 +31,10 @@
 
 ### Yêu cầu hệ thống:
 
-- **PHP**: >= 7.4 (khuyến nghị 8.0+)
+- **PHP**: >= 7.4 (khuyến nghị 8.0+) với extension `curl` enabled
 - **WordPress**: >= 5.8 (khuyến nghị 6.0+)
 - **MySQL/MariaDB**: >= 5.7 / MariaDB 10.2+
-- **Server**: Apache hoặc Nginx với `mod_rewrite` enabled
+- **Server**: Apache hoặc Nginx với `mod_rewrite` enabled, khuyến nghị hỗ trợ IPv6
 - **PHP Extensions**: `mysqli`, `json`, `curl` (cho Google Ads API)
 
 ### Dependencies:
@@ -53,12 +56,21 @@ Plugin này **KHÔNG** sử dụng Composer hoặc npm dependencies. Tất cả 
    - Click "Activate"
 
 3. **Database tables sẽ tự động tạo khi activate:**
-   - `wp_gads_toolkit_stats` - Lưu traffic logs
+   - `wp_gads_toolkit_stats` - Lưu traffic logs (hỗ trợ IPv4 và IPv6)
    - `wp_gads_toolkit_blocked` - Lưu danh sách IP bị chặn
 
-4. **Cấu hình plugin (tùy chọn):**
+4. **Cấu hình Server Cron (Quan trọng):**
+
+   ```bash
+   crontab -e
+   # Thêm dòng sau (thay đường dẫn thực tế):
+   */5 * * * * /usr/bin/php /path/to/wp-content/plugins/gads-toolkit/central-service/cron-trigger.php >/dev/null 2>&1
+   ```
+
+5. **Cấu hình plugin:**
    - Vào **GAds Toolkit** → **Cấu hình Thông báo** để setup Email/Telegram
-   - Vào **Cấu hình Google Ads** để kết nối API (nếu cần auto-sync)
+   - Vào **Cấu hình Google Ads** để kết nối API
+   - Kiểm tra IPv6 support tại section "Chẩn đoán IPv6"
 
 ### Môi trường local khuyến nghị:
 
@@ -88,10 +100,12 @@ Plugin này **KHÔNG CÓ** bước build assets. Tất cả file JS/CSS đã ở
 
 ### Cập nhật version:
 
-Khi release version mới, cập nhật constant trong `gads-toolkit.php`:
+Khi release version mới, cập nhật version trong `gads-toolkit.php`:
 
 ```php
-define('GADS_TOOLKIT_VERSION', '2.8.2'); // Tăng version number
+/**
+ * Version:     3.2.0
+ */
 ```
 
 WordPress sẽ tự động bust cache cho assets dựa trên version này.
@@ -106,22 +120,33 @@ Plugin này **CHƯA CÓ** automated tests (PHPUnit, Pest, Jest, v.v.).
 
 ### Testing thủ công:
 
-1. **Test tracking logic:**
-   - Truy cập: `(your-site)/wp-content/plugins/gads-toolkit/test-organic-logic.php`
-   - Script này sẽ hiển thị chi tiết SQL queries và phân loại traffic (Ads vs Organic)
-   - Yêu cầu đăng nhập với quyền `manage_options`
+1. **Test Real-time Auto-Block:**
+   - Cấu hình quy tắc chặn (ví dụ: 3 clicks trong 1 giờ)
+   - Truy cập website với `?gclid=test_xxx` nhiều lần
+   - Kiểm tra IP có bị chặn ngay lập tức không
+   - Verify thông báo Telegram/Email được gửi
 
-2. **Test AJAX endpoints:**
+2. **Test Smart Cross-IP Blocking:**
+   - Sau khi bị chặn, xóa Cookie `tkgadm_banned` trong DevTools
+   - Đổi IP (hoặc giả lập bằng VPN)
+   - Truy cập lại → IP mới sẽ bị chặn ngay
+
+3. **Test IPv6 Support:**
+   - Kiểm tra trang "Chẩn đoán IPv6" trong Cấu hình Thông báo
+   - Verify server có IPv6 address
+   - Test tracking với IPv6 client (nếu có)
+
+4. **Test AJAX endpoints:**
    - Sử dụng browser DevTools → Network tab
    - Trigger actions trong admin (block IP, load chart, v.v.)
    - Kiểm tra response từ các AJAX handlers
 
-3. **Test notifications:**
+5. **Test notifications:**
    - Vào **Cấu hình Thông báo** → Click "Deep Test" buttons
    - Module test sẽ hiển thị log chi tiết về SMTP/Telegram connection
 
-4. **Test Google Ads sync:**
-   - Vào **Cấu hình Google Ads** → Click "Đồng bộ ngay"
+6. **Test Google Ads sync:**
+   - Vào **Cấu hình Google Ads** → Click "☁️ Upload IP lên Google Ads"
    - Kiểm tra response message và verify trong Google Ads account
 
 ### Khuyến nghị cho tương lai:
@@ -176,6 +201,7 @@ Plugin tuân thủ **WordPress Coding Standards** với một số điểm chín
   ```php
   if (!defined('ABSPATH')) exit;
   ```
+- **Cookie Security:** Cookie `tkgadm_banned` được set với path `/` và expiry 30 ngày
 
 #### 4. **Hooks & Filters:**
 
@@ -195,11 +221,12 @@ Plugin tuân thủ **WordPress Coding Standards** với một số điểm chín
 
 Plugin sử dụng **modular structure** (không dùng PHP namespace):
 
-- `includes/core-engine.php` - Database, tracking, admin init
+- `includes/core-engine.php` - Database, tracking, admin init, Real-time Auto-Block, Smart Cross-IP Blocking
 - `includes/module-analytics.php` - Dashboard & analytics UI/AJAX
-- `includes/module-google-ads.php` - Google Ads API integration
-- `includes/module-notifications.php` - Email/Telegram alerts
+- `includes/module-google-ads.php` - Google Ads API integration, sync UI
+- `includes/module-notifications.php` - Email/Telegram alerts, IPv6 diagnostics
 - `includes/module-data.php` - Data maintenance
+- `central-service/cron-trigger.php` - Server-side cron trigger (CLI only)
 
 **Quy tắc:** Mỗi module chứa cả UI rendering functions VÀ AJAX handlers liên quan.
 
@@ -215,6 +242,55 @@ Plugin sử dụng **modular structure** (không dùng PHP namespace):
 
 ---
 
+## 🔐 Tính năng bảo mật nâng cao
+
+### 1. Real-time Auto-Block Engine
+
+**Location:** `includes/core-engine.php` → `tkgadm_check_ip_instant()`
+
+**Cơ chế:**
+
+- Hook vào `tkgadm_track_visit()` để kiểm tra ngay khi có `gclid`
+- Query database đếm số click trong khoảng thời gian theo rules
+- Nếu vi phạm → Chặn IP + Set Cookie `tkgadm_banned` + Sync Google Ads + Gửi thông báo
+
+**Lưu ý khi sửa:**
+
+- Đảm bảo query được prepare đúng cách
+- Cookie phải được set trước khi output bất kỳ content nào
+- Break loop sau khi chặn để tránh duplicate actions
+
+### 2. Smart Cross-IP Blocking
+
+**Location:** `includes/core-engine.php` → `tkgadm_track_visit()` (sau real-time check)
+
+**Cơ chế:**
+
+- Kiểm tra Cookie `tkgadm_banned` trong mỗi request
+- Nếu có cookie nhưng IP hiện tại chưa bị chặn → Chặn IP mới này
+- Gửi thông báo với tag "Cross-IP Detection"
+
+**Lưu ý:**
+
+- Cookie có thể bị xóa bởi user → Không phải giải pháp 100%
+- Kết hợp với các phương pháp khác (fingerprinting) nếu cần tăng độ chính xác
+
+### 3. IPv6 Support
+
+**Database:** Cột `ip_address` là `VARCHAR(255)` - đủ cho cả IPv4 và IPv6
+
+**Validation:**
+
+- Sử dụng `filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV6)` để phát hiện IPv6
+- Google Ads API hỗ trợ cả IPv4 và IPv6 trong IP exclusions
+
+**Diagnostic Tool:**
+
+- Trang "Chẩn đoán IPv6" trong module-notifications.php
+- Sử dụng cURL với `CURL_IPRESOLVE_V6` để test IPv6 connectivity
+
+---
+
 ## 🤖 Hướng dẫn cho coding agent
 
 ### Khi sửa/thêm code, luôn:
@@ -222,6 +298,7 @@ Plugin sử dụng **modular structure** (không dùng PHP namespace):
 1. **Tôn trọng cấu trúc module hiện tại:**
    - Nếu sửa analytics logic → edit `module-analytics.php`
    - Nếu sửa Google Ads sync → edit `module-google-ads.php`
+   - Nếu sửa Real-time blocking → edit `core-engine.php`
    - Nếu thêm AJAX handler mới → đặt trong module tương ứng với chức năng
 
 2. **Không đổi tên public hooks/filters** trừ khi:
@@ -236,36 +313,37 @@ Plugin sử dụng **modular structure** (không dùng PHP namespace):
     * Block IP and optionally sync to Google Ads
     *
     * @param string $ip IP address to block (supports IPv4, IPv6, wildcard)
-    * @param bool $auto_sync Whether to sync immediately to Google Ads
+    * @param string $reason Reason for blocking
     * @return bool True if blocked successfully
     */
-   function tkgadm_block_ip($ip, $auto_sync = false) {
+   function tkgadm_block_ip_internal($ip, $reason = '') {
        // ...
    }
    ```
 
-4. **Thêm/cập nhật test case** (khi có test suite):
-   - Nếu thêm function mới → thêm test coverage
-   - Nếu fix bug → thêm regression test
-   - Chạy `vendor/bin/phpunit` trước khi commit (khi có)
-
-5. **Escape/Sanitize checklist:**
+4. **Escape/Sanitize checklist:**
    - Input từ user: `sanitize_text_field()`, `sanitize_email()`, `intval()`, v.v.
+   - Input từ `$_SERVER`: `sanitize_text_field(wp_unslash($_SERVER['REMOTE_ADDR']))`
    - Output HTML: `esc_html()`, `esc_attr()`, `wp_kses_post()`
    - Output URL: `esc_url()`, `esc_url_raw()`
    - Database queries: **LUÔN** dùng `$wpdb->prepare()`
 
-6. **Performance considerations:**
+5. **Performance considerations:**
    - Tránh query trong loop (N+1 problem)
    - Sử dụng `wp_cache_*` functions nếu query nặng
    - Limit kết quả với `LIMIT` clause (đặc biệt cho stats table)
    - Index database columns thường xuyên query (`ip_address`, `visit_time`)
 
-7. **Cron Jobs:**
-   - Khi thêm cron job mới, nhớ:
-     - Register trong `tkgadm_schedule_notifications()` (module-notifications.php)
-     - Unregister trong `tkgadm_unschedule_notifications()`
-     - Test bằng WP-CLI: `wp cron event list`
+6. **Cron Jobs:**
+   - Server-side cron: `central-service/cron-trigger.php` (chạy mỗi 5 phút)
+   - WP-Cron jobs: Register trong `tkgadm_schedule_notifications()`
+   - Test bằng WP-CLI: `wp cron event list`
+
+7. **UI/UX Guidelines:**
+   - Sử dụng grid layout 2 cột cho settings pages (đã áp dụng cho Google Ads và Notifications)
+   - Font-size: 13px cho labels, 12px cho descriptions
+   - Inline styles cho rapid prototyping, sau đó refactor vào CSS nếu cần
+   - Emoji icons cho visual hierarchy (🔔, ⚙️, 📊, v.v.)
 
 ---
 
@@ -290,16 +368,17 @@ Plugin sử dụng **modular structure** (không dùng PHP namespace):
 - `[STYLE]` - Code style changes (formatting, v.v.)
 - `[PERF]` - Performance improvements
 - `[TEST]` - Thêm/sửa tests
+- `[SECURITY]` - Security improvements
 
 ### Ví dụ:
 
 ```
-[FEAT] Add bulk IP blocking feature
+[FEAT] Add Smart Cross-IP Blocking with Cookie Tagging
 
-- Add modal UI for bulk IP input
-- Support wildcard patterns (192.168.1.*)
-- Validate IP format before blocking
-- Update README with bulk block instructions
+- Implement cookie-based device tracking (tkgadm_banned)
+- Auto-block new IPs from previously banned devices
+- Add Cross-IP detection notification
+- Update AGENTS.md with security documentation
 ```
 
 ### Trước khi gửi PR:
@@ -312,17 +391,20 @@ Plugin sử dụng **modular structure** (không dùng PHP namespace):
    - Activate/deactivate plugin → check database tables
    - Test tất cả AJAX endpoints liên quan
    - Test trên ít nhất 2 browsers (Chrome, Firefox)
+   - Test cả IPv4 và IPv6 nếu có thay đổi tracking logic
 
 3. **Cập nhật documentation:**
    - Update `README.md` nếu thêm feature mới
-   - Update `CHANGELOG` section trong README
-   - Update version number trong `gads-toolkit.php` nếu cần
+   - Update `SETUP-GUIDE.md` nếu có thay đổi cấu hình
+   - Update `AGENTS.md` (file này) nếu có thay đổi architecture
+   - Update version number trong `gads-toolkit.php`
 
 4. **Check security:**
    - Tất cả AJAX có nonce verification?
    - Tất cả admin actions có capability check?
    - Tất cả user input đã sanitize?
    - Tất cả output đã escape?
+   - Cookie được set an toàn (path, expiry)?
 
 ---
 
@@ -333,6 +415,7 @@ Plugin sử dụng **modular structure** (không dùng PHP namespace):
 - [WordPress Database Class ($wpdb)](https://developer.wordpress.org/reference/classes/wpdb/)
 - [Google Ads API Documentation](https://developers.google.com/google-ads/api/docs/start)
 - [Chart.js Documentation](https://www.chartjs.org/docs/latest/)
+- [IPv6 Testing Tools](https://test-ipv6.com/)
 
 ---
 
@@ -360,9 +443,30 @@ Plugin sử dụng **modular structure** (không dùng PHP namespace):
 - Verify API credentials trong **Cấu hình Google Ads**
 - Check error message trong sync response
 - Ensure `curl` extension enabled trong PHP
+- Verify Manager ID (login-customer-id) nếu dùng MCC
+
+### Real-time blocking không hoạt động:
+
+- Kiểm tra "Kích hoạt chặn tự động" đã bật
+- Verify quy tắc chặn đã được cấu hình
+- Check PHP error log cho SQL errors
+- Test với `?gclid=test_xxx` để trigger tracking
+
+### Smart Cross-IP không chặn:
+
+- Kiểm tra Cookie `tkgadm_banned` trong DevTools → Application → Cookies
+- Cookie có thể bị block bởi browser privacy settings
+- Verify function `tkgadm_is_ip_blocked()` hoạt động đúng
+
+### IPv6 không được ghi nhận:
+
+- Kiểm tra VPS có IPv6 address: `ip -6 addr show`
+- Verify DNS có bản ghi AAAA
+- Test IPv6 connectivity: `curl -6 https://ipv6.google.com`
+- Check "Chẩn đoán IPv6" trong plugin admin
 
 ---
 
-**Version:** 2.8.1  
-**Last Updated:** 2026-01-19  
+**Version:** 3.2.0  
+**Last Updated:** 2026-01-20  
 **Maintainer:** Phú Digital (https://pdl.vn)

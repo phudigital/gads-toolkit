@@ -51,6 +51,43 @@ function tkgadm_create_tables() {
 }
 
 /**
+ * Lấy IP thật của user (hỗ trợ Cloudflare Proxy)
+ * Priority: CF-Connecting-IP > X-Forwarded-For > REMOTE_ADDR
+ */
+function tkgadm_get_real_user_ip() {
+    // 1. Cloudflare Proxy (highest priority)
+    if (!empty($_SERVER['HTTP_CF_CONNECTING_IP'])) {
+        $ip = sanitize_text_field(wp_unslash($_SERVER['HTTP_CF_CONNECTING_IP']));
+        if (filter_var($ip, FILTER_VALIDATE_IP)) {
+            return $ip;
+        }
+    }
+    
+    // 2. Standard proxy headers
+    if (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
+        $ips = explode(',', $_SERVER['HTTP_X_FORWARDED_FOR']);
+        $ip = sanitize_text_field(trim($ips[0]));
+        if (filter_var($ip, FILTER_VALIDATE_IP)) {
+            return $ip;
+        }
+    }
+    
+    if (!empty($_SERVER['HTTP_X_REAL_IP'])) {
+        $ip = sanitize_text_field(wp_unslash($_SERVER['HTTP_X_REAL_IP']));
+        if (filter_var($ip, FILTER_VALIDATE_IP)) {
+            return $ip;
+        }
+    }
+    
+    // 3. Direct connection (fallback)
+    if (!empty($_SERVER['REMOTE_ADDR'])) {
+        return sanitize_text_field(wp_unslash($_SERVER['REMOTE_ADDR']));
+    }
+    
+    return '';
+}
+
+/**
  * Validate IP pattern (IPv4 với wildcard, IPv6)
  */
 function tkgadm_validate_ip_pattern($pattern) {
@@ -158,11 +195,14 @@ function tkgadm_track_visit() {
     global $wpdb;
     $table = $wpdb->prefix . 'gads_toolkit_stats';
 
-    if (!isset($_SERVER['REMOTE_ADDR']) || !isset($_SERVER['REQUEST_URI'])) {
+    if (!isset($_SERVER['REQUEST_URI'])) {
         return;
     }
 
-    $ip = sanitize_text_field(wp_unslash($_SERVER['REMOTE_ADDR']));
+    $ip = tkgadm_get_real_user_ip();
+    if (empty($ip)) {
+        return;
+    }
     $visit_time = current_time('mysql');
     
     // FIX: Construct URL đúng cách để giữ query string
@@ -337,7 +377,7 @@ function tkgadm_enqueue_time_tracker() {
         true
     );
     
-    $user_ip = isset($_SERVER['REMOTE_ADDR']) ? sanitize_text_field(wp_unslash($_SERVER['REMOTE_ADDR'])) : '';
+    $user_ip = tkgadm_get_real_user_ip();
     wp_localize_script('tkgadm-time-tracker', 'tkgadm_tracker', array(
         'ajaxurl' => admin_url('admin-ajax.php'),
         'user_ip' => $user_ip
