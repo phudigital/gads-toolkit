@@ -228,6 +228,68 @@ function tkgadm_track_visit() {
             'time_on_page' => 0
         ]);
     }
+
+    // REAL-TIME PROTECTION: Nếu là Click Ads, kiểm tra quy tắc chặn ngay lập tức
+    // Không chờ Cron Job 15 phút để tránh thiệt hại ngân sách
+    if ($has_click_id && get_option('tkgadm_auto_block_enabled')) {
+        tkgadm_check_ip_instant($ip);
+    }
+}
+
+/**
+ * Kiểm tra IP ngay lập tức theo Rules (Real-time Auto Block)
+ */
+function tkgadm_check_ip_instant($ip) {
+    $rules = get_option('tkgadm_auto_block_rules', []);
+    if (empty($rules) || !is_array($rules)) {
+        return;
+    }
+
+    global $wpdb;
+    $stats_table = $wpdb->prefix . 'gads_toolkit_stats';
+
+    foreach ($rules as $rule) {
+        $limit = intval($rule['limit']);
+        $duration = intval($rule['duration']);
+        $unit = strtoupper($rule['unit']); // HOUR, DAY, WEEK
+        
+        // Validate unit
+        if (!in_array($unit, ['HOUR', 'DAY', 'WEEK', 'MONTH'])) $unit = 'HOUR';
+        if ($unit === 'WEEK') {
+            $duration *= 7;
+            $unit = 'DAY';
+        }
+
+        // Đếm số click của IP này trong khoảng thời gian
+        // phpcs:ignore WordPress.DB.PreparedSQL.StartWithParens
+        $sql = "SELECT COUNT(DISTINCT gclid) 
+                FROM $stats_table 
+                WHERE ip_address = %s
+                AND visit_time >= DATE_SUB(NOW(), INTERVAL %d $unit)
+                AND gclid IS NOT NULL AND gclid != ''";
+        
+        // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.DirectDatabaseQuery
+        $click_count = $wpdb->get_var($wpdb->prepare($sql, $ip, $duration));
+
+        if ($click_count >= $limit) {
+            // Vi phạm -> Chặn ngay
+            if (tkgadm_block_ip_internal($ip, "Real-time Block: $click_count clicks in $rule[duration] $rule[unit]")) {
+                
+                // 1. Đồng bộ Google Ads ngay lập tức
+                if (function_exists('tkgadm_sync_ip_to_google_ads')) {
+                    tkgadm_sync_ip_to_google_ads([$ip]);
+                }
+                
+                // 2. Gửi thông báo
+                if (function_exists('tkgadm_send_auto_block_notification')) {
+                    tkgadm_send_auto_block_notification([$ip], [$rule]);
+                }
+                
+                // Đã chặn rồi thì break loop
+                break;
+            }
+        }
+    }
 }
 
 /**

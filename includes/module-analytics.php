@@ -25,9 +25,9 @@ function tkgadm_render_dashboard_page() {
         FROM $table_stats
         WHERE gclid IS NOT NULL AND gclid != ''");
     
-    // Mặc định hiển thị 30 ngày gần nhất
-    $default_from = date('Y-m-d', strtotime('-30 days'));
-    $default_to = date('Y-m-d');
+    // Mặc định hiển thị 30 ngày gần nhất (theo giờ WordPress)
+    $default_from = current_time('Y-m-d', strtotime('-30 days'));
+    $default_to = current_time('Y-m-d');
     
     // Lấy tham số filter (nếu user đã chọn thì dùng, không thì dùng default)
     $date_from = isset($_GET['date_from']) ? sanitize_text_field(wp_unslash($_GET['date_from'])) : $default_from;
@@ -248,9 +248,9 @@ function tkgadm_render_analytics_page() {
         DATE(MAX(visit_time)) as newest
         FROM $table");
     
-    // Mặc định hiển thị 30 ngày gần đây
-    $default_from = date('Y-m-d', strtotime('-30 days'));
-    $default_to = date('Y-m-d');
+    // Mặc định hiển thị 30 ngày gần đây (theo giờ WordPress)
+    $default_from = current_time('Y-m-d', strtotime('-30 days'));
+    $default_to = current_time('Y-m-d');
     
     ?>
     <div class="wrap">

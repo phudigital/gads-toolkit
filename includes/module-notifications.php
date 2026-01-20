@@ -356,216 +356,208 @@ function tkgadm_render_notifications_page() {
             <form method="post" action="">
                 <?php wp_nonce_field('tkgadm_notifications_nonce'); ?>
                 
-                <div class="tkgadm-table-container">
-                    <!-- Email Settings -->
-                    <h2>📧 Cấu hình Email</h2>
-                    <table class="form-table">
-                        <tr>
-                            <th scope="row">Email nhận thông báo</th>
-                            <td>
-                                <input type="text" name="notification_emails" value="<?php echo esc_attr($emails); ?>" class="large-text" placeholder="email1@example.com, email2@example.com">
-                                <p class="description">Phân tách các email bằng dấu phẩy. Để trống nếu không muốn nhận email.</p>
-                            </td>
-                        </tr>
-                        <tr>
-                            <th scope="row">Cấu hình SMTP</th>
-                            <td>
-                                <label>
-                                    <input type="checkbox" name="use_custom_smtp" value="1" <?php checked($use_custom_smtp, '1'); ?> id="use-custom-smtp">
-                                    Sử dụng SMTP riêng cho plugin này
-                                </label>
-                                <p class="description">Bật nếu muốn dùng SMTP riêng. Tắt để dùng cấu hình SMTP từ theme/plugin khác.</p>
-                            </td>
-                        </tr>
-                    </table>
+                <div style="background: white; padding: 25px; border-radius: 10px; border: 1px solid #ddd; margin-bottom: 20px;">
+                    
+                    <!-- Email & Telegram Settings in 2 columns -->
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 25px; margin-bottom: 25px;">
+                        
+                        <!-- Email Settings -->
+                        <div>
+                            <h2 style="margin: 0 0 15px 0; font-size: 16px;">📧 Cấu hình Email</h2>
+                            
+                            <div style="margin-bottom: 15px;">
+                                <label style="display: block; font-weight: 500; margin-bottom: 5px; font-size: 13px;">Email nhận thông báo</label>
+                                <input type="text" name="notification_emails" value="<?php echo esc_attr($emails); ?>" class="widefat" placeholder="email1@example.com, email2@example.com" style="padding: 6px; font-size: 13px;">
+                                <p class="description" style="margin-top: 3px; font-size: 12px;">Phân tách bằng dấu phẩy. Để trống nếu không dùng.</p>
+                            </div>
 
-                    <!-- SMTP Configuration (collapsible) -->
-                    <div id="smtp-config-section" style="<?php echo $use_custom_smtp === '1' ? '' : 'display:none;'; ?>">
-                        <h3 style="margin-top: 20px;">⚙️ Cấu hình SMTP Server</h3>
-                        <table class="form-table">
-                            <tr>
-                                <th scope="row">SMTP Host</th>
-                                <td>
-                                    <input type="text" name="smtp_host" value="<?php echo esc_attr($smtp_host); ?>" class="regular-text" placeholder="smtp.gmail.com">
-                                    <p class="description">Ví dụ: smtp.gmail.com, smtp.office365.com</p>
-                                </td>
-                            </tr>
-                            <tr>
-                                <th scope="row">SMTP Port</th>
-                                <td>
-                                    <input type="number" name="smtp_port" value="<?php echo esc_attr($smtp_port); ?>" style="width: 100px;">
-                                    <p class="description">587 (TLS) hoặc 465 (SSL)</p>
-                                </td>
-                            </tr>
-                            <tr>
-                                <th scope="row">Encryption</th>
-                                <td>
-                                    <select name="smtp_secure">
-                                        <option value="tls" <?php selected($smtp_secure, 'tls'); ?>>TLS</option>
-                                        <option value="ssl" <?php selected($smtp_secure, 'ssl'); ?>>SSL</option>
-                                        <option value="" <?php selected($smtp_secure, ''); ?>>None</option>
-                                    </select>
-                                </td>
-                            </tr>
-                            <tr>
-                                <th scope="row">SMTP Authentication</th>
-                                <td>
-                                    <label>
-                                        <input type="checkbox" name="smtp_auth" value="1" <?php checked($smtp_auth, '1'); ?>>
-                                        Yêu cầu authentication
-                                    </label>
-                                </td>
-                            </tr>
-                            <tr>
-                                <th scope="row">SMTP Username</th>
-                                <td>
-                                    <input type="text" name="smtp_username" value="<?php echo esc_attr($smtp_username); ?>" class="regular-text" placeholder="your-email@gmail.com">
-                                </td>
-                            </tr>
-                            <tr>
-                                <th scope="row">SMTP Password</th>
-                                <td>
-                                    <input type="password" name="smtp_password" value="<?php echo esc_attr($smtp_password); ?>" class="regular-text" placeholder="App Password hoặc mật khẩu">
-                                    <p class="description">⚠ Gmail yêu cầu App Password, không dùng mật khẩu thường.</p>
-                                </td>
-                            </tr>
-                            <tr>
-                                <th scope="row">From Email</th>
-                                <td>
-                                    <input type="email" name="smtp_from_email" value="<?php echo esc_attr($smtp_from_email); ?>" class="regular-text" placeholder="noreply@yourdomain.com">
-                                    <p class="description">Email người gửi (thường phải trùng với SMTP username)</p>
-                                </td>
-                            </tr>
-                            <tr>
-                                <th scope="row">From Name</th>
-                                <td>
-                                    <input type="text" name="smtp_from_name" value="<?php echo esc_attr($smtp_from_name); ?>" class="regular-text" placeholder="GAds Toolkit">
-                                </td>
-                            </tr>
-                        </table>
+                            <div style="margin-bottom: 15px;">
+                                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 13px;">
+                                    <input type="checkbox" name="use_custom_smtp" value="1" <?php checked($use_custom_smtp, '1'); ?> id="use-custom-smtp">
+                                    <span>Sử dụng SMTP riêng</span>
+                                </label>
+                                <p class="description" style="margin-top: 3px; font-size: 12px;">Bật để cấu hình SMTP riêng cho plugin</p>
+                            </div>
+
+                            <!-- SMTP Config (Collapsible) -->
+                            <div id="smtp-config-section" style="<?php echo $use_custom_smtp === '1' ? '' : 'display:none;'; ?> background: #f9f9f9; padding: 12px; border-radius: 5px; border: 1px solid #ddd;">
+                                <h4 style="margin: 0 0 10px 0; font-size: 13px;">⚙️ SMTP Server</h4>
+                                
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px;">
+                                    <div>
+                                        <label style="display: block; font-size: 12px; margin-bottom: 3px;">Host</label>
+                                        <input type="text" name="smtp_host" value="<?php echo esc_attr($smtp_host); ?>" class="widefat" placeholder="smtp.gmail.com" style="padding: 4px; font-size: 12px;">
+                                    </div>
+                                    <div>
+                                        <label style="display: block; font-size: 12px; margin-bottom: 3px;">Port</label>
+                                        <input type="number" name="smtp_port" value="<?php echo esc_attr($smtp_port); ?>" class="widefat" style="padding: 4px; font-size: 12px;">
+                                    </div>
+                                </div>
+
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px;">
+                                    <div>
+                                        <label style="display: block; font-size: 12px; margin-bottom: 3px;">Encryption</label>
+                                        <select name="smtp_secure" class="widefat" style="padding: 4px; font-size: 12px;">
+                                            <option value="tls" <?php selected($smtp_secure, 'tls'); ?>>TLS</option>
+                                            <option value="ssl" <?php selected($smtp_secure, 'ssl'); ?>>SSL</option>
+                                            <option value="" <?php selected($smtp_secure, ''); ?>>None</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label style="display: flex; align-items: center; gap: 5px; font-size: 12px; padding-top: 20px;">
+                                            <input type="checkbox" name="smtp_auth" value="1" <?php checked($smtp_auth, '1'); ?>>
+                                            <span>Yêu cầu auth</span>
+                                        </label>
+                                    </div>
+                                </div>
+
+                                <div style="margin-bottom: 10px;">
+                                    <label style="display: block; font-size: 12px; margin-bottom: 3px;">Username</label>
+                                    <input type="text" name="smtp_username" value="<?php echo esc_attr($smtp_username); ?>" class="widefat" placeholder="your-email@gmail.com" style="padding: 4px; font-size: 12px;">
+                                </div>
+
+                                <div style="margin-bottom: 10px;">
+                                    <label style="display: block; font-size: 12px; margin-bottom: 3px;">Password</label>
+                                    <input type="password" name="smtp_password" value="<?php echo esc_attr($smtp_password); ?>" class="widefat" placeholder="App Password" style="padding: 4px; font-size: 12px;">
+                                    <p class="description" style="margin-top: 2px; font-size: 11px;">⚠ Gmail yêu cầu App Password</p>
+                                </div>
+
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                                    <div>
+                                        <label style="display: block; font-size: 12px; margin-bottom: 3px;">From Email</label>
+                                        <input type="email" name="smtp_from_email" value="<?php echo esc_attr($smtp_from_email); ?>" class="widefat" placeholder="noreply@domain.com" style="padding: 4px; font-size: 12px;">
+                                    </div>
+                                    <div>
+                                        <label style="display: block; font-size: 12px; margin-bottom: 3px;">From Name</label>
+                                        <input type="text" name="smtp_from_name" value="<?php echo esc_attr($smtp_from_name); ?>" class="widefat" placeholder="GAds Toolkit" style="padding: 4px; font-size: 12px;">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Telegram Settings -->
+                        <div>
+                            <h2 style="margin: 0 0 15px 0; font-size: 16px;">📱 Cấu hình Telegram</h2>
+                            
+                            <div style="margin-bottom: 15px;">
+                                <label style="display: block; font-weight: 500; margin-bottom: 5px; font-size: 13px;">Bot Token</label>
+                                <input type="text" name="telegram_bot_token" value="<?php echo esc_attr($telegram_token); ?>" class="widefat" placeholder="123456789:ABCdefGHIjklMNOpqrsTUVwxyz" style="padding: 6px; font-size: 13px;">
+                                <p class="description" style="margin-top: 3px; font-size: 12px;">Lấy từ <a href="https://t.me/BotFather" target="_blank">@BotFather</a></p>
+                            </div>
+
+                            <div style="margin-bottom: 15px;">
+                                <label style="display: block; font-weight: 500; margin-bottom: 5px; font-size: 13px;">Chat ID</label>
+                                <input type="text" name="telegram_chat_id" value="<?php echo esc_attr($telegram_chat_id); ?>" class="widefat" placeholder="-1001234567890" style="padding: 6px; font-size: 13px;">
+                                <p class="description" style="margin-top: 3px; font-size: 12px;">ID group/channel. Lấy từ <a href="https://t.me/userinfobot" target="_blank">@userinfobot</a></p>
+                            </div>
+                        </div>
                     </div>
 
-                    <script>
-                    jQuery(document).ready(function($) {
-                        $('#use-custom-smtp').on('change', function() {
-                            if ($(this).is(':checked')) {
-                                $('#smtp-config-section').slideDown();
-                            } else {
-                                $('#smtp-config-section').slideUp();
-                            }
-                        });
-                    });
-                    </script>
+                    <hr style="margin: 20px 0; border: 0; border-top: 1px solid #eee;">
 
-                    <!-- Telegram Settings -->
-                    <h2 style="margin-top: 30px;">📱 Cấu hình Telegram</h2>
-                    <table class="form-table">
-                        <tr>
-                            <th scope="row">Bot Token</th>
-                            <td>
-                                <input type="text" name="telegram_bot_token" value="<?php echo esc_attr($telegram_token); ?>" class="large-text" placeholder="123456789:ABCdefGHIjklMNOpqrsTUVwxyz">
-                                <p class="description">Lấy từ <a href="https://t.me/BotFather" target="_blank">@BotFather</a></p>
-                            </td>
-                        </tr>
-                        <tr>
-                            <th scope="row">Chat ID</th>
-                            <td>
-                                <input type="text" name="telegram_chat_id" value="<?php echo esc_attr($telegram_chat_id); ?>" class="large-text" placeholder="-1001234567890">
-                                <p class="description">ID của group/channel nhận thông báo. Lấy từ <a href="https://t.me/userinfobot" target="_blank">@userinfobot</a></p>
-                            </td>
-                        </tr>
-                    </table>
+                    <!-- Alert Settings & Cron Status in 2 columns -->
+                    <div style="display: grid; grid-template-columns: 1.5fr 1fr; gap: 25px;">
+                        
+                        <!-- Alert Settings -->
+                        <div>
+                            <h2 style="margin: 0 0 15px 0; font-size: 16px;">⚙️ Cấu hình Cảnh báo</h2>
+                            
+                            <div style="margin-bottom: 15px;">
+                                <label style="display: block; font-weight: 500; margin-bottom: 5px; font-size: 13px;">Ngưỡng cảnh báo</label>
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <input type="number" name="alert_threshold" value="<?php echo esc_attr($threshold); ?>" min="1" max="100" style="width: 80px; padding: 6px; font-size: 13px;">
+                                    <span style="font-size: 13px;">clicks từ Google Ads</span>
+                                </div>
+                                <p class="description" style="margin-top: 3px; font-size: 12px;">Cảnh báo khi IP vượt ngưỡng mà chưa bị chặn</p>
+                            </div>
 
-                    <!-- Alert Settings -->
-                    <h2 style="margin-top: 30px;">⚙️ Cấu hình Cảnh báo</h2>
-                    <table class="form-table">
-                        <tr>
-                            <th scope="row">Ngưỡng cảnh báo</th>
-                            <td>
-                                <input type="number" name="alert_threshold" value="<?php echo esc_attr($threshold); ?>" min="1" max="100" style="width: 100px;">
-                                <span> clicks từ Google Ads</span>
-                                <p class="description">Cảnh báo khi IP có số lượt click Ads vượt ngưỡng này mà chưa bị chặn</p>
-                            </td>
-                        </tr>
-                        <tr>
-                            <th scope="row">Nền tảng nhận cảnh báo</th>
-                            <td>
-                                <label style="display: inline-block; margin-right: 20px;">
-                                    <input type="checkbox" name="alert_platform_email" value="1" <?php checked($alert_platform_email, '1'); ?>>
-                                    📧 Email
-                                </label>
-                                <label style="display: inline-block;">
-                                    <input type="checkbox" name="alert_platform_telegram" value="1" <?php checked($alert_platform_telegram, '1'); ?>>
-                                    📱 Telegram
-                                </label>
-                                <p class="description">Chọn nền tảng nhận thông báo (có thể chọn cả hai)</p>
-                            </td>
-                        </tr>
-                        <tr>
-                            <th scope="row">Tần suất kiểm tra IP nghi ngờ</th>
-                            <td>
-                                <label>
+                            <div style="margin-bottom: 15px;">
+                                <label style="display: block; font-weight: 500; margin-bottom: 5px; font-size: 13px;">Nền tảng nhận cảnh báo</label>
+                                <div style="display: flex; gap: 15px;">
+                                    <label style="display: flex; align-items: center; gap: 5px; font-size: 13px; cursor: pointer;">
+                                        <input type="checkbox" name="alert_platform_email" value="1" <?php checked($alert_platform_email, '1'); ?>>
+                                        <span>📧 Email</span>
+                                    </label>
+                                    <label style="display: flex; align-items: center; gap: 5px; font-size: 13px; cursor: pointer;">
+                                        <input type="checkbox" name="alert_platform_telegram" value="1" <?php checked($alert_platform_telegram, '1'); ?>>
+                                        <span>📱 Telegram</span>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <div style="margin-bottom: 15px;">
+                                <label style="display: block; font-weight: 500; margin-bottom: 5px; font-size: 13px;">Tần suất kiểm tra IP nghi ngờ</label>
+                                <label style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px; font-size: 13px; cursor: pointer;">
                                     <input type="checkbox" name="enable_hourly_alerts" value="1" <?php checked($hourly_enabled, '1'); ?>>
-                                    Bật cảnh báo IP nghi ngờ
+                                    <span>Bật cảnh báo IP nghi ngờ</span>
                                 </label>
-                                <br><br>
-                                <select name="alert_frequency" style="width: 200px;">
+                                <select name="alert_frequency" style="width: 200px; padding: 6px; font-size: 13px;">
                                     <option value="hourly" <?php selected($alert_frequency, 'hourly'); ?>>Mỗi giờ</option>
-                                    <option value="twicedaily" <?php selected($alert_frequency, 'twicedaily'); ?>>2 lần/ngày (12h một lần)</option>
+                                    <option value="twicedaily" <?php selected($alert_frequency, 'twicedaily'); ?>>2 lần/ngày</option>
                                     <option value="daily" <?php selected($alert_frequency, 'daily'); ?>>Mỗi ngày</option>
                                 </select>
-                                <p class="description">Tần suất kiểm tra và gửi cảnh báo</p>
-                            </td>
-                        </tr>
-                        <tr>
-                            <th scope="row">Báo cáo hàng ngày</th>
-                            <td>
-                                <label>
-                                    <input type="checkbox" name="enable_daily_reports" value="1" <?php checked($daily_enabled, '1'); ?>>
-                                    Bật báo cáo tổng hợp traffic
-                                </label>
-                                <br><br>
-                                <label>Thời gian gửi:</label>
-                                <input type="time" name="daily_report_time" value="<?php echo esc_attr($daily_report_time); ?>" style="width: 120px;">
-                                <p class="description">Chọn giờ gửi báo cáo hàng ngày (định dạng 24h, ví dụ: 08:00)</p>
-                            </td>
-                        </tr>
-                    </table>
+                            </div>
 
-                    <p class="submit">
+                            <div style="margin-bottom: 15px;">
+                                <label style="display: block; font-weight: 500; margin-bottom: 5px; font-size: 13px;">Báo cáo hàng ngày</label>
+                                <label style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px; font-size: 13px; cursor: pointer;">
+                                    <input type="checkbox" name="enable_daily_reports" value="1" <?php checked($daily_enabled, '1'); ?>>
+                                    <span>Bật báo cáo tổng hợp traffic</span>
+                                </label>
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <label style="font-size: 13px;">Thời gian gửi:</label>
+                                    <input type="time" name="daily_report_time" value="<?php echo esc_attr($daily_report_time); ?>" style="width: 120px; padding: 6px; font-size: 13px;">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Cron Status -->
+                        <div>
+                            <h2 style="margin: 0 0 15px 0; font-size: 16px;">⏰ Trạng thái Cron</h2>
+                            <?php
+                            $hourly_next = wp_next_scheduled('tkgadm_hourly_alert');
+                            $daily_next = wp_next_scheduled('tkgadm_daily_report');
+                            ?>
+                            
+                            <div style="background: #f9f9f9; padding: 12px; border-radius: 5px; border: 1px solid #ddd; margin-bottom: 12px;">
+                                <div style="font-weight: 500; font-size: 13px; margin-bottom: 5px;">🔍 Kiểm tra IP nghi ngờ</div>
+                                <div style="font-size: 12px; color: #666; margin-bottom: 3px;">
+                                    <?php echo $hourly_next ? '✅ Đang hoạt động' : '❌ Chưa kích hoạt'; ?>
+                                </div>
+                                <div style="font-size: 11px; color: #999;">
+                                    <?php echo $hourly_next ? 'Lần chạy tiếp: ' . wp_date('H:i d/m', $hourly_next) : 'Chưa lên lịch'; ?>
+                                </div>
+                            </div>
+
+                            <div style="background: #f9f9f9; padding: 12px; border-radius: 5px; border: 1px solid #ddd;">
+                                <div style="font-weight: 500; font-size: 13px; margin-bottom: 5px;">📊 Báo cáo hàng ngày</div>
+                                <div style="font-size: 12px; color: #666; margin-bottom: 3px;">
+                                    <?php echo $daily_next ? '✅ Đang hoạt động' : '❌ Chưa kích hoạt'; ?>
+                                </div>
+                                <div style="font-size: 11px; color: #999;">
+                                    <?php echo $daily_next ? 'Lần chạy tiếp: ' . wp_date('H:i d/m', $daily_next) : 'Chưa lên lịch'; ?>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="margin-top: 20px;">
                         <button type="submit" name="tkgadm_save_notifications" class="button button-primary">💾 Lưu cấu hình</button>
-                    </p>
+                    </div>
                 </div>
             </form>
 
-            <!-- Cron Status -->
-            <div class="tkgadm-table-container" style="margin-top: 30px;">
-                <h2>⏰ Trạng thái Cron Jobs</h2>
-                <?php
-                $hourly_next = wp_next_scheduled('tkgadm_hourly_alert');
-                $daily_next = wp_next_scheduled('tkgadm_daily_report');
-                ?>
-                <table class="widefat">
-                    <thead>
-                        <tr>
-                            <th>Cron Job</th>
-                            <th>Trạng thái</th>
-                            <th>Lần chạy tiếp theo</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td>🔍 Kiểm tra IP nghi ngờ (mỗi giờ)</td>
-                            <td><?php echo $hourly_next ? '✅ Đang hoạt động' : '❌ Chưa kích hoạt'; ?></td>
-                            <td><?php echo $hourly_next ? wp_date('Y-m-d H:i:s', $hourly_next) : '-'; ?></td>
-                        </tr>
-                        <tr>
-                            <td>📊 Báo cáo hàng ngày</td>
-                            <td><?php echo $daily_next ? '✅ Đang hoạt động' : '❌ Chưa kích hoạt'; ?></td>
-                            <td><?php echo $daily_next ? wp_date('Y-m-d H:i:s', $daily_next) : '-'; ?></td>
-                        </tr>
-                </table>
-            </div>
+            <script>
+            jQuery(document).ready(function($) {
+                $('#use-custom-smtp').on('change', function() {
+                    if ($(this).is(':checked')) {
+                        $('#smtp-config-section').slideDown();
+                    } else {
+                        $('#smtp-config-section').slideUp();
+                    }
+                });
+            });
+            </script>
 
             <!-- Deep Test Module -->
             <div class="tkgadm-table-container" style="margin-top: 30px; border-left: 4px solid #9c27b0;">
@@ -579,6 +571,72 @@ function tkgadm_render_notifications_page() {
                 
                 <div id="deep-test-result" style="display: none; background: #23282d; color: #fff; padding: 15px; border-radius: 4px; font-family: monospace; max-height: 300px; overflow-y: auto;">
                     <div id="test-log-content"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- IPv6 Diagnostic -->
+        <div style="background: white; padding: 25px; border-radius: 10px; border: 1px solid #ddd; margin-top: 20px; border-left: 4px solid #2196F3;">
+            <h2 style="margin: 0 0 15px 0; font-size: 18px;">🌐 Chẩn đoán IPv6</h2>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                <div>
+                    <h3 style="margin: 0 0 10px 0; font-size: 14px;">📊 Thông tin IP hiện tại</h3>
+                    <div style="background: #f9f9f9; padding: 12px; border-radius: 5px; border: 1px solid #ddd; font-family: monospace; font-size: 13px;">
+                        <?php
+                        $current_ip = $_SERVER['REMOTE_ADDR'] ?? 'Unknown';
+                        $is_ipv6 = filter_var($current_ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV6);
+                        $is_ipv4 = filter_var($current_ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4);
+                        ?>
+                        <div style="margin-bottom: 8px;">
+                            <strong>IP của bạn:</strong><br>
+                            <span style="color: <?php echo $is_ipv6 ? '#2196F3' : '#4CAF50'; ?>; font-size: 14px;">
+                                <?php echo esc_html($current_ip); ?>
+                            </span>
+                        </div>
+                        <div style="margin-bottom: 8px;">
+                            <strong>Loại:</strong> 
+                            <?php if ($is_ipv6): ?>
+                                <span style="color: #2196F3;">✅ IPv6</span>
+                            <?php elseif ($is_ipv4): ?>
+                                <span style="color: #4CAF50;">✅ IPv4</span>
+                            <?php else: ?>
+                                <span style="color: #999;">❓ Unknown</span>
+                            <?php endif; ?>
+                        </div>
+                        <?php
+                        // Check if server has IPv6 capability
+                        $ipv6_enabled = @file_get_contents('https://ipv6.google.com') !== false;
+                        ?>
+                        <div>
+                            <strong>Server hỗ trợ IPv6:</strong> 
+                            <?php if ($ipv6_enabled): ?>
+                                <span style="color: #4CAF50;">✅ Có</span>
+                            <?php else: ?>
+                                <span style="color: #ff9800;">⚠️ Không rõ / Chưa bật</span>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                </div>
+
+                <div>
+                    <h3 style="margin: 0 0 10px 0; font-size: 14px;">💡 Hướng dẫn kích hoạt IPv6</h3>
+                    <div style="background: #fff3cd; padding: 12px; border-radius: 5px; border: 1px solid #ffc107; font-size: 12px;">
+                        <p style="margin: 0 0 8px 0;"><strong>Nếu server chưa hỗ trợ IPv6:</strong></p>
+                        <ol style="margin: 0; padding-left: 20px;">
+                            <li style="margin-bottom: 5px;">Liên hệ nhà cung cấp hosting yêu cầu kích hoạt IPv6</li>
+                            <li style="margin-bottom: 5px;">Hoặc tự cấu hình trên VPS:
+                                <ul style="margin: 5px 0; padding-left: 15px; font-size: 11px;">
+                                    <li>Ubuntu/Debian: Sửa <code>/etc/netplan/</code></li>
+                                    <li>CentOS: Sửa <code>/etc/sysconfig/network-scripts/</code></li>
+                                </ul>
+                            </li>
+                            <li>Khởi động lại network: <code style="background: #333; color: #0f0; padding: 2px 4px; border-radius: 3px;">systemctl restart networking</code></li>
+                        </ol>
+                        <p style="margin: 10px 0 0 0; font-size: 11px; color: #856404;">
+                            <strong>Lưu ý:</strong> Plugin tự động thu thập cả IPv4 và IPv6. Không cần cấu hình thêm.
+                        </p>
+                    </div>
                 </div>
             </div>
         </div>
