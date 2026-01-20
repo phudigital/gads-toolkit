@@ -605,15 +605,35 @@ function tkgadm_render_notifications_page() {
                             <?php endif; ?>
                         </div>
                         <?php
-                        // Check if server has IPv6 capability
-                        $ipv6_enabled = @file_get_contents('https://ipv6.google.com') !== false;
+                        // Check if server has IPv6 capability using cURL (more reliable)
+                        $ipv6_enabled = false;
+                        if (function_exists('curl_init')) {
+                            $ch = curl_init('https://ipv6.google.com');
+                            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+                            curl_setopt($ch, CURLOPT_IPRESOLVE, CURL_IPRESOLVE_V6);
+                            curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 3);
+                            curl_setopt($ch, CURLOPT_TIMEOUT, 3);
+                            curl_setopt($ch, CURLOPT_NOBODY, true); // HEAD request only
+                            
+                            $result = curl_exec($ch);
+                            if (!curl_errno($ch) && $result !== false) {
+                                $ipv6_enabled = true;
+                            }
+                            curl_close($ch);
+                        } else {
+                            // Fallback if cURL is missing
+                            $ipv6_enabled = @file_get_contents('https://ipv6.google.com', false, stream_context_create(['http' => ['method' => 'HEAD', 'timeout' => 3]])) !== false;
+                        }
                         ?>
                         <div>
                             <strong>Server hỗ trợ IPv6:</strong> 
                             <?php if ($ipv6_enabled): ?>
-                                <span style="color: #4CAF50;">✅ Có</span>
+                                <span style="color: #4CAF50;">✅ Đã kích hoạt (OK)</span>
                             <?php else: ?>
-                                <span style="color: #ff9800;">⚠️ Không rõ / Chưa bật</span>
+                                <span style="color: #ff9800;">⚠️ Code PHP chưa kết nối được IPv6</span>
+                                <p style="font-size: 11px; color: #666; margin: 5px 0 0 0; font-style: italic;">
+                                    (Nếu terminal đã OK mà ở đây vẫn báo vàng thì do cấu hình PHP chặn kết nối ra ngoài, nhưng server vẫn hoạt động bình thường).
+                                </p>
                             <?php endif; ?>
                         </div>
                     </div>

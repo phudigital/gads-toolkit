@@ -230,9 +230,32 @@ function tkgadm_track_visit() {
     }
 
     // REAL-TIME PROTECTION: Nếu là Click Ads, kiểm tra quy tắc chặn ngay lập tức
-    // Không chờ Cron Job 15 phút để tránh thiệt hại ngân sách
     if ($has_click_id && get_option('tkgadm_auto_block_enabled')) {
         tkgadm_check_ip_instant($ip);
+    }
+    
+    // === SMART CROSS-IP BLOCKING (CHẶN CHÉO IP) ===
+    // Nếu trình duyệt này từng bị chặn (có Cookie 'tkgadm_banned'), 
+    // nhưng giờ quay lại bằng IP mới (ví dụ từ v4 chuyển sang v6), 
+    // thì chặn luôn IP mới này.
+    if (isset($_COOKIE['tkgadm_banned']) && $_COOKIE['tkgadm_banned'] === '1') {
+        // Kiểm tra xem IP hiện tại đã có trong blacklist chưa
+        $is_blocked = tkgadm_is_ip_blocked($ip);
+        
+        if (!$is_blocked) {
+            // Chưa bị chặn => Đây là IP mới của kẻ đã bị chặn => CHẶN NGAY
+            if (tkgadm_block_ip_internal($ip, "Smart Block: Phát hiện thiết bị đã bị cấm (Cross-IP)")) {
+                // Đồng bộ ngay
+                if (function_exists('tkgadm_sync_ip_to_google_ads')) {
+                    tkgadm_sync_ip_to_google_ads([$ip]);
+                }
+                // Gửi thông báo
+                $rule_info = [['limit' => 'N/A', 'duration' => 'N/A', 'unit' => 'Cross-IP Detection']];
+                if (function_exists('tkgadm_send_auto_block_notification')) {
+                    tkgadm_send_auto_block_notification([$ip], $rule_info);
+                }
+            }
+        }
     }
 }
 
@@ -249,18 +272,14 @@ function tkgadm_check_ip_instant($ip) {
     $stats_table = $wpdb->prefix . 'gads_toolkit_stats';
 
     foreach ($rules as $rule) {
+        // ... (Giữ nguyên logic cũ) ...
         $limit = intval($rule['limit']);
         $duration = intval($rule['duration']);
-        $unit = strtoupper($rule['unit']); // HOUR, DAY, WEEK
+        $unit = strtoupper($rule['unit']); 
         
-        // Validate unit
         if (!in_array($unit, ['HOUR', 'DAY', 'WEEK', 'MONTH'])) $unit = 'HOUR';
-        if ($unit === 'WEEK') {
-            $duration *= 7;
-            $unit = 'DAY';
-        }
+        if ($unit === 'WEEK') { $duration *= 7; $unit = 'DAY'; }
 
-        // Đếm số click của IP này trong khoảng thời gian
         // phpcs:ignore WordPress.DB.PreparedSQL.StartWithParens
         $sql = "SELECT COUNT(DISTINCT gclid) 
                 FROM $stats_table 
@@ -275,7 +294,12 @@ function tkgadm_check_ip_instant($ip) {
             // Vi phạm -> Chặn ngay
             if (tkgadm_block_ip_internal($ip, "Real-time Block: $click_count clicks in $rule[duration] $rule[unit]")) {
                 
-                // 1. Đồng bộ Google Ads ngay lập tức
+                // === SET COOKIE ĐÁNH DẤU ===
+                // Đánh dấu trình duyệt này là "Đã bị cấm" trong 30 ngày
+                // Cookie này giúp phát hiện khi hắn đổi IP
+                setcookie('tkgadm_banned', '1', time() + (86400 * 30), "/");
+                
+                // 1. Đồng bộ Google Ads
                 if (function_exists('tkgadm_sync_ip_to_google_ads')) {
                     tkgadm_sync_ip_to_google_ads([$ip]);
                 }
@@ -284,8 +308,6 @@ function tkgadm_check_ip_instant($ip) {
                 if (function_exists('tkgadm_send_auto_block_notification')) {
                     tkgadm_send_auto_block_notification([$ip], [$rule]);
                 }
-                
-                // Đã chặn rồi thì break loop
                 break;
             }
         }
