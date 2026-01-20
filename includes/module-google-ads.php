@@ -404,7 +404,8 @@ function tkgadm_do_sync_process() {
 
 function tkgadm_render_google_ads_page() {
     // 1. Handle OAuth Callback
-    if (isset($_GET['code'])) {
+    // Only process if NOT saving settings to avoid double-processing expired codes
+    if (isset($_GET['code']) && !isset($_POST['tkgadm_gads_save'])) {
         $code = sanitize_text_field($_GET['code']);
         
         // Always use central service in client mode (or fallback to error)
@@ -417,6 +418,13 @@ function tkgadm_render_google_ads_page() {
                 if (isset($tokens['refresh_token'])) {
                     update_option('tkgadm_gads_refresh_token', $tokens['refresh_token']);
                     echo '<div class="notice notice-success is-dismissible"><p>✅ Đã kết nối thành công với tài khoản Google! (via Central Service)</p></div>';
+                    
+                    // Clean URL to prevent re-submission of auth code
+                    echo '<script>
+                        if (window.history.replaceState) {
+                            window.history.replaceState(null, null, "' . admin_url('admin.php?page=tkgad-google-ads') . '");
+                        }
+                    </script>';
                 } else {
                     echo '<div class="notice notice-error"><p>Không nhận được refresh token từ Central Service.</p></div>';
                 }
@@ -558,23 +566,28 @@ function tkgadm_render_google_ads_page() {
                         <!-- API Settings & Connection Combined -->
                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 25px;">
                             <div>
-                                <h2 style="margin: 0 0 15px 0;">🔑 Thiết lập API</h2>
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                                    <h2 style="margin: 0;">🔑 Thiết lập API</h2>
+                                    <?php if ($api_key): ?>
+                                        <button type="button" id="edit-api-btn" class="button button-small">✏️ Chỉnh sửa</button>
+                                    <?php endif; ?>
+                                </div>
                                 
                                 <div class="form-group" style="margin-bottom: 12px;">
                                     <label style="display: block; font-weight: 500; margin-bottom: 5px; font-size: 13px;">Secure API Key</label>
-                                    <input type="password" name="api_key" value="<?php echo esc_attr($api_key); ?>" class="widefat" style="padding: 6px; font-size: 13px;" <?php echo $api_key_readonly ? 'readonly disabled' : ''; ?>>
-                                    <p class="description" style="margin-top: 3px; font-size: 12px;"><?php echo $api_key_readonly ? 'Key được cấu hình cứng' : 'Mã bảo mật từ nhà phát triển'; ?></p>
+                                    <input type="password" name="api_key" id="api_key_field" value="<?php echo esc_attr($api_key); ?>" class="widefat api-input" style="padding: 6px; font-size: 13px; background-color: #f0f0f1;" <?php echo ($api_key || $api_key_readonly) ? 'readonly' : ''; ?>>
+                                    <p class="description" style="margin-top: 3px; font-size: 12px;"><?php echo $api_key_readonly ? 'Key được cấu hình cứng trong code.' : 'Liên hệ <a href="mailto:phu@pdl.vn">phu@pdl.vn</a> để nhận API key.'; ?></p>
                                 </div>
 
                                 <div class="form-group" style="margin-bottom: 12px;">
                                     <label style="display: block; font-weight: 500; margin-bottom: 5px; font-size: 13px;">Customer ID</label>
-                                    <input type="text" name="customer_id" value="<?php echo esc_attr($customer_id); ?>" class="widefat" placeholder="xxx-xxx-xxxx" style="padding: 6px; font-size: 13px;">
+                                    <input type="text" name="customer_id" id="customer_id_field" value="<?php echo esc_attr($customer_id); ?>" class="widefat api-input" placeholder="xxx-xxx-xxxx" style="padding: 6px; font-size: 13px; background-color: <?php echo $api_key ? '#f0f0f1' : '#fff'; ?>;" <?php echo $api_key ? 'readonly' : ''; ?>>
                                     <p class="description" style="margin-top: 3px; font-size: 12px;">ID tài khoản Google Ads</p>
                                 </div>
 
                                 <div class="form-group" style="margin-bottom: 12px;">
                                     <label style="display: block; font-weight: 500; margin-bottom: 5px; font-size: 13px;">Manager ID (MCC)</label>
-                                    <input type="text" name="manager_id" value="<?php echo esc_attr($manager_id); ?>" class="widefat" placeholder="xxx-xxx-xxxx" style="padding: 6px; font-size: 13px;">
+                                    <input type="text" name="manager_id" id="manager_id_field" value="<?php echo esc_attr($manager_id); ?>" class="widefat api-input" placeholder="xxx-xxx-xxxx" style="padding: 6px; font-size: 13px; background-color: <?php echo $api_key ? '#f0f0f1' : '#fff'; ?>;" <?php echo $api_key ? 'readonly' : ''; ?>>
                                     <p class="description" style="margin-top: 3px; font-size: 12px;">Chỉ cần nếu dùng MCC</p>
                                 </div>
                             </div>
@@ -607,7 +620,35 @@ function tkgadm_render_google_ads_page() {
                             </div>
                         </div>
 
-                        <button type="submit" name="tkgadm_gads_save" class="button button-primary" style="margin-bottom: 20px;">💾 Lưu Thông Tin</button>
+                        <div id="save-actions" style="<?php echo $api_key ? 'display: none;' : ''; ?>">
+                            <button type="submit" name="tkgadm_gads_save" class="button button-primary" style="margin-bottom: 20px;">💾 Lưu Thông Tin</button>
+                            <?php if ($api_key): ?>
+                                <button type="button" id="cancel-edit-btn" class="button button-secondary" style="margin-bottom: 20px; margin-left: 10px;">Hủy bỏ</button>
+                            <?php endif; ?>
+                        </div>
+
+                        <script>
+                        jQuery(document).ready(function($) {
+                            // Edit Mode Toggle
+                            $('#edit-api-btn').on('click', function() {
+                                $('.api-input').prop('readonly', false).css('background-color', '#fff');
+                                <?php if ($api_key_readonly): ?>
+                                    $('#api_key_field').prop('readonly', true).css('background-color', '#f0f0f1'); // Keep hardcoded key readonly
+                                <?php endif; ?>
+                                $('#save-actions').slideDown();
+                                $(this).hide();
+                            });
+
+                            // Cancel Edit
+                            $('#cancel-edit-btn').on('click', function() {
+                                $('.api-input').prop('readonly', true).css('background-color', '#f0f0f1');
+                                $('#save-actions').slideUp();
+                                $('#edit-api-btn').show();
+                                // Reset values to original (optional but good UX)
+                                location.reload(); 
+                            });
+                        });
+                        </script>
 
                         <hr style="margin: 20px 0; border: 0; border-top: 1px solid #eee;">
                         
