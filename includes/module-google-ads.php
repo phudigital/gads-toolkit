@@ -100,6 +100,45 @@ function tkgadm_is_using_central_service() {
 }
 
 /**
+ * Validate API Key with Central Service
+ * 
+ * @param string $api_key API key to validate
+ * @return bool|WP_Error True if valid, WP_Error if invalid
+ */
+function tkgadm_validate_api_key($api_key) {
+    $service_url = defined('GADS_SERVICE_URL') ? GADS_SERVICE_URL : get_option('tkgadm_central_service_url');
+    
+    if (empty($service_url)) {
+        $service_url = 'https://pdl.vn/gads-toolkit/';
+    }
+    
+    // Try to get credentials with this key (health check)
+    $url = add_query_arg('api_key', $api_key, trailingslashit($service_url) . 'api/?action=health');
+    
+    $response = wp_remote_get($url, array(
+        'timeout' => 10
+    ));
+    
+    if (is_wp_error($response)) {
+        return new WP_Error('connection_error', 'Không thể kết nối đến pdl.vn. Vui lòng kiểm tra kết nối internet.');
+    }
+    
+    $code = wp_remote_retrieve_response_code($response);
+    $data = json_decode(wp_remote_retrieve_body($response), true);
+    
+    if ($code === 401 || $code === 403) {
+        return new WP_Error('invalid_key', 'API Key không hợp lệ hoặc đã hết hạn. Vui lòng liên hệ phu@pdl.vn để gia hạn.');
+    }
+    
+    if ($code !== 200 || !isset($data['success']) || !$data['success']) {
+        return new WP_Error('validation_failed', 'Không thể xác thực API Key. Vui lòng thử lại.');
+    }
+    
+    return true;
+}
+
+
+/**
  * Get credentials from Central Service
  * 
  * @return array|WP_Error Credentials or error
@@ -441,18 +480,39 @@ function tkgadm_render_google_ads_page() {
         echo '<div class="notice notice-error"><p>❌ Lỗi OAuth: ' . esc_html($error_desc) . '</p></div>';
     }
 
+    // Handle Disconnect OAuth
+    if (isset($_POST['tkgadm_disconnect_oauth']) && check_admin_referer('tkgadm_disconnect_oauth')) {
+        delete_option('tkgadm_gads_refresh_token');
+        echo '<div class="notice notice-success is-dismissible"><p>✅ Đã hủy kết nối Google Ads.</p></div>';
+    }
+
     // 2. Save Settings
     if (isset($_POST['tkgadm_gads_save']) && check_admin_referer('tkgadm_gads_options')) {
+        $validation_error = null;
+        
         if (!defined('GADS_API_KEY') && isset($_POST['api_key'])) {
             $new_api_key = sanitize_text_field($_POST['api_key']);
-            update_option('tkgadm_central_service_api_key', $new_api_key);
             
-            // Register Heartbeat immediately when saving key
-            tkgadm_register_site_heartbeat($new_api_key);
+            // Validate API Key with Central Service
+            if (!empty($new_api_key)) {
+                $validation = tkgadm_validate_api_key($new_api_key);
+                
+                if (is_wp_error($validation)) {
+                    $validation_error = $validation->get_error_message();
+                    echo '<div class="notice notice-error is-dismissible"><p>❌ ' . esc_html($validation_error) . '</p></div>';
+                } else {
+                    update_option('tkgadm_central_service_api_key', $new_api_key);
+                    // Register Heartbeat immediately when saving key
+                    tkgadm_register_site_heartbeat($new_api_key);
+                }
+            }
         } else {
              // If key is hardcoded or unchanged, still try to register using current key
              tkgadm_register_site_heartbeat();
         }
+
+        // Only save other settings if API key validation passed (or wasn't changed)
+        if (!$validation_error) {
 
         update_option('tkgadm_gads_customer_id', sanitize_text_field($_POST['customer_id']));
         update_option('tkgadm_gads_manager_id', sanitize_text_field($_POST['manager_id']));
@@ -497,8 +557,11 @@ function tkgadm_render_google_ads_page() {
         } elseif (!$auto_block && $blocked_timestamp) {
             wp_unschedule_event($blocked_timestamp, $cron_hook_block);
         }
+        }
 
-        echo '<div class="notice notice-success is-dismissible"><p>Đã lưu cài đặt.</p></div>';
+        if (!$validation_error) {
+            echo '<div class="notice notice-success is-dismissible"><p>Đã lưu cài đặt.</p></div>';
+        }
     }
 
     // 3. Prepare Data
