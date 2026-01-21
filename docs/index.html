@@ -76,37 +76,97 @@
 
     <!-- Hero Section -->
     <section
-        class="relative bg-gradient-to-br from-primary to-secondary text-white py-24 px-5 text-center overflow-hidden">
-        <!-- Background decoration -->
-        <div
-            class="absolute inset-0 opacity-10 bg-[url('data:image/svg+xml,%3Csvg%20width=%22100%22%20height=%22100%22%20xmlns=%22http://www.w3.org/2000/svg%22%3E%3Ccircle%20cx=%2250%22%20cy=%2250%22%20r=%222%22%20fill=%22white%22%2F%3E%3C%2Fsvg%3E')] animate-float">
+        class="relative bg-slate-900 text-white pt-32 pb-24 px-5 text-center overflow-hidden border-b border-white/10">
+
+        <!-- Tech Background Effects -->
+        <div class="absolute inset-0 z-0">
+            <!-- Grid Pattern -->
+            <div
+                class="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:40px_40px] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)]">
+            </div>
+
+            <!-- Glowing Orbs -->
+            <div class="absolute top-0 left-1/4 w-96 h-96 bg-primary/30 rounded-full blur-[100px] animate-pulse"></div>
+            <div
+                class="absolute bottom-0 right-1/4 w-96 h-96 bg-accent/20 rounded-full blur-[100px] animate-pulse delay-700">
+            </div>
         </div>
 
         <div class="container mx-auto max-w-6xl relative z-10 animate-[fadeInUp_0.8s_ease-out]">
-            <div class="inline-block bg-white/20 backdrop-blur-md px-5 py-2 rounded-full text-sm mb-5">
-                🛡️ Bảo vệ ngân sách Google Ads của bạn
+
+            <!-- Google Ads Logo & Badge -->
+            <div class="flex flex-col items-center justify-center mb-8">
+                <div
+                    class="w-20 h-20 bg-white rounded-2xl flex items-center justify-center shadow-xl shadow-blue-500/20 mb-6 border border-white/20 animate-bounce group hover:scale-110 transition-transform duration-500">
+                    <!-- Google Ads Icon SVG -->
+                    <svg viewBox="0 0 192 192" class="w-12 h-12">
+                        <path
+                            d="M125.7 32.7l-35.3 70.6H60L95.3 32.7h30.4zm-14.5-9.1C108.7 18.9 103.6 16 97.4 16c-6.1 0-11.2 2.9-13.8 7.6l-50 100c-2.6 5.2-.5 11.5 4.7 14.1 5.2 2.6 11.5.5 14.1-4.7l13.6-27.2h59l13.6 27.2c2.6 5.2 8.9 7.3 14.1 4.7 5.2-2.6 7.3-8.9 4.7-14.1l-50-100z"
+                            fill="#F9AB00" />
+                        <path d="M38.4 123.6l13.6-27.2h-35c-4.4 0-8 3.6-8 8v11.2c0 4.4 3.6 8 8 8h21.4z"
+                            fill="#1A73E8" />
+                        <path d="M174.6 96.4v-11.2c0-4.4-3.6-8-8-8h-35l13.6 27.2h21.4c4.4 0 8-3.6 8-8z"
+                            fill="#34A853" />
+                    </svg>
+                </div>
+
+                <div
+                    class="inline-flex items-center gap-2 bg-white/10 backdrop-blur-md px-4 py-1.5 rounded-full text-sm font-medium border border-white/10 text-cyan-300 shadow-lg">
+                    <span class="relative flex h-2 w-2">
+                        <span
+                            class="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
+                        <span class="relative inline-flex rounded-full h-2 w-2 bg-cyan-500"></span>
+                    </span>
+                    Bảo vệ ngân sách Google Ads của bạn
+                </div>
             </div>
-            <h1 class="text-4xl md:text-6xl font-black mb-5 leading-tight text-shadow">
-                Plugin WordPress chặn click ảo <span class="text-accent bg-white/10 px-2 rounded">Google Ads</span>
+
+            <h1 class="text-4xl md:text-7xl font-black mb-6 leading-tight tracking-tight">
+                <span
+                    class="text-transparent bg-clip-text bg-gradient-to-r from-white via-blue-100 to-blue-200 drop-shadow-sm">Plugin
+                    WordPress</span>
+                <br>
+                <span class="inline-block mt-2 relative">
+                    <span class="relative z-10 text-white">Chặn Click Ảo</span>
+                    <span class="absolute -bottom-2 left-0 right-0 h-4 bg-accent/60 -skew-x-6 blur-lg"></span>
+                </span>
             </h1>
-            <p class="text-xl md:text-2xl font-semibold mb-4 opacity-95">
-                Phần mềm chống click ảo Google Ads #1 Việt Nam
+
+            <p class="text-xl md:text-2xl text-blue-100 mb-4 font-light max-w-3xl mx-auto">
+                Giải pháp <span class="font-bold text-white">Anti-Fraud</span> số 1 Việt Nam dành cho nhà quảng cáo
             </p>
-            <p class="text-lg md:text-xl opacity-90 mb-10 max-w-3xl mx-auto leading-relaxed">
-                Tiết kiệm <strong class="text-warning">30-50%</strong> ngân sách quảng cáo mỗi tháng<br>
-                Plugin WordPress chuyên nghiệp - Chỉ <strong>2.200 VNĐ mỗi ngày</strong>
+
+            <p class="text-lg text-blue-200/80 mb-10 max-w-2xl mx-auto border-t border-white/10 pt-4 mt-4">
+                Tiết kiệm <strong class="text-warning">30-50%</strong> ngân sách • Chi phí chỉ bằng ly trà đá <strong
+                    class="text-white bg-white/10 px-2 py-0.5 rounded ml-1">2.200đ/ngày</strong>
             </p>
-            <div class="flex flex-col md:flex-row gap-5 justify-center items-center mt-10">
+
+            <div class="flex flex-col sm:flex-row gap-5 justify-center items-center mt-8">
                 <a href="#pricing"
-                    class="inline-flex items-center gap-2 px-8 py-4 bg-white text-primary rounded-2xl font-bold text-lg shadow-lg hover:-translate-y-1 hover:shadow-2xl hover:bg-gray-50 transition-all duration-300 transform w-full md:w-auto justify-center group">
-                    💰 Xem bảng giá
-                    <span class="group-hover:translate-x-1 transition-transform">→</span>
+                    class="relative overflow-hidden group w-full sm:w-auto px-8 py-4 rounded-2xl bg-white text-primary font-bold text-lg shadow-[0_0_20px_rgba(255,255,255,0.3)] hover:shadow-[0_0_30px_rgba(255,255,255,0.5)] transition-all duration-300">
+                    <span
+                        class="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-blue-100/50 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700 ease-in-out"></span>
+                    <span class="relative flex items-center justify-center gap-2">
+                        � Xem bảng giá ngay
+                    </span>
                 </a>
                 <a href="tel:0961330088"
-                    class="inline-flex items-center gap-2 px-8 py-4 bg-accent text-white border-2 border-accent rounded-2xl font-bold text-lg hover:bg-[#a02020] hover:border-[#a02020] transition-all duration-300 w-full md:w-auto justify-center shadow-lg hover:shadow-xl">
-                    📞 Gọi ngay: 0961 330 088
+                    class="group w-full sm:w-auto px-8 py-4 rounded-2xl bg-transparent border border-white/30 text-white font-bold text-lg hover:bg-white/10 hover:border-white transition-all duration-300 flex items-center justify-center gap-3 backdrop-blur-sm">
+                    <span class="bg-accent rounded-full p-1 group-hover:animate-shake">📞</span>
+                    0961 330 088
                 </a>
             </div>
+
+            <!-- Dashboard Preview (Floating 3D effect) -->
+            <div class="mt-16 relative perspective-1000 group">
+                <div
+                    class="absolute inset-0 bg-blue-500/20 blur-[60px] rounded-full group-hover:bg-blue-500/30 transition-all duration-500">
+                </div>
+                <img src="https://raw.githubusercontent.com/phudigital/gads-toolkit/main/assets/screenshot.png"
+                    alt="Dashboard GAds Toolkit"
+                    class="relative rounded-xl border border-white/20 shadow-2xl transform rotate-x-12 scale-95 group-hover:rotate-x-0 group-hover:scale-100 transition-all duration-700 ease-out origin-top mx-auto max-w-4xl w-full">
+            </div>
+
         </div>
     </section>
 
@@ -143,17 +203,23 @@
                     </h3>
                     <ul class="space-y-4">
                         <li class="pl-8 relative text-lg"><span class="absolute left-0 font-bold text-success">✓</span>
-                            <strong>Phát hiện & chặn click ảo tự động</strong> theo thời gian thực</li>
+                            <strong>Phát hiện & chặn click ảo tự động</strong> theo thời gian thực
+                        </li>
                         <li class="pl-8 relative text-lg"><span class="absolute left-0 font-bold text-success">✓</span>
-                            <strong>Đồng bộ IP độc hại lên Google Ads</strong> tự động (chặn ở cấp tài khoản)</li>
+                            <strong>Đồng bộ IP độc hại lên Google Ads</strong> tự động (chặn ở cấp tài khoản)
+                        </li>
                         <li class="pl-8 relative text-lg"><span class="absolute left-0 font-bold text-success">✓</span>
-                            <strong>Thống kê chi tiết</strong> traffic Ads vs Organic</li>
+                            <strong>Thống kê chi tiết</strong> traffic Ads vs Organic
+                        </li>
                         <li class="pl-8 relative text-lg"><span class="absolute left-0 font-bold text-success">✓</span>
-                            <strong>Smart Cross-IP Blocking</strong> - Chặn cả khi đối thủ đổi IP</li>
+                            <strong>Smart Cross-IP Blocking</strong> - Chặn cả khi đối thủ đổi IP
+                        </li>
                         <li class="pl-8 relative text-lg"><span class="absolute left-0 font-bold text-success">✓</span>
-                            <strong>Thông báo Telegram</strong> khi phát hiện click ảo</li>
+                            <strong>Thông báo Telegram</strong> khi phát hiện click ảo
+                        </li>
                         <li class="pl-8 relative text-lg"><span class="absolute left-0 font-bold text-success">✓</span>
-                            <strong>Tiết kiệm 30-50%</strong> ngân sách quảng cáo mỗi tháng</li>
+                            <strong>Tiết kiệm 30-50%</strong> ngân sách quảng cáo mỗi tháng
+                        </li>
                     </ul>
                 </div>
             </div>
@@ -430,7 +496,8 @@
                         <li class="flex items-center gap-3"><span class="font-bold text-success text-xl">✓</span> Tất cả
                             tính năng Pro</li>
                         <li class="flex items-center gap-3"><span class="font-bold text-success text-xl">✓</span>
-                            <strong>Tiết kiệm 33%</strong></li>
+                            <strong>Tiết kiệm 33%</strong>
+                        </li>
                         <li class="flex items-center gap-3"><span class="font-bold text-success text-xl">✓</span> Smart
                             Cross-IP Blocking</li>
                         <li class="flex items-center gap-3"><span class="font-bold text-success text-xl">✓</span> Tư vấn
@@ -489,15 +556,20 @@
                         plugin WordPress chặn click ảo GAds Toolkit:</h4>
                     <ul class="space-y-3 list-none p-0 m-0">
                         <li class="pl-8 relative"><span class="absolute left-0 text-success font-bold">✓</span>
-                            <strong>Đồng bộ tự động</strong> với Google Ads API - Không cần upload thủ công</li>
+                            <strong>Đồng bộ tự động</strong> với Google Ads API - Không cần upload thủ công
+                        </li>
                         <li class="pl-8 relative"><span class="absolute left-0 text-success font-bold">✓</span>
-                            <strong>Chặn real-time</strong> - Phát hiện và chặn click ảo trong vòng 1 giây</li>
+                            <strong>Chặn real-time</strong> - Phát hiện và chặn click ảo trong vòng 1 giây
+                        </li>
                         <li class="pl-8 relative"><span class="absolute left-0 text-success font-bold">✓</span>
-                            <strong>Hỗ trợ IPv6</strong> - Bảo vệ toàn diện trên mọi loại kết nối</li>
+                            <strong>Hỗ trợ IPv6</strong> - Bảo vệ toàn diện trên mọi loại kết nối
+                        </li>
                         <li class="pl-8 relative"><span class="absolute left-0 text-success font-bold">✓</span>
-                            <strong>Dashboard trực quan</strong> - Theo dõi và phân tích dễ dàng</li>
+                            <strong>Dashboard trực quan</strong> - Theo dõi và phân tích dễ dàng
+                        </li>
                         <li class="pl-8 relative"><span class="absolute left-0 text-success font-bold">✓</span>
-                            <strong>Giá cả hợp lý</strong> - Chỉ 100.000 VNĐ/tháng</li>
+                            <strong>Giá cả hợp lý</strong> - Chỉ 100.000 VNĐ/tháng
+                        </li>
                     </ul>
                 </div>
 
@@ -599,19 +671,87 @@
     </section>
 
     <!-- Footer -->
-    <footer class="bg-[#0d1117] text-white py-12 px-5 text-center">
-        <div class="container mx-auto">
-            <p class="font-bold text-lg mb-2">CÔNG TY TNHH GIẢI PHÁP PDL</p>
-            <p class="opacity-80 mb-6">Giải pháp Marketing & Technology chuyên nghiệp</p>
-            <p class="text-sm opacity-60">© 2026 PDL Solutions. All rights reserved.</p>
-            <div class="mt-6 space-x-4">
-                <a href="https://github.com/phudigital/gads-toolkit" target="_blank"
-                    class="text-primary hover:text-white transition-colors">GitHub</a>
-                <span class="opacity-30">|</span>
-                <a href="mailto:phu@pdl.vn" class="text-primary hover:text-white transition-colors">Support</a>
-                <span class="opacity-30">|</span>
-                <a href="https://pdl.vn" target="_blank"
-                    class="text-primary hover:text-white transition-colors">Website</a>
+    <!-- Footer -->
+    <footer class="bg-slate-900 text-white border-t border-white/10 relative overflow-hidden">
+        <!-- Background Pattern -->
+        <div
+            class="absolute inset-0 opacity-5 bg-[linear-gradient(to_right,#ffffff_1px,transparent_1px),linear-gradient(to_bottom,#ffffff_1px,transparent_1px)] bg-[size:20px_20px]">
+        </div>
+
+        <div class="container mx-auto max-w-6xl px-5 py-16 relative z-10">
+            <div class="grid md:grid-cols-3 gap-12 mb-12">
+                <!-- Company Info -->
+                <div class="text-left">
+                    <h3 class="text-2xl font-black mb-6 tracking-tight flex items-center gap-3">
+                        <span class="bg-primary/20 p-2 rounded-lg">🛡️</span>
+                        <span class="bg-clip-text text-transparent bg-gradient-to-r from-white to-blue-300">PDL
+                            SOLUTIONS</span>
+                    </h3>
+                    <p class="text-blue-200/70 leading-relaxed mb-6">
+                        Tiên phong công nghệ chống click ảo cho thị trường Việt Nam. Chúng tôi cam kết bảo vệ từng đồng
+                        ngân sách quảng cáo của bạn.
+                    </p>
+                    <div class="flex gap-4">
+                        <a href="https://github.com/phudigital/gads-toolkit" target="_blank"
+                            class="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center hover:bg-white/20 transition-all group">
+                            <span class="text-xl group-hover:scale-110 transition-transform">🐙</span>
+                        </a>
+                        <a href="https://pdl.vn" target="_blank"
+                            class="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center hover:bg-white/20 transition-all group">
+                            <span class="text-xl group-hover:scale-110 transition-transform">🌐</span>
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Quick Links -->
+                <div class="text-left md:pl-10">
+                    <h4 class="text-lg font-bold mb-6 text-white">Sản phẩm</h4>
+                    <ul class="space-y-4">
+                        <li><a href="#features"
+                                class="text-blue-200/70 hover:text-white hover:translate-x-1 transition-all inline-block">Tính
+                                năng</a></li>
+                        <li><a href="#pricing"
+                                class="text-blue-200/70 hover:text-white hover:translate-x-1 transition-all inline-block">Bảng
+                                giá</a></li>
+                        <li><a href="#testimonials"
+                                class="text-blue-200/70 hover:text-white hover:translate-x-1 transition-all inline-block">Đánh
+                                giá</a></li>
+                        <li><a href="https://pdl.vn" target="_blank"
+                                class="text-blue-200/70 hover:text-white hover:translate-x-1 transition-all inline-block">Về
+                                chúng tôi</a></li>
+                    </ul>
+                </div>
+
+                <!-- Contact Info -->
+                <div class="text-left">
+                    <h4 class="text-lg font-bold mb-6 text-white">Liên hệ</h4>
+                    <ul class="space-y-4">
+                        <li class="flex items-start gap-3 text-blue-200/70">
+                            <span class="mt-1">📍</span>
+                            <span>1F đường 359, Phường Phước Long, TP. Thủ Đức, TP.HCM</span>
+                        </li>
+                        <li class="flex items-center gap-3 text-blue-200/70">
+                            <span>📧</span>
+                            <a href="mailto:phu@pdl.vn" class="hover:text-white transition-colors">phu@pdl.vn</a>
+                        </li>
+                        <li class="flex items-center gap-3 text-blue-200/70">
+                            <span>📞</span>
+                            <a href="tel:0961330088" class="hover:text-white transition-colors">0961 330 088</a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Copyright -->
+            <div
+                class="border-t border-white/10 pt-8 text-center md:text-left flex flex-col md:flex-row justify-between items-center gap-4">
+                <p class="text-sm text-blue-200/50">
+                    © 2026 CÔNG TY TNHH GIẢI PHÁP PDL.<br class="md:hidden"> All rights reserved.
+                </p>
+                <div class="flex gap-6 text-sm text-blue-200/50">
+                    <a href="#" class="hover:text-white transition-colors">Điều khoản</a>
+                    <a href="#" class="hover:text-white transition-colors">Bảo mật</a>
+                </div>
             </div>
         </div>
     </footer>
