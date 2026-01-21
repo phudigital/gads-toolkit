@@ -24,6 +24,7 @@ vendor/
 help/
 central-service/
 
+
 # Backup files
 *.bak
 *.backup
