@@ -155,14 +155,46 @@ function handle_oauth_redirect() {
         return;
     }
     
-    // Check allowed origins if configured
-    if (!empty(GADS_ALLOWED_ORIGINS)) {
-        $parsed_url = parse_url($return_url);
-        $origin = $parsed_url['scheme'] . '://' . $parsed_url['host'];
-        
-        if (!in_array($origin, GADS_ALLOWED_ORIGINS)) {
+    // Check Allowed Origins (Licensed Domains + Legacy Whitelist)
+    $parsed_url = parse_url($return_url);
+    $host = isset($parsed_url['host']) ? $parsed_url['host'] : '';
+    $scheme = isset($parsed_url['scheme']) ? $parsed_url['scheme'] : 'https';
+    $origin = $scheme . '://' . $host;
+    $is_allowed = false;
+
+    // 1. Check Licensed Domains
+    if (defined('GADS_LICENSED_KEYS')) {
+        foreach (GADS_LICENSED_KEYS as $key => $license) {
+            // Skip inactive or expired
+            if (empty($license['active'])) continue;
+            if (!empty($license['expires_at']) && strtotime($license['expires_at']) < time()) continue;
+
+            $lic_domain = isset($license['domain']) ? $license['domain'] : '';
+            
+            // Wildcard or exact match
+            if ($lic_domain === '*' || $lic_domain === $host) {
+                $is_allowed = true;
+                break;
+            }
+        }
+    }
+
+    // 2. Check Legacy Allowed Origins (Fallback)
+    if (!$is_allowed && defined('GADS_ALLOWED_ORIGINS') && !empty(GADS_ALLOWED_ORIGINS)) {
+        if (in_array($origin, GADS_ALLOWED_ORIGINS)) {
+            $is_allowed = true;
+        }
+    }
+
+    // If GADS_ALLOWED_ORIGINS is empty array and no licensed keys match, strictly block?
+    // Current config.php has an empty array comment, implying tight security.
+    // If NO whitelist is defined at all (not even empty array), maybe allow all? 
+    // Convention: If defined, enforce it.
+    
+    if (defined('GADS_ALLOWED_ORIGINS') || defined('GADS_LICENSED_KEYS')) {
+        if (!$is_allowed) {
             log_message("Blocked unauthorized origin: {$origin}", 'WARNING');
-            display_error('Unauthorized Origin', 'This WordPress site is not authorized to use this service.');
+            display_error('Unauthorized Origin', 'This website is not authorized to use the Central OAuth Service. License expired or invalid. Please renew your license at https://phu.vn');
             return;
         }
     }

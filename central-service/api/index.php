@@ -58,10 +58,35 @@ function verify_api_key() {
         $api_key = isset($_GET['api_key']) ? $_GET['api_key'] : '';
     }
     
-    if ($api_key !== GADS_API_KEY) {
-        log_message("Invalid API key attempt from IP: " . $_SERVER['REMOTE_ADDR'], 'WARNING');
-        send_error('Invalid API key', 401);
+    // 1. Check Legacy/Master Key
+    if ($api_key === GADS_API_KEY) {
+        return true;
     }
+
+    // 2. Check Licensed Keys
+    if (defined('GADS_LICENSED_KEYS') && isset(GADS_LICENSED_KEYS[$api_key])) {
+        $license = GADS_LICENSED_KEYS[$api_key];
+
+        // Check Active Status
+        if (empty($license['active'])) {
+            send_error('License key is inactive. Please contact https://phu.vn to renew your license.', 403);
+        }
+
+        // Check Expiration
+        if (!empty($license['expires_at'])) {
+            $expiry = strtotime($license['expires_at']);
+            if ($expiry < time()) {
+                send_error('License key expired on ' . $license['expires_at'] . '. Please visit https://phu.vn to extend your subscription.', 403);
+            }
+        }
+
+        // Valid License
+        return true;
+    }
+    
+    // 3. Fallback: Invalid
+    log_message("Invalid API key attempt: {$api_key} from IP: " . $_SERVER['REMOTE_ADDR'], 'WARNING');
+    send_error('Invalid API key. Please verify your key or buy a new license at https://phu.vn', 401);
 }
 
 /**
