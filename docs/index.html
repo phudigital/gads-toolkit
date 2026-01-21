@@ -21,7 +21,7 @@
     <title>Plugin WordPress chặn click ảo Google Ads #1 Việt Nam - GAds Toolkit | PDL Solutions</title>
 
     <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap"
+    <link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700;800;900&display=swap"
         rel="stylesheet">
 
     <style>
@@ -32,19 +32,20 @@
         }
 
         :root {
-            --primary: #667eea;
-            --primary-dark: #5568d3;
-            --secondary: #764ba2;
+            --primary: #012f5b;
+            --primary-dark: #001f3f;
+            --secondary: #273253;
+            --accent: #bd2a2a;
             --success: #28a745;
             --danger: #dc3545;
             --warning: #ffc107;
-            --dark: #1a202c;
+            --dark: #363636;
             --light: #f7fafc;
             --gray: #718096;
         }
 
         body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            font-family: 'Public Sans', -apple-system, BlinkMacSystemFont, sans-serif;
             line-height: 1.6;
             color: var(--dark);
             overflow-x: hidden;
@@ -136,7 +137,7 @@
             font-size: 1.1rem;
             font-weight: 600;
             border: none;
-            border-radius: 50px;
+            border-radius: 16px;
             cursor: pointer;
             transition: all 0.3s ease;
             text-decoration: none;
@@ -146,7 +147,7 @@
         }
 
         .btn-primary {
-            background: white;
+            background: #ffffff;
             color: var(--primary);
             box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
         }
@@ -154,17 +155,19 @@
         .btn-primary:hover {
             transform: translateY(-3px);
             box-shadow: 0 6px 25px rgba(0, 0, 0, 0.3);
+            background: #f8f9fa;
         }
 
         .btn-secondary {
-            background: transparent;
+            background: var(--accent);
             color: white;
-            border: 2px solid white;
+            border: 2px solid var(--accent);
         }
 
         .btn-secondary:hover {
-            background: white;
-            color: var(--primary);
+            background: #a02020;
+            border-color: #a02020;
+            color: white;
         }
 
         /* Problem-Solution Section */
@@ -968,7 +971,7 @@
                                 <td
                                     style="padding: 15px; text-align: center; color: var(--success); font-weight: bold;">
                                     100K/tháng</td>
-                                <td style="padding: 15px; text-align: center;">200K+ /tháng</td>
+                                <td style="padding: 15px; text-align: center;">500K+ /tháng</td>
                             </tr>
                         </tbody>
                     </table>
