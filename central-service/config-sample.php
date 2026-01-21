@@ -1,9 +1,10 @@
 <?php
 /**
- * Central Service Configuration
+ * Central Service Configuration (SAMPLE)
  * 
  * This file contains centralized credentials for Google Ads API.
- * Deploy this to: https://pdl.vn/gads-toolkit/config.php
+ * Rename this file to config.php and fill in your credentials.
+ * Deploy to: https://your-domain.com/gads-toolkit/config.php
  * 
  * SECURITY: Make sure this file is NOT publicly accessible via web browser.
  * Add to .htaccess or nginx config to deny direct access.
@@ -23,23 +24,33 @@ if (!defined('GADS_CENTRAL_SERVICE')) {
  * 
  * Get these from: https://console.cloud.google.com/
  */
-define('GADS_CLIENT_ID', 'YOUR_CLIENT_ID_HERE');
-define('GADS_CLIENT_SECRET', 'YOUR_CLIENT_SECRET_HERE');
-define('GADS_DEVELOPER_TOKEN', 'YOUR_DEVELOPER_TOKEN_HERE');
+define('GADS_CLIENT_ID', 'YOUR_GOOGLE_CLIENT_ID');
+define('GADS_CLIENT_SECRET', 'YOUR_GOOGLE_CLIENT_SECRET');
+define('GADS_DEVELOPER_TOKEN', 'YOUR_GOOGLE_ADS_DEVELOPER_TOKEN');
 
 /**
  * OAuth Redirect URI
  * Should match the URL where oauth/index.php is deployed
  */
-define('GADS_OAUTH_REDIRECT_URI', 'https://pdl.vn/gads-toolkit/oauth/');
+define('GADS_OAUTH_REDIRECT_URI', 'https://your-domain.com/gads-toolkit/oauth/');
 
 /**
- * API Security
+ * API Security & Licensing
  * 
- * API Key for authenticating requests from WordPress sites
- * Generate a strong random key: openssl rand -hex 32
+ * Manage API keys for clients here.
+ * Format: 'KEY' => ['domain', 'expires_at', 'active']
  */
-define('GADS_API_KEY', 'YOUR_SECURE_API_KEY_HERE');
+define('GADS_LICENSED_KEYS', [
+    // Example Client
+    'client_key_123456789' => [
+        'domain'      => 'client-domain.com',
+        'expires_at'  => '2025-12-31',
+        'active'      => true
+    ],
+]);
+
+// Fallback legacy key (Optional)
+define('GADS_API_KEY', 'legacy_key_placeholder');
 
 /**
  * Allowed Origins (CORS)
@@ -48,9 +59,7 @@ define('GADS_API_KEY', 'YOUR_SECURE_API_KEY_HERE');
  * Leave empty to allow all (not recommended for production)
  */
 define('GADS_ALLOWED_ORIGINS', [
-    // 'https://client-site1.com',
-    // 'https://client-site2.com',
-    // Add your WordPress site domains here
+    // 'https://client-domain.com',
 ]);
 
 /**
