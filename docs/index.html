@@ -364,7 +364,7 @@
 
         .pricing-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
             gap: 30px;
             margin-top: 40px;
             max-width: 800px;
@@ -390,7 +390,7 @@
         }
 
         .pricing-card.featured::before {
-            content: 'TIẾT KIỆM 50%';
+            content: 'TIẾT KIỆM 33%';
             position: absolute;
             top: -15px;
             left: 50%;
@@ -606,7 +606,7 @@
                 <p class="subtitle">Phần mềm chống click ảo Google Ads #1 Việt Nam</p>
                 <p class="description">
                     Tiết kiệm <strong>30-50%</strong> ngân sách quảng cáo mỗi tháng<br>
-                    Plugin WordPress chuyên nghiệp - Chỉ <strong>50.000 VNĐ/tháng</strong>
+                    Plugin WordPress chuyên nghiệp - Chỉ <strong>5.000 VNĐ/ngày</strong>
                 </p>
                 <div class="cta-buttons">
                     <a href="#pricing" class="btn btn-primary">💰 Xem bảng giá</a>
@@ -766,8 +766,8 @@
                         <div class="label">Tiết kiệm/tháng<br>(tùy ngân sách quảng cáo)</div>
                     </div>
                     <div class="roi-stat">
-                        <div class="number">50K</div>
-                        <div class="label">Chi phí API Key/tháng<br>(chưa VAT)</div>
+                        <div class="number">800K</div>
+                        <div class="label">Chi phí API Key/năm<br>(chưa VAT)</div>
                     </div>
                     <div class="roi-stat">
                         <div class="number">1 tuần</div>
@@ -784,36 +784,62 @@
             <h2 class="section-title">Bảng giá API Key</h2>
             <p class="section-subtitle">Chọn gói phù hợp với nhu cầu của bạn</p>
             <div class="pricing-grid">
-                <div class="pricing-card">
-                    <h3>Monthly</h3>
-                    <div class="price">50K<span>/tháng</span></div>
-                    <p class="price-note">* Chưa bao gồm VAT</p>
+                <div class="pricing-card" style="border: 3px solid #ffc107;">
+                    <h3 style="color: #ffc107;">Trial</h3>
+                    <div class="price" style="color: #ffc107;">MIỄN PHÍ<span>/10 ngày</span></div>
+                    <p class="price-note" style="color: #ffc107;">🎁 Dùng thử đầy đủ tính năng Pro</p>
+                    <ul class="pricing-features">
+                        <li>Tất cả tính năng Pro</li>
+                        <li>Đồng bộ tự động Google Ads</li>
+                        <li>Smart Cross-IP Blocking</li>
+                        <li>Thông báo Telegram</li>
+                        <li>Dashboard thống kê</li>
+                        <li>Không cần thẻ tín dụng</li>
+                    </ul>
+                    <a href="mailto:phu@pdl.vn?subject=Đăng ký Trial 10 ngày - GAds Toolkit" class="btn btn-primary" style="width: 100%; justify-content: center; background: #ffc107; color: #000;">Dùng thử ngay</a>
+                </div>
+                
+<div class="pricing-card">
+                    <h3>Free Trial</h3>
+                    <div class="price">0Đ<span>/15 ngày</span></div>
+                    <p class="price-note">Trải nghiệm full tính năng</p>
                     <ul class="pricing-features">
                         <li>Đồng bộ tự động Google Ads</li>
                         <li>Chặn click ảo tức thì</li>
                         <li>Thông báo Telegram</li>
                         <li>Dashboard thống kê</li>
                         <li>Hỗ trợ IPv4 & IPv6</li>
-                        <li>Support qua Email</li>
+                        <li>Không cần thẻ tín dụng</li>
                     </ul>
-                    <a href="mailto:phu@pdl.vn?subject=Mua gói Monthly - GAds Toolkit" class="btn btn-primary"
-                        style="width: 100%; justify-content: center;">Mua ngay</a>
+                    <a href="mailto:phu@pdl.vn?subject=Đăng ký dùng thử - GAds Toolkit" class="btn btn-secondary" style="width: 100%; justify-content: center; border-color: var(--primary); color: var(--primary);">Đăng ký ngay</a>
                 </div>
 
+                <div class="pricing-card">
+                    <h3>Daily</h3>
+                    <div class="price">5K<span>/ngày</span></div>
+                    <p class="price-note">* Mua tối thiểu 30 ngày</p>
+                    <ul class="pricing-features">
+                        <li>Tất cả tính năng Trial</li>
+                        <li>Thanh toán linh hoạt</li>
+                        <li>Support ưu tiên</li>
+                        <li>Hỗ trợ cài đặt</li>
+                        <li>Cập nhật miễn phí</li>
+                    </ul>
+                    <a href="mailto:phu@pdl.vn?subject=Mua gói Daily - GAds Toolkit" class="btn btn-primary" style="width: 100%; justify-content: center;">Mua ngay</a>
+                </div>
+                
                 <div class="pricing-card featured">
                     <h3>Yearly</h3>
-                    <div class="price">500K<span>/năm</span></div>
+                    <div class="price">800K<span>/năm</span></div>
                     <p class="price-note">* Chưa bao gồm VAT</p>
                     <ul class="pricing-features">
-                        <li>Tất cả tính năng Monthly</li>
+                        <li>Tất cả tính năng Daily</li>
+                        <li><strong>Tiết kiệm ~56%</strong></li>
                         <li>Smart Cross-IP Blocking</li>
-                        <li>Cron tự động 15 phút/lần</li>
-                        <li>Ưu tiên hỗ trợ</li>
-                        <li>Tư vấn setup miễn phí</li>
-                        <li>Tiết kiệm >16% so với tháng</li>
+                        <li>Tư vấn setup chuyên sâu</li>
+                        <li>Hỗ trợ 24/7</li>
                     </ul>
-                    <a href="mailto:phu@pdl.vn?subject=Mua gói Yearly - GAds Toolkit" class="btn btn-primary"
-                        style="width: 100%; justify-content: center;">Mua ngay</a>
+                    <a href="mailto:phu@pdl.vn?subject=Mua gói Yearly - GAds Toolkit" class="btn btn-primary" style="width: 100%; justify-content: center;">Mua ngay</a>
                 </div>
             </div>
 
@@ -821,7 +847,7 @@
                 style="text-align: center; margin-top: 50px; padding: 40px; background: white; border-radius: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.08);">
                 <h3 style="color: var(--primary); margin-bottom: 20px; font-size: 1.8rem;">🎁 Ưu đãi đặc biệt</h3>
                 <p style="font-size: 1.3rem; color: var(--dark); line-height: 1.8;">
-                    Mua gói năm nhận <strong style="color: var(--success);">TIẾT KIỆM HƠN 16%</strong> so với tháng<br>
+                    Mua gói năm nhận <strong style="color: var(--success);">TIẾT KIỆM 56%</strong> so với mua lẻ<br>
                     + <strong>Tư vấn setup miễn phí</strong>
                 </p>
             </div>
@@ -864,7 +890,7 @@
                         </li>
                         <li style="padding: 10px 0; padding-left: 30px; position: relative;">
                             <span style="position: absolute; left: 0; color: var(--success); font-weight: bold;">✓</span>
-                            <strong>Giá cả hợp lý</strong> - Chỉ từ 50.000 VNĐ/tháng
+                            <strong>Giá cả hợp lý</strong> - Chỉ 5.000 VNĐ/ngày
                         </li>
                     </ul>
                 </div>
@@ -913,15 +939,15 @@
                             </tr>
                             <tr>
                                 <td style="padding: 15px;">Giá/tháng</td>
-                                <td style="padding: 15px; text-align: center; color: var(--success); font-weight: bold;">50K</td>
-                                <td style="padding: 15px; text-align: center;">200K - 500K</td>
+                                <td style="padding: 15px; text-align: center; color: var(--success); font-weight: bold;">5K/ngày</td>
+                                <td style="padding: 15px; text-align: center;">200K+ /tháng</td>
                             </tr>
                         </tbody>
                     </table>
                 </div>
                 
                 <p style="margin: 30px 0 20px;">
-                    Với hơn <strong>500+ website đang sử dụng</strong>, GAds Toolkit đã chứng minh là <a href="#testimonials" style="color: var(--primary); text-decoration: none; font-weight: 600;">plugin WordPress chặn click ảo Google Ads</a> đáng tin cậy nhất tại Việt Nam. Đừng để ngân sách quảng cáo của bạn bị lãng phí - <a href="#pricing" style="color: var(--primary); text-decoration: none; font-weight: 600;">bắt đầu sử dụng ngay hôm nay</a> với giá chỉ 50.000 VNĐ/tháng!
+                    Với hơn <strong>500+ website đang sử dụng</strong>, GAds Toolkit đã chứng minh là <a href="#testimonials" style="color: var(--primary); text-decoration: none; font-weight: 600;">plugin WordPress chặn click ảo Google Ads</a> đáng tin cậy nhất tại Việt Nam. Đừng để ngân sách quảng cáo của bạn bị lãng phí - <a href="#pricing" style="color: var(--primary); text-decoration: none; font-weight: 600;">bắt đầu sử dụng ngay hôm nay</a> với giá chỉ 5.000 VNĐ/ngày!
                 </p>
                 
                 <div style="text-align: center; margin-top: 40px;">
@@ -992,30 +1018,38 @@
         "name": "GAds Toolkit - Phần mềm chống click ảo Google Ads",
         "applicationCategory": "BusinessApplication",
         "operatingSystem": "WordPress 5.0+",
-        "offers": [
+                        "offers": [
             {
                 "@type": "Offer",
-                "price": "50000",
+                "price": "0",
                 "priceCurrency": "VND",
-                "priceSpecification": {
-                    "@type": "UnitPriceSpecification",
-                    "billingDuration": "P1M",
-                    "price": "50000",
-                    "priceCurrency": "VND"
-                }
+                "name": "Trial 15 Days"
             },
             {
                 "@type": "Offer",
-                "price": "500000",
+                "price": "5000",
+                "priceCurrency": "VND",
+                "priceSpecification": {
+                    "@type": "UnitPriceSpecification",
+                    "billingDuration": "P1D",
+                    "price": "5000",
+                    "priceCurrency": "VND"
+                },
+                "name": "Daily Plan"
+            },
+            {
+                "@type": "Offer",
+                "price": "800000",
                 "priceCurrency": "VND",
                 "priceSpecification": {
                     "@type": "UnitPriceSpecification",
                     "billingDuration": "P1Y",
-                    "price": "500000",
+                    "price": "800000",
                     "priceCurrency": "VND"
-                }
+                },
+                "name": "Yearly Plan"
             }
-        ],
+        ],,,
         "aggregateRating": {
             "@type": "AggregateRating",
             "ratingValue": "5",
