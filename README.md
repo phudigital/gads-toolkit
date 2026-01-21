@@ -9,6 +9,8 @@
 - **🔗 Đồng bộ Google Ads API:** Tự động đẩy IP bị chặn vào danh sách loại trừ (IP Exclusions) của tài khoản Google Ads.
 - **📱 Smart Cross-IP Blocking:** Sử dụng công nghệ Cookie Tagging để nhận diện và chặn kẻ tấn công ngay cả khi họ đổi từ IPv4 sang IPv6 hoặc ngược lại.
 - **🌐 Hỗ trợ Dual-Stack:** Hỗ trợ đầy đủ cả IPv4 và IPv6.
+- **📊 Dashboard Thông Minh:** Xem báo cáo theo ngày (7, 15, 30, 60, 180 ngày hoặc Hôm nay) với biểu đồ trực quan.
+- **🗂️ Quản Lý IP Nâng Cao:** Lọc IP bị chặn theo ngày, số phiên, copy danh sách dễ dàng.
 - **🔔 Thông báo đa kênh:** Cảnh báo ngay lập tức qua Telegram và Email kèm báo cáo traffic hàng ngày.
 - **🚀 Tối ưu hiệu suất:** Cơ chế Cron-job server-side đảm bảo hệ thống hoạt động ổn định ngay cả khi website không có người truy cập.
 

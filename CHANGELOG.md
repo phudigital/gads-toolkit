@@ -2,6 +2,48 @@
 
 All notable changes to **Fraud Prevention for Google Ads** will be documented in this file.
 
+## [3.6.12] - 2026-01-22
+
+### 🐛 Fixed
+
+- **Dashboard Time Filter**: Sửa lỗi tính toán ngày không chính xác (dùng `current_time` + `date` thay vì `strtotime`)
+- **UI Flickering**: Khắc phục hiện tượng nhấp nháy dropdown khi load trang (xử lý logic filter tại server-side)
+
+### ✨ Added
+
+- **Tùy chọn "Hôm nay"**: Thêm filter xem báo cáo trong ngày hiện tại
+- **Tối ưu view "Hôm nay"**: Chỉ hiển thị Summary Cards, ẩn biểu đồ (chart) để giao diện gọn gàng
+
+---
+
+## [3.6.11] - 2026-01-22
+
+### 🔄 Refactored
+
+- **Module Restructure**: Đổi tên `module-analytics.php` → `module-dashboard.php` để rõ ràng hơn
+- **Cấu trúc 1:1**: Mỗi module tương ứng với 1 submenu (Dashboard, Data, Notifications, Google Ads)
+
+### ✨ Added
+
+- **Date Range Filter**: Thêm bộ lọc ngày cho "Quản Lý IP Bị Chặn"
+  - Mặc định hiển thị từ ngày cũ nhất đến mới nhất
+  - Hỗ trợ lọc theo khoảng thời gian tùy chỉnh
+- **Copy IP List**: Nút copy danh sách IP (mỗi IP một dòng) tiện lợi
+
+### 🔧 Changed
+
+- **Blocking Reasons**: Việt hóa và chi tiết hóa lý do chặn
+  - Format mới: `Chặn Tự Động: 7 click (Quy tắc: 5 click / 1 Giờ)`
+  - Dễ đối chiếu số click thực tế với quy tắc đã cài đặt
+- **Data Cleanup Options**: Cập nhật tùy chọn xóa dữ liệu (1, 2, 3 năm) thay vì 90/180 ngày
+- **Manual Block Reason**: Ghi rõ "Chặn thủ công bởi Admin" khi admin chặn IP
+
+### 📚 Documentation
+
+- Thêm tooltip giải thích các loại lý do chặn (đã gỡ theo yêu cầu)
+
+---
+
 ## [2.9.1] - 2026-01-20
 
 ### ✨ Added

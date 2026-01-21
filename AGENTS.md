@@ -222,7 +222,7 @@ Plugin tuân thủ **WordPress Coding Standards** với một số điểm chín
 Plugin sử dụng **modular structure** (không dùng PHP namespace):
 
 - `includes/core-engine.php` - Database, tracking, admin init, Real-time Auto-Block, Smart Cross-IP Blocking
-- `includes/module-analytics.php` - Dashboard & analytics UI/AJAX
+- `includes/module-dashboard.php` - Dashboard & analytics UI/AJAX (đổi tên từ module-analytics.php v3.6.11)
 - `includes/module-google-ads.php` - Google Ads API integration, sync UI
 - `includes/module-notifications.php` - Email/Telegram alerts, IPv6 diagnostics
 - `includes/module-data.php` - Data maintenance
