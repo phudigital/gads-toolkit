@@ -91,41 +91,18 @@
 ### 💰 ROI ước tính:
 
 - **Tiết kiệm:** 5-15 triệu VNĐ/tháng (tùy ngân sách quảng cáo)
-- **Chi phí API Key:** Chỉ từ 500.000 VNĐ/năm
+- **Chi phí API Key:** Chỉ từ 800.000 VNĐ/năm
 - **Hoàn vốn:** Trong vòng 1 tuần sử dụng
 
 ---
 
 ## 🎁 Bảng giá API Key
 
-| Gói         | Thời hạn | Giá         | Lưu ý                            |
-| | Gói | Thời hạn | Giá | Lưu ý |
-|-----|----------|-----|-------|
-| **Trial** | 10 ngày | **MIỄN PHÍ** | Dùng thử đầy đủ tính năng Pro |
-| **Monthly** | 1 tháng | 100.000 VNĐ | Chưa bao gồm VAT |
-| **Yearly** | 1 năm | 800.000 VNĐ | Chưa bao gồm VAT (Tiết kiệm 33%) |- | | Gói | Thời hạn | Giá | Lưu ý |
-|-----|----------|-----|-------|
-| **Trial** | 10 ngày | **MIỄN PHÍ** | Dùng thử đầy đủ tính năng Pro |
-| **Monthly** | 1 tháng | 100.000 VNĐ | Chưa bao gồm VAT |
-| **Yearly** | 1 năm | 800.000 VNĐ | Chưa bao gồm VAT (Tiết kiệm 33%) |--- | | Gói | Thời hạn | Giá | Lưu ý |
-|-----|----------|-----|-------|
-| **Trial** | 10 ngày | **MIỄN PHÍ** | Dùng thử đầy đủ tính năng Pro |
-| **Monthly** | 1 tháng | 100.000 VNĐ | Chưa bao gồm VAT |
-| **Yearly** | 1 năm | 800.000 VNĐ | Chưa bao gồm VAT (Tiết kiệm 33%) |- | | Gói | Thời hạn | Giá | Lưu ý |
-|-----|----------|-----|-------|
-| **Trial** | 10 ngày | **MIỄN PHÍ** | Dùng thử đầy đủ tính năng Pro |
-| **Monthly** | 1 tháng | 100.000 VNĐ | Chưa bao gồm VAT |
-| **Yearly** | 1 năm | 800.000 VNĐ | Chưa bao gồm VAT (Tiết kiệm 33%) || Gói | Thời hạn | Giá | Lưu ý |
-|-----|----------|-----|-------|
-| **Trial** | 10 ngày | **MIỄN PHÍ** | Dùng thử đầy đủ tính năng Pro |
-| **Monthly** | 1 tháng | 100.000 VNĐ | Chưa bao gồm VAT |
-| **Yearly** | 1 năm | 800.000 VNĐ | Chưa bao gồm VAT (Tiết kiệm 33%) || Gói | Thời hạn | Giá | Lưu ý |
-|-----|----------|-----|-------|
-| **Trial** | 10 ngày | **MIỄN PHÍ** | Dùng thử đầy đủ tính năng Pro |
-| **Monthly** | 1 tháng | 100.000 VNĐ | Chưa bao gồm VAT |
-| **Yearly** | 1 năm | 800.000 VNĐ | Chưa bao gồm VAT (Tiết kiệm 33%) |-- |
-| **Monthly** | 1 tháng | 50.000 VNĐ | Chưa bao gồm VAT                 |
-| **Yearly** | 1 năm | 500.000 VNĐ | Chưa bao gồm VAT (Tiết kiệm >16%) |
+| Gói         | Thời hạn | Giá          | Lưu ý                            |
+| ----------- | -------- | ------------ | -------------------------------- |
+| **Trial**   | 10 ngày  | **MIỄN PHÍ** | Dùng thử đầy đủ tính năng Pro    |
+| **Monthly** | 1 tháng  | 100.000 VNĐ  | Chưa bao gồm VAT                 |
+| **Yearly**  | 1 năm    | 800.000 VNĐ  | Chưa bao gồm VAT (Tiết kiệm 33%) |
 
 ### 🎯 Mua API Key ngay:
 
@@ -133,7 +110,7 @@
 📞 **Hotline:** 0961 330 088  
 🌐 **Website:** https://pdl.vn
 
-**🎁 Ưu đãi đặc biệt:** Mua gói năm nhận **GIẢM 50%** so với tháng + **Tư vấn setup miễn phí**!
+**🎁 Ưu đãi đặc biệt:** Mua gói năm nhận **GIẢM 33%** so với tháng + **Tư vấn setup miễn phí**!
 
 ---
 

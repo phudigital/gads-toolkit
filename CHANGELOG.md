@@ -2,7 +2,14 @@
 
 All notable changes to **GAds Toolkit - Phần mềm chống click ảo Google Ads** will be documented in this file.
 
+## [3.7.0] - 2026-01-22
 
+### 💰 Pricing
+
+- **New Pricing Structure**:
+  - Trial: 10 days free (includes all Pro features)
+  - Monthly: 100.000 VNĐ/month
+  - Yearly: 800.000 VNĐ/year (save 33%)
 
 ### 🔐 Security & Licensing
 
@@ -40,9 +47,6 @@ All notable changes to **GAds Toolkit - Phần mềm chống click ảo Google A
 - **Plugin Name**: Đổi thành "Phần mềm chống click ảo Google Ads (GAds Toolkit)"
 
 ---
-
-
-
 
 ### 🐛 Fixed
 
