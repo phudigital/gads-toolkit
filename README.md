@@ -1,6 +1,13 @@
 # 🛡️ GAds Toolkit - Chống Click Ảo Toàn Diện cho Google Ads
 
+![Version](https://img.shields.io/badge/Version-3.6.12-blue?style=flat-square)
+![WordPress](https://img.shields.io/badge/WordPress-5.8%2B-blueviolet?style=flat-square)
+![PHP](https://img.shields.io/badge/PHP-7.4%2B-8892bf?style=flat-square)
+![License](https://img.shields.io/badge/License-GPLv2-green?style=flat-square)
+
 **GAds Toolkit** là giải pháp WordPress chuyên nghiệp giúp theo dõi, phân tích và tự động chặn các hành vi click ảo, click tặc từ quảng cáo Google Ads. Hệ thống sử dụng công nghệ chặn Real-time kết hợp với Google Ads API để bảo vệ ngân sách quảng cáo của bạn 24/7.
+
+![GAds Toolkit Dashboard](assets/screenshot.png)
 
 ## ✨ Tính năng nổi bật
 
