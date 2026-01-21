@@ -98,20 +98,18 @@
 
 ## 🎁 Bảng giá API Key
 
-| Gói              | Thời hạn  | Giá           | Tiết kiệm ước tính      |
-| ---------------- | --------- | ------------- | ----------------------- |
-| **Starter**      | 6 tháng   | 500.000 VNĐ   | 3-9 triệu VNĐ           |
-| **Professional** | 1 năm     | 800.000 VNĐ   | 6-18 triệu VNĐ          |
-| **Lifetime**     | Vĩnh viễn | 2.500.000 VNĐ | Không giới hạn          |
-| **Agency (MCC)** | 1 năm     | 3.000.000 VNĐ | Quản lý nhiều tài khoản |
+| Gói         | Thời hạn | Giá         | Lưu ý                            |
+| ----------- | -------- | ----------- | -------------------------------- |
+| **Monthly** | 1 tháng  | 100.000 VNĐ | Chưa bao gồm VAT                 |
+| **Yearly**  | 1 năm    | 600.000 VNĐ | Chưa bao gồm VAT (Tiết kiệm 50%) |
 
 ### 🎯 Mua API Key ngay:
 
 📧 **Email:** phu@pdl.vn  
-💬 **Zalo/Telegram:** 0123456789  
-🌐 **Website:** https://phu.vn
+📞 **Hotline:** 0961 330 088  
+🌐 **Website:** https://pdl.vn
 
-**🎁 Ưu đãi đặc biệt:** Mua ngay hôm nay nhận **GIẢM 20%** + **Tư vấn setup miễn phí**!
+**🎁 Ưu đãi đặc biệt:** Mua gói năm nhận **GIẢM 50%** so với tháng + **Tư vấn setup miễn phí**!
 
 ---
 
