@@ -1,8 +1,48 @@
 # Changelog
 
-All notable changes to **Fraud Prevention for Google Ads** will be documented in this file.
+All notable changes to **GAds Toolkit - Phần mềm chống click ảo Google Ads** will be documented in this file.
 
-## [3.6.12] - 2026-01-22
+
+
+### 🔐 Security & Licensing
+
+- **API Key Management System**: Triển khai hệ thống quản lý License Key cho Central Service
+  - Hỗ trợ nhiều API Key với thời hạn sử dụng riêng biệt
+  - Kiểm tra tự động: Active status, Expiration date, Domain lock
+  - Thông báo lỗi rõ ràng khi key hết hạn hoặc không hợp lệ
+- **Central Service Security**: Cập nhật `central-service/config.php`
+  - Cấu trúc `GADS_LICENSED_KEYS` thay thế single API key
+  - Validation API Key trước khi cho phép sync IP
+  - Tách file config khỏi Git (`.gitignore`) để bảo mật
+  - Tạo `config-sample.php` làm template
+
+### ✨ Added
+
+- **API Key Validation**: Hàm `tkgadm_validate_api_key()` kiểm tra key với Central Service
+- **Disconnect OAuth**: Nút "Hủy kết nối" để xóa OAuth token
+- **Sync Status Notification**: Thông báo trực quan khi chặn IP
+  - Màu xanh: "Đã chặn trên Google Ads" (sync thành công)
+  - Màu đỏ: "Chỉ chặn ở website, chưa đồng bộ Google Ads" (sync thất bại)
+  - Tự động tắt sau 2 giây
+
+### 📝 Documentation
+
+- **README.md**: Viết lại hoàn toàn với focus SEO và sales
+  - Tối ưu keywords: "phần mềm chống click ảo", "plugin wordpress chống click ảo"
+  - Thêm bảng giá API Key, testimonials, ROI calculator
+  - Call-to-action rõ ràng với thông tin liên hệ
+- **Screenshot**: Thêm ảnh Dashboard vào `assets/screenshot.png`
+
+### 🔧 Changed
+
+- **Error Messages**: Cập nhật thông báo lỗi hướng user đến `https://phu.vn` để mua/gia hạn key
+- **OAuth Handler**: Kiểm tra Licensed Domains thay vì whitelist tĩnh
+- **Plugin Name**: Đổi thành "Phần mềm chống click ảo Google Ads (GAds Toolkit)"
+
+---
+
+
+
 
 ### 🐛 Fixed
 
