@@ -15,13 +15,18 @@ error.log
 *.swo
 *.sublime-project
 *.sublime-workspace
+TODO.md
+AGENTS.md
 
 # Dependency Directories
 node_modules/
 vendor/
+help/
+central-service/
 
 # Backup files
 *.bak
+*.backup
 *.old
 *~
 
@@ -31,4 +36,8 @@ wp-content/uploads/
 gads-toolkit.zip
 .DS_Store
 central-service/config.php
+.gemini
+
+
+
 
