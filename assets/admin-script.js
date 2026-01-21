@@ -966,6 +966,25 @@ jQuery(document).ready(function ($) {
       dateTo = range.to;
     }
 
+    // --- SYNC DROPDOWN WITH DATE RANGE ---
+    const d1 = new Date(dateFrom);
+    const d2 = new Date(dateTo);
+    const diffTime = Math.abs(d2 - d1);
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+
+    // Check specific options or custom
+    // Note: +/- 1 day tolerance can be useful if timezone issues occur, strict blocking for now
+    const validOptions = ["1", "7", "15", "30", "60", "180"];
+
+    if (validOptions.includes(diffDays.toString())) {
+      $("#time-period").val(diffDays);
+      $("#custom-date-range").hide();
+    } else {
+      $("#time-period").val("custom");
+      $("#custom-date-range").css("display", "inline-flex");
+    }
+    // -------------------------------------
+
     loadDailyStats(dateFrom, dateTo);
   }
 });

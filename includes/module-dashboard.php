@@ -26,7 +26,7 @@ function tkgadm_render_dashboard_page() {
         WHERE gclid IS NOT NULL AND gclid != ''");
     
     // Mặc định hiển thị 30 ngày gần nhất (theo giờ WordPress)
-    $default_from = current_time('Y-m-d', strtotime('-30 days'));
+    $default_from = date('Y-m-d', strtotime('-30 days', current_time('timestamp')));
     $default_to = current_time('Y-m-d');
     
     // Lấy tham số filter (nếu user đã chọn thì dùng, không thì dùng default)
@@ -102,6 +102,21 @@ function tkgadm_render_dashboard_page() {
     $plugin_version = $plugin_data['Version'];
     
     ?>
+    <?php
+    // Calculate Diff Days for Select Option
+    $dt1 = new DateTime($date_from);
+    $dt2 = new DateTime($date_to);
+    $diff = $dt2->diff($dt1)->days + 1; // Inclusive
+    
+    $selected_period = 'custom';
+    $valid_periods = [1, 7, 15, 30, 60, 180];
+    if (in_array($diff, $valid_periods)) {
+        $selected_period = $diff;
+    }
+    
+    $custom_style = ($selected_period === 'custom') ? 'display: inline-flex;' : 'display: none;';
+    $chart_style = ($diff === 1) ? 'display: none;' : 'display: block;';
+    ?>
     <div class="wrap">
         <div class="tkgadm-wrap">
             <div class="tkgadm-header">
@@ -112,17 +127,18 @@ function tkgadm_render_dashboard_page() {
                     <div style="display: inline-flex; gap: 8px; align-items: center; background: white; padding: 8px 12px; border-radius: 8px;">
                         <label for="time-period" style="color: #666; font-size: 13px; margin: 0;">Thời gian:</label>
                         <select id="time-period" class="tkgadm-input" style="padding: 6px 12px; border-radius: 6px; border: 1px solid #ddd; font-size: 13px;">
-                            <option value="7">7 ngày gần nhất</option>
-                            <option value="15">15 ngày gần nhất</option>
-                            <option value="30" selected>30 ngày gần nhất</option>
-                            <option value="60">60 ngày gần nhất</option>
-                            <option value="180">180 ngày gần nhất</option>
-                            <option value="custom">📅 Tùy chỉnh...</option>
+                            <option value="1" <?php selected($selected_period, 1); ?>>Hôm nay</option>
+                            <option value="7" <?php selected($selected_period, 7); ?>>7 ngày gần nhất</option>
+                            <option value="15" <?php selected($selected_period, 15); ?>>15 ngày gần nhất</option>
+                            <option value="30" <?php selected($selected_period, 30); ?>>30 ngày gần nhất</option>
+                            <option value="60" <?php selected($selected_period, 60); ?>>60 ngày gần nhất</option>
+                            <option value="180" <?php selected($selected_period, 180); ?>>180 ngày gần nhất</option>
+                            <option value="custom" <?php selected($selected_period, 'custom'); ?>>📅 Tùy chỉnh...</option>
                         </select>
                     </div>
                     
-                    <!-- Custom Date Range (ẩn mặc định) -->
-                    <div id="custom-date-range" style="display: none; gap: 5px; align-items: center; background: white; padding: 8px 12px; border-radius: 8px;">
+                    <!-- Custom Date Range -->
+                    <div id="custom-date-range" style="<?php echo $custom_style; ?> gap: 5px; align-items: center; background: white; padding: 8px 12px; border-radius: 8px;">
                         <input type="date" id="date-from" class="tkgadm-input" style="width: 150px; padding: 6px; font-size: 13px;" value="<?php echo esc_attr($date_from); ?>" title="Từ ngày">
                         <span style="color: #999;">→</span>
                         <input type="date" id="date-to" class="tkgadm-input" style="width: 150px; padding: 6px; font-size: 13px;" value="<?php echo esc_attr($date_to); ?>" title="Đến ngày">
@@ -146,7 +162,7 @@ function tkgadm_render_dashboard_page() {
             </div>
 
             <!-- Biểu đồ thống kê hàng ngày -->
-            <div class="tkgadm-card" style="background: white; padding: 25px; border-radius: 10px; border: 1px solid #ddd; margin-bottom: 30px;">
+            <div id="chart-container" class="tkgadm-card" style="background: white; padding: 25px; border-radius: 10px; border: 1px solid #ddd; margin-bottom: 30px;">
                 <!-- Summary Cards -->
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; margin-bottom: 25px;">
                     <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 8px; text-align: center;">
@@ -172,9 +188,11 @@ function tkgadm_render_dashboard_page() {
                 </div>
                 
                 <!-- Chart -->
-                <div style="position: relative; height: 400px;">
+                <div style="position: relative; height: 400px; <?php echo $chart_style; ?>">
                     <canvas id="daily-stats-chart"></canvas>
                 </div>
+                
+
                 
                 <!-- Loading -->
                 <div id="daily-stats-loading" style="display: none; text-align: center; padding: 40px;">
