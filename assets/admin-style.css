@@ -282,3 +282,91 @@ input:checked + .tkgadm-toggle-slider:after {
   color: #666;
   word-break: break-all;
 }
+/* Accordion Table Styles */
+.tkgadm-accordion-toggle {
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.tkgadm-accordion-toggle:hover {
+  background-color: #f0f4ff;
+}
+
+.tkgadm-accordion-content-row {
+  background-color: #f9f9f9;
+}
+
+.tkgadm-accordion-icon {
+  display: inline-block;
+  transition: transform 0.3s ease;
+  font-size: 10px;
+  margin-right: 8px;
+}
+
+.tkgadm-accordion-toggle.expanded .tkgadm-accordion-icon {
+  transform: rotate(90deg);
+}
+
+/* Inner Session Table */
+.tkgadm-session-table {
+  width: 95%;
+  margin: 10px auto;
+  border-collapse: collapse;
+  background: white;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+}
+
+.tkgadm-session-table td {
+  padding: 10px 15px;
+  border-bottom: 1px solid #eee;
+  font-size: 13px;
+  color: #555;
+  vertical-align: middle;
+}
+
+.tkgadm-session-table tr:last-child td {
+  border-bottom: none;
+}
+
+/* Badges */
+.tkgadm-badge-sm {
+  padding: 3px 8px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.tkgadm-badge-ads {
+  background-color: #e6f0ff;
+  color: #0056b3;
+}
+
+.tkgadm-badge-organic {
+  background-color: #d4edda;
+  color: #155724;
+}
+
+.tkgadm-badge-blocked {
+  background-color: #f8d7da;
+  color: #721c24;
+}
+
+.tkgadm-link {
+  color: #007cba;
+  text-decoration: none;
+  font-size: 12px;
+}
+
+.tkgadm-link:hover {
+  text-decoration: underline;
+}
+
+/* Modal header tweaks */
+.tkgadm-modal-lg {
+  max-width: 1000px;
+}

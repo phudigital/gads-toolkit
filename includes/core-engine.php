@@ -32,7 +32,9 @@ function tkgadm_create_tables() {
         visit_count BIGINT(20) NOT NULL DEFAULT 1,
         PRIMARY KEY (id),
         KEY ip_address (ip_address),
-        KEY visit_time (visit_time)
+        KEY visit_time (visit_time),
+        KEY gclid (gclid),
+        KEY time_on_page (time_on_page)
     ) $charset_collate;";
 
     // Bảng IP bị chặn
@@ -41,6 +43,8 @@ function tkgadm_create_tables() {
         id BIGINT(20) NOT NULL AUTO_INCREMENT,
         ip_address VARCHAR(255) NOT NULL,
         blocked_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        reason TEXT DEFAULT NULL,
+        visit_count INT DEFAULT 0,
         PRIMARY KEY (id),
         UNIQUE KEY ip_address (ip_address)
     ) $charset_collate;";
@@ -48,6 +52,18 @@ function tkgadm_create_tables() {
     require_once ABSPATH . 'wp-admin/includes/upgrade.php';
     dbDelta($sql_stats);
     dbDelta($sql_blocked);
+}
+
+/**
+ * Kiểm tra và cập nhật DB khi update version
+ */
+add_action('admin_init', 'tkgadm_check_upgrade');
+function tkgadm_check_upgrade() {
+    if (get_option('tkgadm_version') !== GADS_TOOLKIT_VERSION) {
+        // 1. Cập nhật cấu trúc bảng
+        tkgadm_create_tables();
+        update_option('tkgadm_version', GADS_TOOLKIT_VERSION);
+    }
 }
 
 /**
@@ -159,6 +175,7 @@ function tkgadm_is_ip_blocked($ip) {
 function tkgadm_block_ip_internal($ip, $reason = '') {
     global $wpdb;
     $table = $wpdb->prefix . 'gads_toolkit_blocked';
+    $stats_table = $wpdb->prefix . 'gads_toolkit_stats';
     
     // Check exist
     // phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
@@ -168,11 +185,17 @@ function tkgadm_block_ip_internal($ip, $reason = '') {
         return false;
     }
     
+    // Calculate current visit count
+    // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+    $visit_count = $wpdb->get_var($wpdb->prepare("SELECT SUM(visit_count) FROM $stats_table WHERE ip_address = %s", $ip));
+    
     // Insert
     // phpcs:ignore WordPress.DB.DirectDatabaseQuery
     $result = $wpdb->insert($table, [
         'ip_address' => $ip,
-        'blocked_time' => current_time('mysql')
+        'blocked_time' => current_time('mysql'),
+        'reason' => sanitize_text_field($reason),
+        'visit_count' => intval($visit_count)
     ]);
     
     return $result !== false;
@@ -331,8 +354,13 @@ function tkgadm_check_ip_instant($ip) {
         $click_count = $wpdb->get_var($wpdb->prepare($sql, $ip, $duration));
 
         if ($click_count >= $limit) {
+            // Translate Unit
+            $unit_vn = $rule['unit'] === 'HOUR' ? 'Giờ' : ($rule['unit'] === 'DAY' ? 'Ngày' : 'Tuần');
+            
             // Vi phạm -> Chặn ngay
-            if (tkgadm_block_ip_internal($ip, "Real-time Block: $click_count clicks in $rule[duration] $rule[unit]")) {
+            $reason_msg = "Chặn Tức Thì: $click_count click (Quy tắc: $limit click / 1 $unit_vn)";
+            
+            if (tkgadm_block_ip_internal($ip, $reason_msg)) {
                 
                 // === SET COOKIE ĐÁNH DẤU ===
                 // Đánh dấu trình duyệt này là "Đã bị cấm" trong 30 ngày
@@ -414,14 +442,7 @@ function tkgadm_add_admin_menu() {
         'tkgadm_render_dashboard_page'
     );
     
-    add_submenu_page(
-        'tkgad-moi',
-        'Thống kê Traffic',
-        'Thống kê Traffic',
-        'manage_options',
-        'tkgad-analytics',
-        'tkgadm_render_analytics_page'
-    );
+
     
     add_submenu_page(
         'tkgad-moi',
@@ -557,8 +578,12 @@ function tkgadm_run_auto_block_scan() {
         foreach ($results as $row) {
             $ip = $row->ip_address;
             
+            // Translate Unit
+            $unit_vn = $unit === 'HOUR' ? 'Giờ' : ($unit === 'DAY' ? 'Ngày' : 'Tuần');
+            $reason_msg = "Chặn Tự Động: {$row->click_count} click (Quy tắc: $limit click / $duration $unit_vn)";
+
             // Block IP
-            if (tkgadm_block_ip_internal($ip, "Auto Block: $rule[limit] clicks in $rule[duration] $rule[unit]")) {
+            if (tkgadm_block_ip_internal($ip, $reason_msg)) {
                 $new_blocked_ips[] = $ip;
             }
         }

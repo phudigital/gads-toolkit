@@ -466,7 +466,3 @@ Plugin sử dụng **modular structure** (không dùng PHP namespace):
 - Check "Chẩn đoán IPv6" trong plugin admin
 
 ---
-
-**Version:** 3.2.0  
-**Last Updated:** 2026-01-20  
-**Maintainer:** Phú Digital (https://pdl.vn)
