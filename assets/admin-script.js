@@ -244,6 +244,34 @@ jQuery(document).ready(function ($) {
               .html("🚫");
             $row.find("td:first strong").after(" ", badge);
             $label.removeClass("active").addClass("blocked").text("Đã chặn");
+            
+            // Show sync status message
+            if (response.data.sync_message) {
+              const color = response.data.sync_status === 'synced' ? '#28a745' : '#dc3545';
+              const $syncMsg = $("<div>")
+                .css({
+                  position: 'fixed',
+                  top: '50%',
+                  left: '50%',
+                  transform: 'translate(-50%, -50%)',
+                  background: color,
+                  color: 'white',
+                  padding: '15px 30px',
+                  borderRadius: '8px',
+                  fontSize: '16px',
+                  fontWeight: 'bold',
+                  zIndex: 99999,
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.3)'
+                })
+                .text(response.data.sync_message)
+                .appendTo('body');
+              
+              setTimeout(function() {
+                $syncMsg.fadeOut(300, function() {
+                  $(this).remove();
+                });
+              }, 2000);
+            }
           } else {
             $row.removeClass("tkgadm-blocked blocked-ip");
             $row.find(".tkgadm-badge-danger").remove();

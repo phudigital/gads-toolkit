@@ -365,14 +365,30 @@ function tkgadm_ajax_toggle_block_ip() {
             'reason' => $reason
         ]);
         
+        $sync_message = '';
+        $sync_status = 'not_synced';
+        
         // Auto Sync on Block Logic
         if ($inserted && get_option('tkgadm_auto_sync_on_block')) {
-             if (function_exists('tkgadm_sync_ip_to_google_ads')) {
-                tkgadm_sync_ip_to_google_ads([$ip]);
-             }
+            if (function_exists('tkgadm_sync_ip_to_google_ads')) {
+                $sync_result = tkgadm_sync_ip_to_google_ads([$ip]);
+                
+                if (isset($sync_result['success']) && $sync_result['success']) {
+                    $sync_message = 'Đã chặn trên Google Ads';
+                    $sync_status = 'synced';
+                } else {
+                    $sync_message = 'Chỉ chặn ở website, chưa đồng bộ Google Ads';
+                    $sync_status = 'not_synced';
+                }
+            }
         }
 
-        wp_send_json_success(['message' => 'Đã chặn IP: ' . $ip, 'blocked' => true]);
+        wp_send_json_success([
+            'message' => 'Đã chặn IP: ' . $ip, 
+            'blocked' => true,
+            'sync_message' => $sync_message,
+            'sync_status' => $sync_status
+        ]);
     }
 }
 
