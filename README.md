@@ -11,30 +11,25 @@
 
 ## 📸 Giao diện trực quan & Dễ sử dụng
 
-### Dashboard - Thống kê tổng quan
+### 📊 Dashboard - Thống kê tổng quan
 
 ![Dashboard](https://raw.githubusercontent.com/phudigital/gads-toolkit/main/assets/screenshot.png)
 
-<details>
-<summary>📷 Xem thêm screenshots</summary>
-
-### Thống kê IP Ads chi tiết
+### 📈 Thống kê IP Ads chi tiết
 
 ![IP Ads Stats](https://raw.githubusercontent.com/phudigital/gads-toolkit/main/assets/screenshot1.png)
 
-### Quản lý IP bị chặn
+### 🚫 Quản lý IP bị chặn
 
 ![Blocked IPs](https://raw.githubusercontent.com/phudigital/gads-toolkit/main/assets/screenshot2.png)
 
-### Cấu hình Google Ads API
+### 🔑 Cấu hình Google Ads API
 
 ![Google Ads Config](https://raw.githubusercontent.com/phudigital/gads-toolkit/main/assets/screenshot3.png)
 
-### Cấu hình Thông báo Telegram
+### 🔔 Cấu hình Thông báo Telegram
 
 ![Notifications](https://raw.githubusercontent.com/phudigital/gads-toolkit/main/assets/screenshot4.png)
-
-</details>
 
 ---
 
