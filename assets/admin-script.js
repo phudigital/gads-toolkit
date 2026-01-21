@@ -234,6 +234,7 @@ jQuery(document).ready(function ($) {
         nonce: tkgadm_vars.nonce_block,
       },
       success: function (response) {
+        console.log('Block IP Response:', response);
         if (response.success) {
           // Cập nhật UI
           if (response.data.blocked) {

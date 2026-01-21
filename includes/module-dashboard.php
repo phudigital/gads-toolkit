@@ -368,7 +368,7 @@ function tkgadm_ajax_toggle_block_ip() {
         $sync_message = '';
         $sync_status = 'not_synced';
         
-        // Auto Sync on Block Logic
+        // Try to sync if option is enabled
         if ($inserted && get_option('tkgadm_auto_sync_on_block')) {
             if (function_exists('tkgadm_sync_ip_to_google_ads')) {
                 $sync_result = tkgadm_sync_ip_to_google_ads([$ip]);
@@ -380,7 +380,12 @@ function tkgadm_ajax_toggle_block_ip() {
                     $sync_message = 'Chỉ chặn ở website, chưa đồng bộ Google Ads';
                     $sync_status = 'not_synced';
                 }
+            } else {
+                $sync_message = 'Chỉ chặn ở website, chưa đồng bộ Google Ads';
             }
+        } else {
+            // Sync option is disabled
+            $sync_message = 'Chỉ chặn ở website, chưa đồng bộ Google Ads';
         }
 
         wp_send_json_success([
