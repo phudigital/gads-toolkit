@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="vi">
+<html lang="vi" class="scroll-smooth">
 
 <head>
     <meta charset="UTF-8">
@@ -24,624 +24,136 @@
     <link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700;800;900&display=swap"
         rel="stylesheet">
 
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#012f5b',
+                        'primary-dark': '#001f3f',
+                        secondary: '#273253',
+                        accent: '#bd2a2a',
+                        success: '#28a745',
+                        danger: '#dc3545',
+                        warning: '#ffc107',
+                        dark: '#363636',
+                        light: '#f7fafc',
+                        gray: '#718096',
+                    },
+                    fontFamily: {
+                        sans: ['"Public Sans"', 'sans-serif'],
+                    },
+                    animation: {
+                        'float': 'float 6s ease-in-out infinite',
+                        'fade-in-up': 'fadeInUp 0.8s ease-out forwards',
+                    },
+                    keyframes: {
+                        float: {
+                            '0%, 100%': { transform: 'translateY(0)' },
+                            '50%': { transform: 'translateY(-20px)' },
+                        },
+                        fadeInUp: {
+                            '0%': { opacity: '0', transform: 'translateY(20px)' },
+                            '100%': { opacity: '1', transform: 'translateY(0)' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        :root {
-            --primary: #012f5b;
-            --primary-dark: #001f3f;
-            --secondary: #273253;
-            --accent: #bd2a2a;
-            --success: #28a745;
-            --danger: #dc3545;
-            --warning: #ffc107;
-            --dark: #363636;
-            --light: #f7fafc;
-            --gray: #718096;
-        }
-
-        body {
-            font-family: 'Public Sans', -apple-system, BlinkMacSystemFont, sans-serif;
-            line-height: 1.6;
-            color: var(--dark);
-            overflow-x: hidden;
-        }
-
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 0 20px;
-        }
-
-        /* Hero Section */
-        .hero {
-            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
-            color: white;
-            padding: 100px 20px 80px;
-            text-align: center;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .hero::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: url('data:image/svg+xml,<svg width="100" height="100" xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="2" fill="white" opacity="0.1"/></svg>');
-            animation: float 20s infinite linear;
-        }
-
-        @keyframes float {
-            from {
-                transform: translateY(0);
-            }
-
-            to {
-                transform: translateY(-100px);
-            }
-        }
-
-        .hero-content {
-            position: relative;
-            z-index: 1;
-        }
-
-        .badge {
-            display: inline-block;
-            background: rgba(255, 255, 255, 0.2);
-            padding: 8px 20px;
-            border-radius: 50px;
-            font-size: 0.9rem;
-            margin-bottom: 20px;
-            backdrop-filter: blur(10px);
-        }
-
-        .hero h1 {
-            font-size: 3.5rem;
-            font-weight: 900;
-            margin-bottom: 20px;
+        /* Custom utilities unavailable in Tailwind CDN */
+        .text-shadow {
             text-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
-            line-height: 1.2;
-        }
-
-        .hero .subtitle {
-            font-size: 1.8rem;
-            margin-bottom: 15px;
-            opacity: 0.95;
-            font-weight: 600;
-        }
-
-        .hero .description {
-            font-size: 1.2rem;
-            margin-bottom: 40px;
-            opacity: 0.9;
-        }
-
-        .cta-buttons {
-            display: flex;
-            gap: 20px;
-            justify-content: center;
-            flex-wrap: wrap;
-            margin-top: 40px;
-        }
-
-        .btn {
-            padding: 18px 45px;
-            font-size: 1.1rem;
-            font-weight: 600;
-            border: none;
-            border-radius: 16px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            text-decoration: none;
-            display: inline-flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .btn-primary {
-            background: #ffffff;
-            color: var(--primary);
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-        }
-
-        .btn-primary:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 6px 25px rgba(0, 0, 0, 0.3);
-            background: #f8f9fa;
-        }
-
-        .btn-secondary {
-            background: var(--accent);
-            color: white;
-            border: 2px solid var(--accent);
-        }
-
-        .btn-secondary:hover {
-            background: #a02020;
-            border-color: #a02020;
-            color: white;
-        }
-
-        /* Problem-Solution Section */
-        .problem-solution {
-            padding: 80px 20px;
-            background: white;
-        }
-
-        .section-title {
-            text-align: center;
-            font-size: 2.8rem;
-            font-weight: 800;
-            margin-bottom: 20px;
-            color: var(--dark);
-        }
-
-        .section-subtitle {
-            text-align: center;
-            font-size: 1.2rem;
-            color: var(--gray);
-            margin-bottom: 60px;
-        }
-
-        .two-columns {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
-            gap: 40px;
-            margin-top: 40px;
-        }
-
-        .problem-box,
-        .solution-box {
-            padding: 40px;
-            border-radius: 20px;
-        }
-
-        .problem-box {
-            background: linear-gradient(135deg, #fff5f5 0%, #ffe5e5 100%);
-            border-left: 5px solid var(--danger);
-        }
-
-        .solution-box {
-            background: linear-gradient(135deg, #f0fff4 0%, #e6ffed 100%);
-            border-left: 5px solid var(--success);
-        }
-
-        .problem-box h3,
-        .solution-box h3 {
-            font-size: 1.8rem;
-            margin-bottom: 20px;
-        }
-
-        .problem-box ul,
-        .solution-box ul {
-            list-style: none;
-            padding: 0;
-        }
-
-        .problem-box li,
-        .solution-box li {
-            padding: 12px 0;
-            padding-left: 30px;
-            position: relative;
-            font-size: 1.05rem;
-        }
-
-        .problem-box li::before {
-            content: '❌';
-            position: absolute;
-            left: 0;
-        }
-
-        .solution-box li::before {
-            content: '✅';
-            position: absolute;
-            left: 0;
-        }
-
-        /* Screenshots Gallery */
-        .screenshots {
-            padding: 80px 20px;
-            background: var(--light);
-        }
-
-        .screenshot-item {
-            margin-bottom: 60px;
-        }
-
-        .screenshot-item h3 {
-            font-size: 1.8rem;
-            margin-bottom: 20px;
-            color: var(--primary);
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .screenshot-item img {
-            width: 100%;
-            border-radius: 15px;
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
-            transition: transform 0.3s ease;
-        }
-
-        .screenshot-item img:hover {
-            transform: scale(1.02);
-        }
-
-        /* Features Grid */
-        .features {
-            padding: 80px 20px;
-            background: white;
-        }
-
-        .features-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 30px;
-            margin-top: 40px;
-        }
-
-        .feature-card {
-            background: white;
-            padding: 35px;
-            border-radius: 15px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-            transition: all 0.3s ease;
-            border: 2px solid transparent;
-        }
-
-        .feature-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15);
-            border-color: var(--primary);
-        }
-
-        .feature-icon {
-            font-size: 3rem;
-            margin-bottom: 20px;
-        }
-
-        .feature-card h3 {
-            font-size: 1.4rem;
-            margin-bottom: 15px;
-            color: var(--primary);
-        }
-
-        .feature-card p {
-            color: var(--gray);
-            line-height: 1.7;
-        }
-
-        /* Testimonials */
-        .testimonials {
-            padding: 80px 20px;
-            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
-            color: white;
-        }
-
-        .testimonial-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 30px;
-            margin-top: 40px;
-        }
-
-        .testimonial-card {
-            background: rgba(255, 255, 255, 0.1);
-            padding: 30px;
-            border-radius: 15px;
-            backdrop-filter: blur(10px);
-        }
-
-        .testimonial-card .stars {
-            color: #ffc107;
-            font-size: 1.5rem;
-            margin-bottom: 15px;
-        }
-
-        .testimonial-card blockquote {
-            font-size: 1.1rem;
-            line-height: 1.7;
-            margin-bottom: 20px;
-            font-style: italic;
-        }
-
-        .testimonial-card .author {
-            font-weight: 600;
-            opacity: 0.9;
-        }
-
-        /* Pricing */
-        .pricing {
-            padding: 80px 20px;
-            background: var(--light);
-        }
-
-        .pricing-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 30px;
-            margin-top: 40px;
-            max-width: 1200px;
-            margin-left: auto;
-            margin-right: auto;
-        }
-
-        .pricing-card {
-            background: white;
-            padding: 45px;
-            border-radius: 20px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-            text-align: center;
-            transition: all 0.3s ease;
-            position: relative;
-            border: 3px solid transparent;
-        }
-
-        .pricing-card.featured {
-            border-color: var(--primary);
-            transform: scale(1.05);
-            box-shadow: 0 8px 30px rgba(102, 126, 234, 0.3);
-        }
-
-        .pricing-card.featured::before {
-            content: 'TIẾT KIỆM 33%';
-            position: absolute;
-            top: -15px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: var(--primary);
-            color: white;
-            padding: 8px 25px;
-            border-radius: 50px;
-            font-size: 0.85rem;
-            font-weight: 700;
-        }
-
-        .pricing-card:hover {
-            transform: translateY(-5px) scale(1.02);
-        }
-
-        .pricing-card h3 {
-            font-size: 2rem;
-            margin-bottom: 15px;
-            color: var(--primary);
-        }
-
-        .price {
-            font-size: 3.5rem;
-            font-weight: 900;
-            color: var(--dark);
-            margin: 25px 0;
-        }
-
-        .price span {
-            font-size: 1.3rem;
-            color: var(--gray);
-            font-weight: 500;
-        }
-
-        .price-note {
-            color: var(--danger);
-            font-size: 0.9rem;
-            margin-bottom: 25px;
-        }
-
-        .pricing-features {
-            list-style: none;
-            margin: 30px 0;
-            text-align: left;
-        }
-
-        .pricing-features li {
-            padding: 12px 0;
-            border-bottom: 1px solid #eee;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .pricing-features li::before {
-            content: '✓';
-            color: var(--success);
-            font-weight: bold;
-            font-size: 1.2rem;
-        }
-
-        /* ROI Calculator */
-        .roi-section {
-            padding: 80px 20px;
-            background: white;
-        }
-
-        .roi-box {
-            background: linear-gradient(135deg, #fff9e6 0%, #ffe6b3 100%);
-            padding: 50px;
-            border-radius: 20px;
-            border-left: 5px solid var(--warning);
-            margin-top: 40px;
-        }
-
-        .roi-stats {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 30px;
-            margin-top: 30px;
-        }
-
-        .roi-stat {
-            text-align: center;
-        }
-
-        .roi-stat .number {
-            font-size: 2.5rem;
-            font-weight: 900;
-            color: var(--primary);
-            margin-bottom: 10px;
-        }
-
-        .roi-stat .label {
-            color: var(--gray);
-            font-size: 1.1rem;
-        }
-
-        /* CTA Section */
-        .cta-section {
-            padding: 80px 20px;
-            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
-            color: white;
-            text-align: center;
-        }
-
-        .cta-section h2 {
-            font-size: 2.8rem;
-            margin-bottom: 20px;
-        }
-
-        .cta-section p {
-            font-size: 1.3rem;
-            margin-bottom: 40px;
-            opacity: 0.95;
-        }
-
-        /* Contact */
-        .contact {
-            padding: 80px 20px;
-            background: var(--dark);
-            color: white;
-        }
-
-        .contact-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 30px;
-            margin-top: 40px;
-        }
-
-        .contact-item {
-            text-align: center;
-            padding: 30px;
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 15px;
-            transition: all 0.3s ease;
-        }
-
-        .contact-item:hover {
-            background: rgba(255, 255, 255, 0.1);
-            transform: translateY(-5px);
-        }
-
-        .contact-item h3 {
-            font-size: 1.3rem;
-            margin-bottom: 15px;
-            color: var(--primary);
-        }
-
-        .contact-item a {
-            color: white;
-            text-decoration: none;
-            font-size: 1.3rem;
-            font-weight: 600;
-        }
-
-        .contact-item a:hover {
-            color: var(--primary);
-        }
-
-        /* Footer */
-        footer {
-            background: #0d1117;
-            color: white;
-            padding: 40px 20px;
-            text-align: center;
-        }
-
-        footer a {
-            color: var(--primary);
-            text-decoration: none;
-        }
-
-        /* Responsive */
-        @media (max-width: 768px) {
-            .hero h1 {
-                font-size: 2.5rem;
-            }
-
-            .hero .subtitle {
-                font-size: 1.3rem;
-            }
-
-            .section-title {
-                font-size: 2rem;
-            }
-
-            .two-columns {
-                grid-template-columns: 1fr;
-            }
-
-            .cta-buttons {
-                flex-direction: column;
-            }
-
-            .btn {
-                width: 100%;
-                justify-content: center;
-            }
         }
     </style>
 </head>
 
-<body>
+<body class="font-sans text-dark antialiased overflow-x-hidden">
+
     <!-- Hero Section -->
-    <section class="hero">
-        <div class="container">
-            <div class="hero-content">
-                <div class="badge">🛡️ Bảo vệ ngân sách Google Ads của bạn</div>
-                <h1>Plugin WordPress chặn click ảo Google Ads</h1>
-                <p class="subtitle">Phần mềm chống click ảo Google Ads #1 Việt Nam</p>
-                <p class="description">
-                    Tiết kiệm <strong>30-50%</strong> ngân sách quảng cáo mỗi tháng<br>
-                    Plugin WordPress chuyên nghiệp - Chỉ <strong>100.000 VNĐ/tháng</strong>
-                </p>
-                <div class="cta-buttons">
-                    <a href="#pricing" class="btn btn-primary">💰 Xem bảng giá</a>
-                    <a href="tel:0961330088" class="btn btn-secondary">📞 Gọi ngay: 0961 330 088</a>
-                </div>
+    <section
+        class="relative bg-gradient-to-br from-primary to-secondary text-white py-24 px-5 text-center overflow-hidden">
+        <!-- Background decoration -->
+        <div
+            class="absolute inset-0 opacity-10 bg-[url('data:image/svg+xml,%3Csvg%20width=%22100%22%20height=%22100%22%20xmlns=%22http://www.w3.org/2000/svg%22%3E%3Ccircle%20cx=%2250%22%20cy=%2250%22%20r=%222%22%20fill=%22white%22%2F%3E%3C%2Fsvg%3E')] animate-float">
+        </div>
+
+        <div class="container mx-auto max-w-6xl relative z-10 animate-[fadeInUp_0.8s_ease-out]">
+            <div class="inline-block bg-white/20 backdrop-blur-md px-5 py-2 rounded-full text-sm mb-5">
+                🛡️ Bảo vệ ngân sách Google Ads của bạn
+            </div>
+            <h1 class="text-4xl md:text-6xl font-black mb-5 leading-tight text-shadow">
+                Plugin WordPress chặn click ảo <span class="text-accent bg-white/10 px-2 rounded">Google Ads</span>
+            </h1>
+            <p class="text-xl md:text-2xl font-semibold mb-4 opacity-95">
+                Phần mềm chống click ảo Google Ads #1 Việt Nam
+            </p>
+            <p class="text-lg md:text-xl opacity-90 mb-10 max-w-3xl mx-auto leading-relaxed">
+                Tiết kiệm <strong class="text-warning">30-50%</strong> ngân sách quảng cáo mỗi tháng<br>
+                Plugin WordPress chuyên nghiệp - Chỉ <strong>2.200 VNĐ mỗi ngày</strong>
+            </p>
+            <div class="flex flex-col md:flex-row gap-5 justify-center items-center mt-10">
+                <a href="#pricing"
+                    class="inline-flex items-center gap-2 px-8 py-4 bg-white text-primary rounded-2xl font-bold text-lg shadow-lg hover:-translate-y-1 hover:shadow-2xl hover:bg-gray-50 transition-all duration-300 transform w-full md:w-auto justify-center group">
+                    💰 Xem bảng giá
+                    <span class="group-hover:translate-x-1 transition-transform">→</span>
+                </a>
+                <a href="tel:0961330088"
+                    class="inline-flex items-center gap-2 px-8 py-4 bg-accent text-white border-2 border-accent rounded-2xl font-bold text-lg hover:bg-[#a02020] hover:border-[#a02020] transition-all duration-300 w-full md:w-auto justify-center shadow-lg hover:shadow-xl">
+                    📞 Gọi ngay: 0961 330 088
+                </a>
             </div>
         </div>
     </section>
 
     <!-- Problem-Solution Section -->
-    <section class="problem-solution">
-        <div class="container">
-            <h2 class="section-title">Tại sao bạn cần GAds Toolkit?</h2>
-            <div class="two-columns">
-                <div class="problem-box">
-                    <h3>❌ Vấn đề bạn đang gặp phải:</h3>
-                    <ul>
-                        <li><strong>Ngân sách Google Ads bị đốt cháy</strong> bởi click ảo từ bot và đối thủ</li>
-                        <li><strong>Chi phí quảng cáo tăng cao</strong> nhưng chuyển đổi thấp</li>
-                        <li><strong>Không kiểm soát được</strong> nguồn traffic thật/giả</li>
-                        <li><strong>Mất tiền oan</strong> vào các click không có giá trị</li>
+    <section class="py-20 px-5 bg-white">
+        <div class="container mx-auto max-w-6xl">
+            <h2 class="text-3xl md:text-5xl font-extrabold text-center mb-5 text-dark">Tại sao bạn cần GAds Toolkit?
+            </h2>
+
+            <div class="grid md:grid-cols-2 gap-10 mt-12">
+                <!-- Problem Box -->
+                <div
+                    class="p-8 md:p-10 rounded-3xl bg-gradient-to-br from-red-50 to-red-100 border-l-8 border-danger shadow-sm hover:shadow-md transition-shadow duration-300">
+                    <h3 class="text-2xl font-bold mb-6 flex items-center gap-2">
+                        <span>❌</span> Vấn đề bạn đang gặp phải:
+                    </h3>
+                    <ul class="space-y-4">
+                        <li class="pl-8 relative text-lg"><span class="absolute left-0">❌</span> <strong>Ngân sách
+                                Google Ads bị đốt cháy</strong> bởi click ảo từ bot và đối thủ</li>
+                        <li class="pl-8 relative text-lg"><span class="absolute left-0">❌</span> <strong>Chi phí quảng
+                                cáo tăng cao</strong> nhưng chuyển đổi thấp</li>
+                        <li class="pl-8 relative text-lg"><span class="absolute left-0">❌</span> <strong>Không kiểm soát
+                                được</strong> nguồn traffic thật/giả</li>
+                        <li class="pl-8 relative text-lg"><span class="absolute left-0">❌</span> <strong>Mất tiền
+                                oan</strong> vào các click không có giá trị</li>
                     </ul>
                 </div>
-                <div class="solution-box">
-                    <h3>✅ Giải pháp từ GAds Toolkit:</h3>
-                    <ul>
-                        <li><strong>Phát hiện & chặn click ảo tự động</strong> theo thời gian thực</li>
-                        <li><strong>Đồng bộ IP độc hại lên Google Ads</strong> tự động (chặn ở cấp tài khoản)</li>
-                        <li><strong>Thống kê chi tiết</strong> traffic Ads vs Organic</li>
-                        <li><strong>Smart Cross-IP Blocking</strong> - Chặn cả khi đối thủ đổi IP</li>
-                        <li><strong>Thông báo Telegram</strong> khi phát hiện click ảo</li>
-                        <li><strong>Tiết kiệm 30-50%</strong> ngân sách quảng cáo mỗi tháng</li>
+
+                <!-- Solution Box -->
+                <div
+                    class="p-8 md:p-10 rounded-3xl bg-gradient-to-br from-green-50 to-green-100 border-l-8 border-success shadow-sm hover:shadow-md transition-shadow duration-300">
+                    <h3 class="text-2xl font-bold mb-6 flex items-center gap-2">
+                        <span>✅</span> Giải pháp từ GAds Toolkit:
+                    </h3>
+                    <ul class="space-y-4">
+                        <li class="pl-8 relative text-lg"><span class="absolute left-0 font-bold text-success">✓</span>
+                            <strong>Phát hiện & chặn click ảo tự động</strong> theo thời gian thực</li>
+                        <li class="pl-8 relative text-lg"><span class="absolute left-0 font-bold text-success">✓</span>
+                            <strong>Đồng bộ IP độc hại lên Google Ads</strong> tự động (chặn ở cấp tài khoản)</li>
+                        <li class="pl-8 relative text-lg"><span class="absolute left-0 font-bold text-success">✓</span>
+                            <strong>Thống kê chi tiết</strong> traffic Ads vs Organic</li>
+                        <li class="pl-8 relative text-lg"><span class="absolute left-0 font-bold text-success">✓</span>
+                            <strong>Smart Cross-IP Blocking</strong> - Chặn cả khi đối thủ đổi IP</li>
+                        <li class="pl-8 relative text-lg"><span class="absolute left-0 font-bold text-success">✓</span>
+                            <strong>Thông báo Telegram</strong> khi phát hiện click ảo</li>
+                        <li class="pl-8 relative text-lg"><span class="absolute left-0 font-bold text-success">✓</span>
+                            <strong>Tiết kiệm 30-50%</strong> ngân sách quảng cáo mỗi tháng</li>
                     </ul>
                 </div>
             </div>
@@ -649,132 +161,184 @@
     </section>
 
     <!-- Screenshots Gallery -->
-    <section class="screenshots">
-        <div class="container">
-            <h2 class="section-title">Giao diện trực quan & Chuyên nghiệp</h2>
-            <p class="section-subtitle">Dễ sử dụng, không cần kiến thức kỹ thuật</p>
+    <section class="py-20 px-5 bg-light">
+        <div class="container mx-auto max-w-6xl">
+            <h2 class="text-3xl md:text-5xl font-extrabold text-center mb-3 text-dark">Giao diện trực quan & Chuyên
+                nghiệp</h2>
+            <p class="text-center text-xl text-gray-600 mb-16">Dễ sử dụng, không cần kiến thức kỹ thuật</p>
 
-            <div class="screenshot-item">
-                <h3>📊 Dashboard - Thống kê tổng quan</h3>
-                <img src="https://raw.githubusercontent.com/phudigital/gads-toolkit/main/assets/screenshot.png"
-                    alt="Dashboard">
-            </div>
+            <div class="space-y-16">
+                <div class="group">
+                    <h3 class="text-2xl md:text-3xl font-bold mb-6 text-primary flex items-center gap-3">
+                        <span>📊</span> Dashboard - Thống kê tổng quan
+                    </h3>
+                    <div class="overflow-hidden rounded-2xl shadow-2xl shadow-primary/20">
+                        <img src="https://raw.githubusercontent.com/phudigital/gads-toolkit/main/assets/screenshot.png"
+                            alt="Dashboard"
+                            class="w-full transform transition-transform duration-500 group-hover:scale-105">
+                    </div>
+                </div>
 
-            <div class="screenshot-item">
-                <h3>📈 Thống kê IP Ads chi tiết</h3>
-                <img src="https://raw.githubusercontent.com/phudigital/gads-toolkit/main/assets/screenshot1.png"
-                    alt="IP Stats">
-            </div>
+                <div class="group">
+                    <h3 class="text-2xl md:text-3xl font-bold mb-6 text-primary flex items-center gap-3">
+                        <span>📈</span> Thống kê IP Ads chi tiết
+                    </h3>
+                    <div class="overflow-hidden rounded-2xl shadow-2xl shadow-primary/20">
+                        <img src="https://raw.githubusercontent.com/phudigital/gads-toolkit/main/assets/screenshot1.png"
+                            alt="IP Stats"
+                            class="w-full transform transition-transform duration-500 group-hover:scale-105">
+                    </div>
+                </div>
 
-            <div class="screenshot-item">
-                <h3>🚫 Quản lý IP bị chặn</h3>
-                <img src="https://raw.githubusercontent.com/phudigital/gads-toolkit/main/assets/screenshot2.png"
-                    alt="Blocked IPs">
-            </div>
+                <div class="group">
+                    <h3 class="text-2xl md:text-3xl font-bold mb-6 text-primary flex items-center gap-3">
+                        <span>🚫</span> Quản lý IP bị chặn
+                    </h3>
+                    <div class="overflow-hidden rounded-2xl shadow-2xl shadow-primary/20">
+                        <img src="https://raw.githubusercontent.com/phudigital/gads-toolkit/main/assets/screenshot2.png"
+                            alt="Blocked IPs"
+                            class="w-full transform transition-transform duration-500 group-hover:scale-105">
+                    </div>
+                </div>
 
-            <div class="screenshot-item">
-                <h3>🔑 Cấu hình Google Ads API</h3>
-                <img src="https://raw.githubusercontent.com/phudigital/gads-toolkit/main/assets/screenshot3.png"
-                    alt="Google Ads Config">
-            </div>
+                <div class="group">
+                    <h3 class="text-2xl md:text-3xl font-bold mb-6 text-primary flex items-center gap-3">
+                        <span>🔑</span> Cấu hình Google Ads API
+                    </h3>
+                    <div class="overflow-hidden rounded-2xl shadow-2xl shadow-primary/20">
+                        <img src="https://raw.githubusercontent.com/phudigital/gads-toolkit/main/assets/screenshot3.png"
+                            alt="Google Ads Config"
+                            class="w-full transform transition-transform duration-500 group-hover:scale-105">
+                    </div>
+                </div>
 
-            <div class="screenshot-item">
-                <h3>🔔 Cấu hình Thông báo Telegram</h3>
-                <img src="https://raw.githubusercontent.com/phudigital/gads-toolkit/main/assets/screenshot4.png"
-                    alt="Notifications">
+                <div class="group">
+                    <h3 class="text-2xl md:text-3xl font-bold mb-6 text-primary flex items-center gap-3">
+                        <span>🔔</span> Cấu hình Thông báo Telegram
+                    </h3>
+                    <div class="overflow-hidden rounded-2xl shadow-2xl shadow-primary/20">
+                        <img src="https://raw.githubusercontent.com/phudigital/gads-toolkit/main/assets/screenshot4.png"
+                            alt="Notifications"
+                            class="w-full transform transition-transform duration-500 group-hover:scale-105">
+                    </div>
+                </div>
             </div>
         </div>
     </section>
 
     <!-- Features Section -->
-    <section class="features">
-        <div class="container">
-            <h2 class="section-title">Tính năng vượt trội</h2>
-            <p class="section-subtitle">Công nghệ tiên tiến, bảo vệ toàn diện</p>
-            <div class="features-grid">
-                <div class="feature-card">
-                    <div class="feature-icon">🎯</div>
-                    <h3>Đồng bộ tự động</h3>
-                    <p>Tự động đẩy IP độc hại lên Google Ads, chặn ở cấp tài khoản. Không cần thao tác thủ công.</p>
+    <section class="py-20 px-5 bg-white">
+        <div class="container mx-auto max-w-6xl">
+            <h2 class="text-3xl md:text-5xl font-extrabold text-center mb-3 text-dark">Tính năng vượt trội</h2>
+            <p class="text-center text-xl text-gray-600 mb-16">Công nghệ tiên tiến, bảo vệ toàn diện</p>
+
+            <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+                <!-- Feature 1 -->
+                <div
+                    class="bg-white p-8 rounded-3xl shadow-lg border-2 border-transparent hover:border-primary hover:-translate-y-2 transition-all duration-300">
+                    <div class="text-5xl mb-5">🎯</div>
+                    <h3 class="text-xl font-bold mb-3 text-primary">Đồng bộ tự động</h3>
+                    <p class="text-gray-600 leading-relaxed">Tự động đẩy IP độc hại lên Google Ads, chặn ở cấp tài
+                        khoản. Không cần thao tác thủ công.</p>
                 </div>
-                <div class="feature-card">
-                    <div class="feature-icon">⚡</div>
-                    <h3>Chặn tức thì</h3>
-                    <p>Phát hiện và chặn click ảo theo thời gian thực. Bot không có cơ hội lãng phí tiền của bạn.</p>
+                <!-- Feature 2 -->
+                <div
+                    class="bg-white p-8 rounded-3xl shadow-lg border-2 border-transparent hover:border-primary hover:-translate-y-2 transition-all duration-300">
+                    <div class="text-5xl mb-5">⚡</div>
+                    <h3 class="text-xl font-bold mb-3 text-primary">Chặn tức thì</h3>
+                    <p class="text-gray-600 leading-relaxed">Phát hiện và chặn click ảo theo thời gian thực. Bot không
+                        có cơ hội lãng phí tiền của bạn.</p>
                 </div>
-                <div class="feature-card">
-                    <div class="feature-icon">🧠</div>
-                    <h3>Smart Cross-IP</h3>
-                    <p>Chặn thiết bị đã bị cấm ngay cả khi đối thủ đổi IP. Công nghệ cookie tracking thông minh.</p>
+                <!-- Feature 3 -->
+                <div
+                    class="bg-white p-8 rounded-3xl shadow-lg border-2 border-transparent hover:border-primary hover:-translate-y-2 transition-all duration-300">
+                    <div class="text-5xl mb-5">🧠</div>
+                    <h3 class="text-xl font-bold mb-3 text-primary">Smart Cross-IP</h3>
+                    <p class="text-gray-600 leading-relaxed">Chặn thiết bị đã bị cấm ngay cả khi đối thủ đổi IP. Công
+                        nghệ cookie tracking thông minh.</p>
                 </div>
-                <div class="feature-card">
-                    <div class="feature-icon">📊</div>
-                    <h3>Thống kê chi tiết</h3>
-                    <p>Dashboard trực quan với biểu đồ phân tích traffic Ads vs Organic. Dễ dàng ra quyết định.</p>
+                <!-- Feature 4 -->
+                <div
+                    class="bg-white p-8 rounded-3xl shadow-lg border-2 border-transparent hover:border-primary hover:-translate-y-2 transition-all duration-300">
+                    <div class="text-5xl mb-5">📊</div>
+                    <h3 class="text-xl font-bold mb-3 text-primary">Thống kê chi tiết</h3>
+                    <p class="text-gray-600 leading-relaxed">Dashboard trực quan với biểu đồ phân tích traffic Ads vs
+                        Organic. Dễ dàng ra quyết định.</p>
                 </div>
-                <div class="feature-card">
-                    <div class="feature-icon">📱</div>
-                    <h3>Thông báo Telegram</h3>
-                    <p>Nhận cảnh báo tức thì khi phát hiện click ảo. Luôn kiểm soát mọi lúc mọi nơi.</p>
+                <!-- Feature 5 -->
+                <div
+                    class="bg-white p-8 rounded-3xl shadow-lg border-2 border-transparent hover:border-primary hover:-translate-y-2 transition-all duration-300">
+                    <div class="text-5xl mb-5">📱</div>
+                    <h3 class="text-xl font-bold mb-3 text-primary">Thông báo Telegram</h3>
+                    <p class="text-gray-600 leading-relaxed">Nhận cảnh báo tức thì khi phát hiện click ảo. Luôn kiểm
+                        soát mọi lúc mọi nơi.</p>
                 </div>
-                <div class="feature-card">
-                    <div class="feature-icon">🔒</div>
-                    <h3>Bảo mật tuyệt đối</h3>
-                    <p>Dữ liệu lưu trữ 100% trên server của bạn. Tuân thủ GDPR & CCPA.</p>
+                <!-- Feature 6 -->
+                <div
+                    class="bg-white p-8 rounded-3xl shadow-lg border-2 border-transparent hover:border-primary hover:-translate-y-2 transition-all duration-300">
+                    <div class="text-5xl mb-5">🔒</div>
+                    <h3 class="text-xl font-bold mb-3 text-primary">Bảo mật tuyệt đối</h3>
+                    <p class="text-gray-600 leading-relaxed">Dữ liệu lưu trữ 100% trên server của bạn. Tuân thủ GDPR &
+                        CCPA.</p>
                 </div>
             </div>
         </div>
     </section>
 
     <!-- Testimonials -->
-    <section class="testimonials">
-        <div class="container">
-            <h2 class="section-title" style="color: white;">Khách hàng nói gì về chúng tôi</h2>
-            <div class="testimonial-grid">
-                <div class="testimonial-card">
-                    <div class="stars">⭐⭐⭐⭐⭐</div>
-                    <blockquote>
+    <section class="py-20 px-5 bg-gradient-to-br from-primary to-secondary text-white">
+        <div class="container mx-auto max-w-6xl">
+            <h2 class="text-3xl md:text-5xl font-extrabold text-center mb-16">Khách hàng nói gì về chúng tôi</h2>
+
+            <div class="grid md:grid-cols-3 gap-8">
+                <div class="bg-white/10 backdrop-blur-md p-8 rounded-3xl border border-white/20">
+                    <div class="text-warning text-2xl mb-4">⭐⭐⭐⭐⭐</div>
+                    <blockquote class="text-lg italic mb-6 leading-relaxed">
                         "Sau 1 tháng sử dụng GAds Toolkit, chi phí quảng cáo của tôi giảm 40% nhưng số đơn hàng tăng
                         25%. Plugin này đáng từng đồng!"
                     </blockquote>
-                    <div class="author">- Nguyễn Văn A, Chủ shop thời trang online</div>
+                    <div class="font-bold opacity-90">- Nguyễn Văn A, Chủ shop thời trang online</div>
                 </div>
-                <div class="testimonial-card">
-                    <div class="stars">⭐⭐⭐⭐⭐</div>
-                    <blockquote>
+
+                <div class="bg-white/10 backdrop-blur-md p-8 rounded-3xl border border-white/20">
+                    <div class="text-warning text-2xl mb-4">⭐⭐⭐⭐⭐</div>
+                    <blockquote class="text-lg italic mb-6 leading-relaxed">
                         "Tôi quản lý 15 tài khoản Google Ads cho khách hàng. GAds Toolkit giúp tôi tiết kiệm hàng chục
                         triệu/tháng cho khách."
                     </blockquote>
-                    <div class="author">- Trần Thị B, Digital Marketing Agency</div>
+                    <div class="font-bold opacity-90">- Trần Thị B, Digital Marketing Agency</div>
                 </div>
-                <div class="testimonial-card">
-                    <div class="stars">⭐⭐⭐⭐⭐</div>
-                    <blockquote>
+
+                <div class="bg-white/10 backdrop-blur-md p-8 rounded-3xl border border-white/20">
+                    <div class="text-warning text-2xl mb-4">⭐⭐⭐⭐⭐</div>
+                    <blockquote class="text-lg italic mb-6 leading-relaxed">
                         "Giao diện đẹp, dễ dùng, hiệu quả cao. Đặc biệt là tính năng thông báo Telegram rất tiện!"
                     </blockquote>
-                    <div class="author">- Lê Văn C, Freelance Marketer</div>
+                    <div class="font-bold opacity-90">- Lê Văn C, Freelance Marketer</div>
                 </div>
             </div>
         </div>
     </section>
 
     <!-- ROI Section -->
-    <section class="roi-section">
-        <div class="container">
-            <h2 class="section-title">ROI ước tính</h2>
-            <div class="roi-box">
-                <div class="roi-stats">
-                    <div class="roi-stat">
-                        <div class="number">5-15 triệu</div>
-                        <div class="label">Tiết kiệm/tháng<br>(tùy ngân sách quảng cáo)</div>
+    <section class="py-20 px-5 bg-white">
+        <div class="container mx-auto max-w-4xl">
+            <h2 class="text-3xl md:text-5xl font-extrabold text-center mb-10 text-dark">ROI ước tính</h2>
+            <div
+                class="bg-gradient-to-br from-[#fff9e6] to-[#ffe6b3] p-10 md:p-14 rounded-3xl border-l-8 border-warning shadow-lg">
+                <div
+                    class="grid md:grid-cols-3 gap-10 text-center divide-y md:divide-y-0 md:divide-x divide-orange-200">
+                    <div class="pt-5 md:pt-0">
+                        <div class="text-4xl md:text-5xl font-black text-primary mb-3">5-15 triệu</div>
+                        <div class="text-lg text-gray-700">Tiết kiệm/tháng<br>(tùy ngân sách quảng cáo)</div>
                     </div>
-                    <div class="roi-stat">
-                        <div class="number">800K</div>
-                        <div class="label">Chi phí API Key/năm<br>(chưa VAT)</div>
+                    <div class="pt-5 md:pt-0">
+                        <div class="text-4xl md:text-5xl font-black text-primary mb-3">800K</div>
+                        <div class="text-lg text-gray-700">Chi phí API Key/năm<br>(chưa VAT)</div>
                     </div>
-                    <div class="roi-stat">
-                        <div class="number">1 tuần</div>
-                        <div class="label">Hoàn vốn<br>Trong vòng 1 tuần sử dụng</div>
+                    <div class="pt-5 md:pt-0">
+                        <div class="text-4xl md:text-5xl font-black text-primary mb-3">1 tuần</div>
+                        <div class="text-lg text-gray-700">Hoàn vốn<br>Trong vòng 1 tuần sử dụng</div>
                     </div>
                 </div>
             </div>
@@ -782,68 +346,114 @@
     </section>
 
     <!-- Pricing Section -->
-    <section class="pricing" id="pricing">
-        <div class="container">
-            <h2 class="section-title">Bảng giá API Key</h2>
-            <p class="section-subtitle">Chọn gói phù hợp với nhu cầu của bạn</p>
-            <div class="pricing-grid">
-                <div class="pricing-card" style="border: 3px solid #ffc107;">
-                    <h3 style="color: #ffc107;">Trial</h3>
-                    <div class="price" style="color: #ffc107;">MIỄN PHÍ<span>/10 ngày</span></div>
-                    <p class="price-note" style="color: #ffc107;">🎁 Dùng thử đầy đủ tính năng Pro</p>
-                    <ul class="pricing-features">
-                        <li>Tất cả tính năng Pro</li>
-                        <li>Đồng bộ tự động Google Ads</li>
-                        <li>Smart Cross-IP Blocking</li>
-                        <li>Thông báo Telegram</li>
-                        <li>Dashboard thống kê</li>
-                        <li>Không cần thẻ tín dụng</li>
+    <section class="py-20 px-5 bg-light" id="pricing">
+        <div class="container mx-auto max-w-7xl">
+            <h2 class="text-3xl md:text-5xl font-extrabold text-center mb-3 text-dark">Bảng giá API Key</h2>
+            <p class="text-center text-xl text-gray-600 mb-16">Chọn gói phù hợp với nhu cầu của bạn</p>
+
+            <div class="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto items-start">
+
+                <!-- Trial Plan -->
+                <div
+                    class="bg-white p-10 rounded-3xl shadow-lg border-2 border-warning relative hover:-translate-y-2 transition-all duration-300">
+                    <div
+                        class="absolute top-0 right-0 bg-warning text-white font-bold px-4 py-1 rounded-bl-xl rounded-tr-2xl text-sm">
+                        POPULAR</div>
+                    <h3 class="text-2xl font-bold mb-4 text-warning">Trial</h3>
+                    <div class="text-5xl font-black text-warning mb-2">MIỄN PHÍ<span
+                            class="text-lg font-medium text-gray-500">/10 ngày</span></div>
+                    <p class="text-sm font-bold text-warning mb-6">🎁 Tặng key dùng thử tính năng Pro</p>
+
+                    <ul class="space-y-4 mb-8">
+                        <li class="flex items-center gap-3"><span class="font-bold text-success text-xl">✓</span> Trải
+                            nghiệm full tính năng Pro</li>
+                        <li class="flex items-center gap-3"><span class="font-bold text-success text-xl">✓</span> Đồng
+                            bộ tự động Google Ads</li>
+                        <li class="flex items-center gap-3"><span class="font-bold text-success text-xl">✓</span> Smart
+                            Cross-IP Blocking</li>
+                        <li class="flex items-center gap-3"><span class="font-bold text-success text-xl">✓</span> Thông
+                            báo Telegram</li>
+                        <li class="flex items-center gap-3"><span class="font-bold text-success text-xl">✓</span>
+                            Dashboard thống kê</li>
+                        <li class="flex items-center gap-3"><span class="font-bold text-success text-xl">✓</span> Không
+                            cần thẻ tín dụng</li>
                     </ul>
-                    <a href="mailto:phu@pdl.vn?subject=Đăng ký Trial 10 ngày - GAds Toolkit" class="btn btn-primary"
-                        style="width: 100%; justify-content: center; background: #ffc107; color: #000;">Dùng thử
-                        ngay</a>
+
+                    <a href="mailto:phu@pdl.vn?subject=Đăng ký Trial 10 ngày - GAds Toolkit"
+                        class="block w-full text-center py-4 rounded-xl border-2 border-primary text-primary font-bold hover:bg-primary hover:text-white transition-colors">
+                        Đăng ký ngay
+                    </a>
                 </div>
 
+                <!-- Monthly Plan -->
+                <div
+                    class="bg-white p-10 rounded-3xl shadow-lg border-2 border-transparent hover:border-primary hover:-translate-y-2 transition-all duration-300">
+                    <h3 class="text-2xl font-bold mb-4 text-primary">Monthly</h3>
+                    <div class="text-5xl font-black text-dark mb-2">100K<span
+                            class="text-lg font-medium text-gray-500">/tháng</span></div>
+                    <p class="text-sm text-danger mb-6">* Chưa bao gồm VAT</p>
 
-
-                <div class="pricing-card">
-                    <h3>Monthly</h3>
-                    <div class="price">100K<span>/tháng</span></div>
-                    <p class="price-note">* Chưa bao gồm VAT</p>
-                    <ul class="pricing-features">
-                        <li>Tất cả tính năng Pro</li>
-                        <li>Thanh toán linh hoạt</li>
-                        <li>Support ưu tiên</li>
-                        <li>Hỗ trợ cài đặt</li>
-                        <li>Cập nhật miễn phí</li>
-                        <li>Cam kết hoàn tiền nếu không hiệu quả</li>
+                    <ul class="space-y-4 mb-8">
+                        <li class="flex items-center gap-3"><span class="font-bold text-success text-xl">✓</span> Tất cả
+                            tính năng Pro</li>
+                        <li class="flex items-center gap-3"><span class="font-bold text-success text-xl">✓</span> Thanh
+                            toán linh hoạt</li>
+                        <li class="flex items-center gap-3"><span class="font-bold text-success text-xl">✓</span>
+                            Support ưu tiên</li>
+                        <li class="flex items-center gap-3"><span class="font-bold text-success text-xl">✓</span> Hỗ trợ
+                            cài đặt</li>
+                        <li class="flex items-center gap-3"><span class="font-bold text-success text-xl">✓</span> Cập
+                            nhật miễn phí</li>
+                        <li class="flex items-center gap-3"><span class="font-bold text-success text-xl">✓</span> Hoàn
+                            tiền nếu không hiệu quả</li>
                     </ul>
-                    <a href="mailto:phu@pdl.vn?subject=Mua gói Monthly - GAds Toolkit" class="btn btn-primary"
-                        style="width: 100%; justify-content: center;">Mua ngay</a>
+
+                    <a href="mailto:phu@pdl.vn?subject=Mua gói Monthly - GAds Toolkit"
+                        class="block w-full text-center py-4 rounded-xl bg-primary text-white font-bold shadow-lg hover:bg-primary-dark hover:shadow-xl transition-all">
+                        Mua ngay
+                    </a>
                 </div>
 
-                <div class="pricing-card featured">
-                    <h3>Yearly</h3>
-                    <div class="price">800K<span>/năm</span></div>
-                    <p class="price-note">* Chưa bao gồm VAT</p>
-                    <ul class="pricing-features">
-                        <li>Tất cả tính năng Pro</li>
-                        <li><strong>Tiết kiệm 33%</strong></li>
-                        <li>Smart Cross-IP Blocking</li>
-                        <li>Tư vấn setup chuyên sâu</li>
-                        <li>Hỗ trợ 24/7</li>
-                        <li>Cam kết hoàn tiền nếu không hiệu quả</li>
+                <!-- Yearly Plan (Featured) -->
+                <div
+                    class="bg-white p-10 rounded-3xl shadow-2xl border-2 border-primary relative transform scale-105 z-10">
+                    <div
+                        class="absolute -top-4 left-1/2 -translate-x-1/2 bg-primary text-white px-6 py-2 rounded-full font-bold text-sm shadow-lg tracking-wide">
+                        TIẾT KIỆM 33%
+                    </div>
+                    <h3 class="text-2xl font-bold mb-4 text-primary">Yearly</h3>
+                    <div class="text-5xl font-black text-dark mb-2">800K<span
+                            class="text-lg font-medium text-gray-500">/năm</span></div>
+                    <p class="text-sm text-danger mb-6">* Chưa bao gồm VAT</p>
+
+                    <ul class="space-y-4 mb-8">
+                        <li class="flex items-center gap-3"><span class="font-bold text-success text-xl">✓</span> Tất cả
+                            tính năng Pro</li>
+                        <li class="flex items-center gap-3"><span class="font-bold text-success text-xl">✓</span>
+                            <strong>Tiết kiệm 33%</strong></li>
+                        <li class="flex items-center gap-3"><span class="font-bold text-success text-xl">✓</span> Smart
+                            Cross-IP Blocking</li>
+                        <li class="flex items-center gap-3"><span class="font-bold text-success text-xl">✓</span> Tư vấn
+                            setup chuyên sâu</li>
+                        <li class="flex items-center gap-3"><span class="font-bold text-success text-xl">✓</span> Hỗ trợ
+                            24/7</li>
+                        <li class="flex items-center gap-3"><span class="font-bold text-success text-xl">✓</span> Hoàn
+                            tiền nếu không hiệu quả</li>
                     </ul>
-                    <a href="mailto:phu@pdl.vn?subject=Mua gói Yearly - GAds Toolkit" class="btn btn-primary"
-                        style="width: 100%; justify-content: center;">Mua ngay</a>
+
+                    <a href="mailto:phu@pdl.vn?subject=Mua gói Yearly - GAds Toolkit"
+                        class="block w-full text-center py-4 rounded-xl bg-primary text-white font-bold shadow-lg hover:bg-primary-dark hover:shadow-xl transition-all">
+                        Mua ngay
+                    </a>
                 </div>
+
             </div>
 
-            <div
-                style="text-align: center; margin-top: 50px; padding: 40px; background: white; border-radius: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.08);">
-                <h3 style="color: var(--primary); margin-bottom: 20px; font-size: 1.8rem;">🎁 Ưu đãi đặc biệt</h3>
-                <p style="font-size: 1.3rem; color: var(--dark); line-height: 1.8;">
-                    Mua gói năm nhận <strong style="color: var(--success);">TIẾT KIỆM 33%</strong> so với mua lẻ<br>
+            <!-- Special Offer -->
+            <div class="max-w-4xl mx-auto mt-16 p-10 bg-white rounded-3xl shadow-lg text-center border border-gray-100">
+                <h3 class="text-2xl md:text-3xl font-bold text-primary mb-4">🎁 Ưu đãi đặc biệt</h3>
+                <p class="text-xl leading-relaxed text-dark">
+                    Mua gói năm nhận <strong class="text-success">TIẾT KIỆM 33%</strong> so với mua lẻ<br>
                     + <strong>Tư vấn setup miễn phí</strong>
                 </p>
             </div>
@@ -852,144 +462,117 @@
 
 
     <!-- SEO Content Section -->
-    <section class="seo-content" style="padding: 80px 20px; background: white;">
-        <div class="container">
-            <h2 class="section-title">Plugin WordPress chặn click ảo Google Ads hiệu quả nhất</h2>
-            <div style="max-width: 900px; margin: 0 auto; font-size: 1.1rem; line-height: 1.8; color: var(--gray);">
-                <p style="margin-bottom: 20px;">
-                    <strong style="color: var(--dark);">GAds Toolkit</strong> là <a href="#features"
-                        style="color: var(--primary); text-decoration: none; font-weight: 600;">plugin WordPress chặn
+    <section class="py-20 px-5 bg-white">
+        <div class="container mx-auto max-w-4xl prose prose-lg prose-headings:text-primary">
+            <h2 class="text-center font-extrabold text-3xl mb-10">Plugin WordPress chặn click ảo Google Ads hiệu quả
+                nhất</h2>
+            <div class="text-gray-600 leading-relaxed">
+                <p class="mb-5">
+                    <strong class="text-dark">GAds Toolkit</strong> là <a href="#features"
+                        class="text-primary font-bold no-underline hover:underline">plugin WordPress chặn
                         click ảo Google Ads</a> được tin dùng bởi hàng trăm doanh nghiệp tại Việt Nam. Với công nghệ AI
                     và machine learning tiên tiến, plugin giúp bạn <strong>phát hiện và chặn click ảo tự động</strong>,
                     bảo vệ ngân sách quảng cáo khỏi các cuộc tấn công từ bot và đối thủ cạnh tranh.
                 </p>
 
-                <h3 style="font-size: 1.8rem; margin: 40px 0 20px; color: var(--primary);">Tại sao GAds Toolkit là
+                <h3 class="text-2xl font-bold mt-10 mb-5 text-primary">Tại sao GAds Toolkit là
                     plugin WordPress chặn click ảo tốt nhất?</h3>
-                <p style="margin-bottom: 20px;">
-                    Khác với các <a href="#pricing" style="color: var(--primary); text-decoration: none;">plugin
+                <p class="mb-5">
+                    Khác với các <a href="#pricing" class="text-primary font-bold no-underline hover:underline">plugin
                         WordPress chặn click ảo Google Ads</a> khác trên thị trường, GAds Toolkit không chỉ đơn thuần
                     chặn IP mà còn tích hợp <strong>Smart Cross-IP Blocking</strong> - công nghệ độc quyền giúp nhận
                     diện và chặn thiết bị đã bị cấm ngay cả khi chúng thay đổi địa chỉ IP.
                 </p>
 
-                <div
-                    style="background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); padding: 30px; border-radius: 15px; border-left: 5px solid var(--primary); margin: 30px 0;">
-                    <h4 style="font-size: 1.5rem; margin-bottom: 15px; color: var(--primary);">🎯 Lợi ích vượt trội của
+                <div class="bg-gradient-to-br from-blue-50 to-blue-100 p-8 rounded-3xl border-l-8 border-primary my-10">
+                    <h4 class="text-xl font-bold mb-5 text-primary">🎯 Lợi ích vượt trội của
                         plugin WordPress chặn click ảo GAds Toolkit:</h4>
-                    <ul style="list-style: none; padding: 0;">
-                        <li style="padding: 10px 0; padding-left: 30px; position: relative;">
-                            <span
-                                style="position: absolute; left: 0; color: var(--success); font-weight: bold;">✓</span>
-                            <strong>Đồng bộ tự động</strong> với Google Ads API - Không cần upload thủ công
-                        </li>
-                        <li style="padding: 10px 0; padding-left: 30px; position: relative;">
-                            <span
-                                style="position: absolute; left: 0; color: var(--success); font-weight: bold;">✓</span>
-                            <strong>Chặn real-time</strong> - Phát hiện và chặn click ảo trong vòng 1 giây
-                        </li>
-                        <li style="padding: 10px 0; padding-left: 30px; position: relative;">
-                            <span
-                                style="position: absolute; left: 0; color: var(--success); font-weight: bold;">✓</span>
-                            <strong>Hỗ trợ IPv6</strong> - Bảo vệ toàn diện trên mọi loại kết nối
-                        </li>
-                        <li style="padding: 10px 0; padding-left: 30px; position: relative;">
-                            <span
-                                style="position: absolute; left: 0; color: var(--success); font-weight: bold;">✓</span>
-                            <strong>Dashboard trực quan</strong> - Theo dõi và phân tích dễ dàng
-                        </li>
-                        <li style="padding: 10px 0; padding-left: 30px; position: relative;">
-                            <span
-                                style="position: absolute; left: 0; color: var(--success); font-weight: bold;">✓</span>
-                            <strong>Giá cả hợp lý</strong> - Chỉ 100.000 VNĐ/tháng
-                        </li>
+                    <ul class="space-y-3 list-none p-0 m-0">
+                        <li class="pl-8 relative"><span class="absolute left-0 text-success font-bold">✓</span>
+                            <strong>Đồng bộ tự động</strong> với Google Ads API - Không cần upload thủ công</li>
+                        <li class="pl-8 relative"><span class="absolute left-0 text-success font-bold">✓</span>
+                            <strong>Chặn real-time</strong> - Phát hiện và chặn click ảo trong vòng 1 giây</li>
+                        <li class="pl-8 relative"><span class="absolute left-0 text-success font-bold">✓</span>
+                            <strong>Hỗ trợ IPv6</strong> - Bảo vệ toàn diện trên mọi loại kết nối</li>
+                        <li class="pl-8 relative"><span class="absolute left-0 text-success font-bold">✓</span>
+                            <strong>Dashboard trực quan</strong> - Theo dõi và phân tích dễ dàng</li>
+                        <li class="pl-8 relative"><span class="absolute left-0 text-success font-bold">✓</span>
+                            <strong>Giá cả hợp lý</strong> - Chỉ 100.000 VNĐ/tháng</li>
                     </ul>
                 </div>
 
-                <h3 style="font-size: 1.8rem; margin: 40px 0 20px; color: var(--primary);">Cách hoạt động của plugin
+                <h3 class="text-2xl font-bold mt-10 mb-5 text-primary">Cách hoạt động của plugin
                     WordPress chặn click ảo</h3>
-                <p style="margin-bottom: 20px;">
-                    <a href="#screenshots"
-                        style="color: var(--primary); text-decoration: none; font-weight: 600;">Plugin WordPress chặn
+                <p class="mb-5">
+                    <a href="#screenshots" class="text-primary font-bold no-underline hover:underline">Plugin WordPress
+                        chặn
                         click ảo Google Ads</a> GAds Toolkit hoạt động theo 4 bước đơn giản:
                 </p>
-                <ol style="padding-left: 20px; margin-bottom: 30px;">
-                    <li style="margin-bottom: 15px;"><strong>Theo dõi:</strong> Plugin tự động ghi nhận mọi click vào
+                <ol class="pl-5 space-y-4 mb-8 list-decimal">
+                    <li><strong>Theo dõi:</strong> Plugin tự động ghi nhận mọi click vào
                         quảng cáo Google Ads trên website của bạn</li>
-                    <li style="margin-bottom: 15px;"><strong>Phân tích:</strong> AI phân tích hành vi người dùng để phát
+                    <li><strong>Phân tích:</strong> AI phân tích hành vi người dùng để phát
                         hiện các dấu hiệu click ảo (click quá nhanh, cùng IP, không tương tác...)</li>
-                    <li style="margin-bottom: 15px;"><strong>Chặn:</strong> Tự động chặn IP nghi ngờ tại website và đồng
+                    <li><strong>Chặn:</strong> Tự động chặn IP nghi ngờ tại website và đồng
                         bộ lên Google Ads</li>
-                    <li style="margin-bottom: 15px;"><strong>Thông báo:</strong> Gửi cảnh báo qua Telegram để bạn luôn
+                    <li><strong>Thông báo:</strong> Gửi cảnh báo qua Telegram để bạn luôn
                         nắm bắt tình hình</li>
                 </ol>
 
-                <h3 style="font-size: 1.8rem; margin: 40px 0 20px; color: var(--primary);">So sánh với các plugin
+                <h3 class="text-2xl font-bold mt-10 mb-5 text-primary">So sánh với các plugin
                     WordPress chặn click ảo khác</h3>
-                <div style="overflow-x: auto; margin: 30px 0;">
-                    <table
-                        style="width: 100%; border-collapse: collapse; background: white; box-shadow: 0 4px 20px rgba(0,0,0,0.08); border-radius: 10px; overflow: hidden;">
+                <div class="overflow-x-auto my-8 rounded-xl shadow-lg">
+                    <table class="w-full text-left border-collapse bg-white">
                         <thead>
-                            <tr
-                                style="background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%); color: white;">
-                                <th style="padding: 15px; text-align: left;">Tính năng</th>
-                                <th style="padding: 15px; text-align: center;">GAds Toolkit</th>
-                                <th style="padding: 15px; text-align: center;">Plugin khác</th>
+                            <tr class="bg-gradient-to-r from-primary to-secondary text-white">
+                                <th class="p-4">Tính năng</th>
+                                <th class="p-4 text-center">GAds Toolkit</th>
+                                <th class="p-4 text-center">Plugin khác</th>
                             </tr>
                         </thead>
                         <tbody>
-                            <tr style="border-bottom: 1px solid #eee;">
-                                <td style="padding: 15px;">Đồng bộ tự động Google Ads</td>
-                                <td
-                                    style="padding: 15px; text-align: center; color: var(--success); font-weight: bold;">
-                                    ✓</td>
-                                <td style="padding: 15px; text-align: center; color: var(--danger);">✗</td>
+                            <tr class="border-b border-gray-100">
+                                <td class="p-4">Đồng bộ tự động Google Ads</td>
+                                <td class="p-4 text-center text-success font-bold">✓</td>
+                                <td class="p-4 text-center text-danger">✗</td>
                             </tr>
-                            <tr style="border-bottom: 1px solid #eee; background: #f9f9f9;">
-                                <td style="padding: 15px;">Smart Cross-IP Blocking</td>
-                                <td
-                                    style="padding: 15px; text-align: center; color: var(--success); font-weight: bold;">
-                                    ✓</td>
-                                <td style="padding: 15px; text-align: center; color: var(--danger);">✗</td>
+                            <tr class="border-b border-gray-100 bg-gray-50">
+                                <td class="p-4">Smart Cross-IP Blocking</td>
+                                <td class="p-4 text-center text-success font-bold">✓</td>
+                                <td class="p-4 text-center text-danger">✗</td>
                             </tr>
-                            <tr style="border-bottom: 1px solid #eee;">
-                                <td style="padding: 15px;">Hỗ trợ IPv6</td>
-                                <td
-                                    style="padding: 15px; text-align: center; color: var(--success); font-weight: bold;">
-                                    ✓</td>
-                                <td style="padding: 15px; text-align: center; color: var(--warning);">Một số</td>
+                            <tr class="border-b border-gray-100">
+                                <td class="p-4">Hỗ trợ IPv6</td>
+                                <td class="p-4 text-center text-success font-bold">✓</td>
+                                <td class="p-4 text-center text-warning">Một số</td>
                             </tr>
-                            <tr style="border-bottom: 1px solid #eee; background: #f9f9f9;">
-                                <td style="padding: 15px;">Thông báo Telegram</td>
-                                <td
-                                    style="padding: 15px; text-align: center; color: var(--success); font-weight: bold;">
-                                    ✓</td>
-                                <td style="padding: 15px; text-align: center; color: var(--danger);">✗</td>
+                            <tr class="border-b border-gray-100 bg-gray-50">
+                                <td class="p-4">Thông báo Telegram</td>
+                                <td class="p-4 text-center text-success font-bold">✓</td>
+                                <td class="p-4 text-center text-danger">✗</td>
                             </tr>
                             <tr>
-                                <td style="padding: 15px;">Giá/tháng</td>
-                                <td
-                                    style="padding: 15px; text-align: center; color: var(--success); font-weight: bold;">
-                                    100K/tháng</td>
-                                <td style="padding: 15px; text-align: center;">500K+ /tháng</td>
+                                <td class="p-4">Giá/tháng</td>
+                                <td class="p-4 text-center text-success font-bold">100K/tháng</td>
+                                <td class="p-4 text-center">500K+ /tháng</td>
                             </tr>
                         </tbody>
                     </table>
                 </div>
 
-                <p style="margin: 30px 0 20px;">
+                <p class="mt-8 mb-5">
                     Với hơn <strong>500+ website đang sử dụng</strong>, GAds Toolkit đã chứng minh là <a
-                        href="#testimonials"
-                        style="color: var(--primary); text-decoration: none; font-weight: 600;">plugin WordPress chặn
+                        href="#testimonials" class="text-primary font-bold no-underline hover:underline">plugin
+                        WordPress chặn
                         click ảo Google Ads</a> đáng tin cậy nhất tại Việt Nam. Đừng để ngân sách quảng cáo của bạn bị
-                    lãng phí - <a href="#pricing"
-                        style="color: var(--primary); text-decoration: none; font-weight: 600;">bắt đầu sử dụng ngay hôm
+                    lãng phí - <a href="#pricing" class="text-primary font-bold no-underline hover:underline">bắt đầu sử
+                        dụng ngay hôm
                         nay</a> với giá chỉ 100.000 VNĐ/tháng!
                 </p>
 
-                <div style="text-align: center; margin-top: 40px;">
-                    <a href="#pricing" class="btn btn-primary"
-                        style="display: inline-flex; align-items: center; gap: 10px; text-decoration: none;">
+                <div class="text-center mt-12">
+                    <a href="#pricing"
+                        class="inline-flex items-center gap-2 px-8 py-4 bg-primary text-white rounded-xl font-bold hover:bg-primary-dark transition-all shadow-lg hover:shadow-xl no-underline">
                         🚀 Dùng thử plugin WordPress chặn click ảo ngay
                     </a>
                 </div>
@@ -997,31 +580,39 @@
         </div>
     </section>
 
-    <!-- CTA Section -->
-    <section class="cta-section">
-        <div class="container">
-            <h2>Đừng để ngân sách quảng cáo bị lãng phí!</h2>
-            <p>Bắt đầu bảo vệ ngân sách Google Ads của bạn ngay hôm nay</p>
-            <div class="cta-buttons">
-                <a href="mailto:phu@pdl.vn?subject=Tư vấn GAds Toolkit" class="btn btn-primary">📧 Liên hệ tư vấn</a>
-                <a href="tel:0961330088" class="btn btn-secondary">📞 Gọi ngay: 0961 330 088</a>
+    <!-- UI CTA Section -->
+    <section class="py-24 px-5 bg-gradient-to-br from-primary to-secondary text-white text-center">
+        <div class="container mx-auto max-w-4xl">
+            <h2 class="text-3xl md:text-5xl font-extrabold mb-6">Đừng để ngân sách quảng cáo bị lãng phí!</h2>
+            <p class="text-xl opacity-90 mb-12">Bắt đầu bảo vệ ngân sách Google Ads của bạn ngay hôm nay</p>
+            <div class="flex flex-col md:flex-row gap-5 justify-center">
+                <a href="mailto:phu@pdl.vn?subject=Tư vấn GAds Toolkit"
+                    class="inline-flex items-center justify-center gap-2 px-8 py-4 bg-white text-primary rounded-2xl font-bold text-lg shadow-lg hover:shadow-2xl hover:bg-gray-50 transition-all duration-300">
+                    📧 Liên hệ tư vấn
+                </a>
+                <a href="tel:0961330088"
+                    class="inline-flex items-center justify-center gap-2 px-8 py-4 bg-transparent border-2 border-white text-white rounded-2xl font-bold text-lg hover:bg-white hover:text-primary transition-all duration-300">
+                    📞 Gọi ngay: 0961 330 088
+                </a>
             </div>
         </div>
     </section>
 
-
-
     <!-- Footer -->
-    <footer>
-        <div class="container">
-            <p><strong>CÔNG TY TNHH GIẢI PHÁP PDL</strong></p>
-            <p style="margin: 15px 0; opacity: 0.8;">Giải pháp Marketing & Technology chuyên nghiệp</p>
-            <p>© 2026 PDL Solutions. All rights reserved.</p>
-            <p style="margin-top: 20px;">
-                <a href="https://github.com/phudigital/gads-toolkit" target="_blank">GitHub</a> |
-                <a href="mailto:phu@pdl.vn">Support</a> |
-                <a href="https://pdl.vn" target="_blank">Website</a>
-            </p>
+    <footer class="bg-[#0d1117] text-white py-12 px-5 text-center">
+        <div class="container mx-auto">
+            <p class="font-bold text-lg mb-2">CÔNG TY TNHH GIẢI PHÁP PDL</p>
+            <p class="opacity-80 mb-6">Giải pháp Marketing & Technology chuyên nghiệp</p>
+            <p class="text-sm opacity-60">© 2026 PDL Solutions. All rights reserved.</p>
+            <div class="mt-6 space-x-4">
+                <a href="https://github.com/phudigital/gads-toolkit" target="_blank"
+                    class="text-primary hover:text-white transition-colors">GitHub</a>
+                <span class="opacity-30">|</span>
+                <a href="mailto:phu@pdl.vn" class="text-primary hover:text-white transition-colors">Support</a>
+                <span class="opacity-30">|</span>
+                <a href="https://pdl.vn" target="_blank"
+                    class="text-primary hover:text-white transition-colors">Website</a>
+            </div>
         </div>
     </footer>
 
@@ -1033,7 +624,7 @@
         "name": "GAds Toolkit - Phần mềm chống click ảo Google Ads",
         "applicationCategory": "BusinessApplication",
         "operatingSystem": "WordPress 5.0+",
-                        "offers": [
+        "offers": [
             {
                 "@type": "Offer",
                 "price": "0",
