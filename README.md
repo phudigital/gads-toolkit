@@ -1,46 +1,61 @@
-# 🛡️ GAds Toolkit - Chống Click Ảo Toàn Diện cho Google Ads
+# Phần mềm chống click ảo Google Ads (GAds Toolkit) - Plugin WordPress Tối Ưu
 
 ![Version](https://img.shields.io/badge/Version-3.6.12-blue?style=flat-square)
 ![WordPress](https://img.shields.io/badge/WordPress-5.8%2B-blueviolet?style=flat-square)
 ![PHP](https://img.shields.io/badge/PHP-7.4%2B-8892bf?style=flat-square)
 ![License](https://img.shields.io/badge/License-GPLv2-green?style=flat-square)
 
-**GAds Toolkit** là giải pháp WordPress chuyên nghiệp giúp theo dõi, phân tích và tự động chặn các hành vi click ảo, click tặc từ quảng cáo Google Ads. Hệ thống sử dụng công nghệ chặn Real-time kết hợp với Google Ads API để bảo vệ ngân sách quảng cáo của bạn 24/7.
+**GAds Toolkit** là **phần mềm chống click ảo** chuyên dụng dành cho **WordPress**, giúp bảo vệ ngân sách quảng cáo của bạn khỏi nạn "click tặc". Với cơ chế chặn IP real-time và đồng bộ tự động với Google Ads API, đây là **plugin wordpress chống click ảo** hiệu quả nhất hiện nay.
 
-![GAds Toolkit Dashboard](assets/screenshot.png)
+![Giao diện phần mềm chống click ảo](assets/screenshot.png)
 
-## ✨ Tính năng nổi bật
+## 🚀 Tại sao nên dùng phần mềm chống click ảo này?
 
-- **🔍 Theo dõi Real-time:** Ghi lại mọi lượt truy cập kèm theo `gclid`, thông tin thiết bị và hành vi.
-- **⚡ Chặn IP Tức thì (Real-time Block):** Tự động chặn IP ngay khi phát hiện vi phạm quy tắc (số click/thời gian) mà không cần chờ đợi.
-- **🔗 Đồng bộ Google Ads API:** Tự động đẩy IP bị chặn vào danh sách loại trừ (IP Exclusions) của tài khoản Google Ads.
-- **📱 Smart Cross-IP Blocking:** Sử dụng công nghệ Cookie Tagging để nhận diện và chặn kẻ tấn công ngay cả khi họ đổi từ IPv4 sang IPv6 hoặc ngược lại.
-- **🌐 Hỗ trợ Dual-Stack:** Hỗ trợ đầy đủ cả IPv4 và IPv6.
-- **📊 Dashboard Thông Minh:** Xem báo cáo theo ngày (7, 15, 30, 60, 180 ngày hoặc Hôm nay) với biểu đồ trực quan.
-- **🗂️ Quản Lý IP Nâng Cao:** Lọc IP bị chặn theo ngày, số phiên, copy danh sách dễ dàng.
-- **🔔 Thông báo đa kênh:** Cảnh báo ngay lập tức qua Telegram và Email kèm báo cáo traffic hàng ngày.
-- **🚀 Tối ưu hiệu suất:** Cơ chế Cron-job server-side đảm bảo hệ thống hoạt động ổn định ngay cả khi website không có người truy cập.
+Nếu bạn đang chạy quảng cáo và ngân sách bị "đốt" bởi đối thủ hoặc bot, **GAds Toolkit** là giải pháp bạn cần. Plugin này giúp:
+
+- **Ngăn chặn click tặc** 24/7.
+- **Tiết kiệm chi phí** quảng cáo lên đến 30-50%.
+- **Tăng hiệu quả chiến dịch** bằng cách loại bỏ traffic rác.
+
+## ✨ Tính năng chính của Plugin chống click ảo
+
+- **🔍 Theo dõi & Phân tích Real-time:** Ghi nhận mọi lượt truy cập từ quảng cáo (gclid), phân tích thiết bị và hành vi người dùng.
+- **⚡ Chặn click ảo tự động:** Hệ thống tự động phát hiện và chặn IP ngay lập tức khi vi phạm quy tắc (ví dụ: click 3 lần trong 1 giờ).
+- **🔗 Đồng bộ Google Ads API:** Tự động gửi IP bị chặn vào danh sách _IP Exclusions_ của chiến dịch Google Ads, ngăn chặn hiển thị quảng cáo cho kẻ tấn công.
+- **📱 Smart Cross-IP Blocking:** Sử dụng công nghệ Cookie Tagging để chặn người dùng cố tình đổi IP (từ IPv4 sang IPv6) để tiếp tục click.
+- **📊 Báo cáo trực quan:** Dashboard hiển thị chi tiết lượng click ảo, click thực, và danh sách IP đã chặn.
 
 ## 🛠️ Yêu cầu hệ thống
 
+Để sử dụng **plugin chống click ảo** này, website của bạn cần:
+
 - **WordPress:** 5.0 trở lên.
-- **PHP:** 7.4 hoặc 8.x (Có cài đặt module cURL).
-- **Server:** Khuyến nghị Linux (Ubuntu 20/22) có hỗ trợ IPv6.
-- **Google Ads API:** Yêu cầu Developer Token và quyền truy cập API.
+- **PHP:** 7.4 hoặc 8.x (Hỗ trợ cURL).
+- **Server:** VPS hoặc Hosting Linux (khuyến nghị hỗ trợ IPv6).
 
-## 📥 Cài đặt nhanh
+## 🔑 Đăng ký API Key & Cấu hình
 
-1. Copy thư mục `gads-toolkit` vào thư mục `/wp-content/plugins/`.
-2. Truy cập WordPress Admin -> Plugins -> **Activate**.
-3. Cấu hình các thông số cơ bản tại menu **GAds Toolkit**.
+Phần mềm hoạt động với hai chế độ:
 
-## 📖 Tài liệu hướng dẫn
+1.  **Chế độ cơ bản (Miễn phí):** Theo dõi traffic, thống kê click.
+2.  **Chế độ nâng cao (Premium):** Kích hoạt tính năng **Chặn tự động Real-time** và **Đồng bộ Google Ads API**.
 
-Để hệ thống hoạt động hiệu quả nhất, vui lòng tham khảo các tài liệu sau:
+> **Lưu ý:** Để kích hoạt tính năng chặn tự động và đồng bộ API cao cấp, bạn cần đăng ký **API Key**.
+>
+> 📧 Vui lòng liên hệ: **[phu@pdl.vn](mailto:phu@pdl.vn)** để nhận báo giá và API Key kích hoạt.
 
-- [Hướng dẫn cấu hình chi tiết (SETUP-GUIDE.md)](./help/SETUP-GUIDE.md): Cấu hình API, Server Cron và Notifications.
-- [Chiến lược chặn IP (IP-DOCS-README.md)](./help/IP-DOCS-README.md): Tài liệu về IPv4/IPv6 và Cloudflare.
+## 📥 Hướng dẫn cài đặt Plugin
+
+1.  Tải hoặc copy thư mục `gads-toolkit` vào `/wp-content/plugins/`.
+2.  Kích hoạt plugin tại menu **Plugins** trong WordPress Admin.
+3.  Vào menu **GAds Toolkit** để xem báo cáo.
+4.  Liên hệ **phu@pdl.vn** để lấy API Key cấu hình các tính năng chặn nâng cao.
+
+## 📖 Tài liệu tham khảo
+
+- [Hướng dẫn cấu hình chi tiết](help/SETUP-GUIDE.md)
+- [Chiến lược chặn IP hiệu quả](help/IP-DOCS-README.md)
 
 ---
 
-© 2026 GAds Toolkit - Designed for Advanced Ad Protection.
+© 2026 GAds Toolkit - **Phần mềm chống click ảo Google Ads** tốt nhất cho WordPress.
