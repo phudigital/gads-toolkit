@@ -1,13 +1,40 @@
 # 🛡️ Phần mềm chống click ảo Google Ads - GAds Toolkit
 
-![Version](https://img.shields.io/badge/version-3.6.12-blue.svg)
+![Version](https://img.shields.io/badge/version-3.7.0-blue.svg)
 ![WordPress](https://img.shields.io/badge/WordPress-5.0%2B-blue.svg)
 ![PHP](https://img.shields.io/badge/PHP-7.4%2B-purple.svg)
 ![License](https://img.shields.io/badge/license-GPL--2.0-green.svg)
 
 **Plugin WordPress chống click ảo Google Ads** mạnh mẽ nhất Việt Nam - Bảo vệ ngân sách quảng cáo của bạn khỏi click ảo, bot và đối thủ cạnh tranh độc hại.
 
-![Dashboard Screenshot](https://raw.githubusercontent.com/phudigital/gads-toolkit/main/assets/screenshot.png)
+---
+
+## 📸 Giao diện trực quan & Dễ sử dụng
+
+### Dashboard - Thống kê tổng quan
+
+![Dashboard](https://raw.githubusercontent.com/phudigital/gads-toolkit/main/assets/screenshot.png)
+
+<details>
+<summary>📷 Xem thêm screenshots</summary>
+
+### Thống kê IP Ads chi tiết
+
+![IP Ads Stats](https://raw.githubusercontent.com/phudigital/gads-toolkit/main/assets/screenshot1.png)
+
+### Quản lý IP bị chặn
+
+![Blocked IPs](https://raw.githubusercontent.com/phudigital/gads-toolkit/main/assets/screenshot2.png)
+
+### Cấu hình Google Ads API
+
+![Google Ads Config](https://raw.githubusercontent.com/phudigital/gads-toolkit/main/assets/screenshot3.png)
+
+### Cấu hình Thông báo Telegram
+
+![Notifications](https://raw.githubusercontent.com/phudigital/gads-toolkit/main/assets/screenshot4.png)
+
+</details>
 
 ---
 
@@ -63,6 +90,9 @@
 > **"Tôi quản lý 15 tài khoản Google Ads cho khách hàng. GAds Toolkit giúp tôi tiết kiệm hàng chục triệu/tháng cho khách."**  
 > _- Trần Thị B, Digital Marketing Agency_
 
+> **"Giao diện đẹp, dễ dùng, hiệu quả cao. Đặc biệt là tính năng thông báo Telegram rất tiện!"**  
+> _- Lê Văn C, Freelance Marketer_
+
 ### 💰 ROI ước tính:
 
 - **Tiết kiệm:** 5-15 triệu VNĐ/tháng (tùy ngân sách quảng cáo)
@@ -73,10 +103,10 @@
 
 ## 🎁 Bảng giá API Key
 
-| Gói              | Thời hạn  | Giá           | Tiết kiệm               |
+| Gói              | Thời hạn  | Giá           | Tiết kiệm ước tính      |
 | ---------------- | --------- | ------------- | ----------------------- |
-| **Starter**      | 6 tháng   | 500.000 VNĐ   | Tiết kiệm 3-9 triệu     |
-| **Professional** | 1 năm     | 800.000 VNĐ   | Tiết kiệm 6-18 triệu    |
+| **Starter**      | 6 tháng   | 500.000 VNĐ   | 3-9 triệu VNĐ           |
+| **Professional** | 1 năm     | 800.000 VNĐ   | 6-18 triệu VNĐ          |
 | **Lifetime**     | Vĩnh viễn | 2.500.000 VNĐ | Không giới hạn          |
 | **Agency (MCC)** | 1 năm     | 3.000.000 VNĐ | Quản lý nhiều tài khoản |
 
