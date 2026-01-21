@@ -100,8 +100,8 @@
 
 | Gói         | Thời hạn | Giá         | Lưu ý                            |
 | ----------- | -------- | ----------- | -------------------------------- |
-| **Monthly** | 1 tháng  | 100.000 VNĐ | Chưa bao gồm VAT                 |
-| **Yearly**  | 1 năm    | 600.000 VNĐ | Chưa bao gồm VAT (Tiết kiệm 50%) |
+| **Monthly** | 1 tháng | 50.000 VNĐ | Chưa bao gồm VAT                 |
+| **Yearly** | 1 năm | 500.000 VNĐ | Chưa bao gồm VAT (Tiết kiệm >16%) |
 
 ### 🎯 Mua API Key ngay:
 
