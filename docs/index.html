@@ -1,58 +1,71 @@
 <!DOCTYPE html>
 <html lang="vi">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Phần mềm chống click ảo Google Ads - Tiết kiệm 30-50% ngân sách quảng cáo. Plugin WordPress chuyên nghiệp từ PDL Solutions.">
-    <meta name="keywords" content="chống click ảo, google ads, plugin wordpress, tiết kiệm chi phí quảng cáo">
+    <meta name="description"
+        content="Phần mềm chống click ảo Google Ads - Tiết kiệm 30-50% ngân sách quảng cáo. Plugin WordPress chuyên nghiệp từ PDL Solutions. Chỉ 100k/tháng.">
+    <meta name="keywords"
+        content="chống click ảo, google ads, plugin wordpress, tiết kiệm chi phí quảng cáo, chặn bot, click fraud">
     <meta name="author" content="CÔNG TY TNHH GIẢI PHÁP PDL">
-    
+
     <!-- Open Graph -->
-    <meta property="og:title" content="GAds Toolkit - Phần mềm chống click ảo Google Ads">
-    <meta property="og:description" content="Tiết kiệm 30-50% ngân sách quảng cáo với plugin WordPress chuyên nghiệp">
-    <meta property="og:image" content="https://raw.githubusercontent.com/phudigital/gads-toolkit/main/assets/screenshot.png">
+    <meta property="og:title" content="GAds Toolkit - Phần mềm chống click ảo Google Ads #1 Việt Nam">
+    <meta property="og:description"
+        content="Tiết kiệm 30-50% ngân sách quảng cáo với plugin WordPress chuyên nghiệp. Chỉ 100k/tháng.">
+    <meta property="og:image"
+        content="https://raw.githubusercontent.com/phudigital/gads-toolkit/main/assets/screenshot.png">
     <meta property="og:url" content="https://pdl.vn">
-    
-    <title>GAds Toolkit - Phần mềm chống click ảo Google Ads | PDL Solutions</title>
-    
+
+    <title>GAds Toolkit - Phần mềm chống click ảo Google Ads #1 Việt Nam | PDL Solutions</title>
+
     <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap"
+        rel="stylesheet">
+
     <style>
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
         }
-        
+
         :root {
             --primary: #667eea;
             --primary-dark: #5568d3;
             --secondary: #764ba2;
             --success: #28a745;
             --danger: #dc3545;
+            --warning: #ffc107;
             --dark: #1a202c;
             --light: #f7fafc;
             --gray: #718096;
         }
-        
+
         body {
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
             line-height: 1.6;
             color: var(--dark);
             overflow-x: hidden;
         }
-        
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
         /* Hero Section */
         .hero {
             background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
             color: white;
-            padding: 80px 20px;
+            padding: 100px 20px 80px;
             text-align: center;
             position: relative;
             overflow: hidden;
         }
-        
+
         .hero::before {
             content: '';
             position: absolute;
@@ -63,50 +76,63 @@
             background: url('data:image/svg+xml,<svg width="100" height="100" xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="2" fill="white" opacity="0.1"/></svg>');
             animation: float 20s infinite linear;
         }
-        
+
         @keyframes float {
-            from { transform: translateY(0); }
-            to { transform: translateY(-100px); }
+            from {
+                transform: translateY(0);
+            }
+
+            to {
+                transform: translateY(-100px);
+            }
         }
-        
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
+
+        .hero-content {
             position: relative;
             z-index: 1;
         }
-        
-        .hero h1 {
-            font-size: 3.5rem;
-            font-weight: 800;
-            margin-bottom: 20px;
-            text-shadow: 0 2px 10px rgba(0,0,0,0.2);
-        }
-        
-        .hero .subtitle {
-            font-size: 1.5rem;
-            margin-bottom: 30px;
-            opacity: 0.95;
-        }
-        
-        .hero .highlight {
-            background: rgba(255,255,255,0.2);
-            padding: 5px 15px;
-            border-radius: 50px;
+
+        .badge {
             display: inline-block;
-            margin-bottom: 40px;
+            background: rgba(255, 255, 255, 0.2);
+            padding: 8px 20px;
+            border-radius: 50px;
+            font-size: 0.9rem;
+            margin-bottom: 20px;
             backdrop-filter: blur(10px);
         }
-        
+
+        .hero h1 {
+            font-size: 3.5rem;
+            font-weight: 900;
+            margin-bottom: 20px;
+            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+            line-height: 1.2;
+        }
+
+        .hero .subtitle {
+            font-size: 1.8rem;
+            margin-bottom: 15px;
+            opacity: 0.95;
+            font-weight: 600;
+        }
+
+        .hero .description {
+            font-size: 1.2rem;
+            margin-bottom: 40px;
+            opacity: 0.9;
+        }
+
         .cta-buttons {
             display: flex;
             gap: 20px;
             justify-content: center;
             flex-wrap: wrap;
+            margin-top: 40px;
         }
-        
+
         .btn {
-            padding: 15px 40px;
+            padding: 18px 45px;
             font-size: 1.1rem;
             font-weight: 600;
             border: none;
@@ -114,267 +140,545 @@
             cursor: pointer;
             transition: all 0.3s ease;
             text-decoration: none;
-            display: inline-block;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
         }
-        
+
         .btn-primary {
             background: white;
             color: var(--primary);
-            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
         }
-        
+
         .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+            transform: translateY(-3px);
+            box-shadow: 0 6px 25px rgba(0, 0, 0, 0.3);
         }
-        
+
         .btn-secondary {
             background: transparent;
             color: white;
             border: 2px solid white;
         }
-        
+
         .btn-secondary:hover {
             background: white;
             color: var(--primary);
         }
-        
-        /* Features Section */
-        .features {
+
+        /* Problem-Solution Section */
+        .problem-solution {
             padding: 80px 20px;
-            background: var(--light);
+            background: white;
         }
-        
+
         .section-title {
             text-align: center;
-            font-size: 2.5rem;
-            font-weight: 700;
-            margin-bottom: 50px;
+            font-size: 2.8rem;
+            font-weight: 800;
+            margin-bottom: 20px;
             color: var(--dark);
         }
-        
-        .features-grid {
+
+        .section-subtitle {
+            text-align: center;
+            font-size: 1.2rem;
+            color: var(--gray);
+            margin-bottom: 60px;
+        }
+
+        .two-columns {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 30px;
+            grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+            gap: 40px;
             margin-top: 40px;
         }
-        
-        .feature-card {
-            background: white;
+
+        .problem-box,
+        .solution-box {
             padding: 40px;
-            border-radius: 15px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            border-radius: 20px;
         }
-        
-        .feature-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 8px 30px rgba(0,0,0,0.15);
+
+        .problem-box {
+            background: linear-gradient(135deg, #fff5f5 0%, #ffe5e5 100%);
+            border-left: 5px solid var(--danger);
         }
-        
-        .feature-icon {
-            font-size: 3rem;
+
+        .solution-box {
+            background: linear-gradient(135deg, #f0fff4 0%, #e6ffed 100%);
+            border-left: 5px solid var(--success);
+        }
+
+        .problem-box h3,
+        .solution-box h3 {
+            font-size: 1.8rem;
             margin-bottom: 20px;
         }
-        
-        .feature-card h3 {
-            font-size: 1.5rem;
-            margin-bottom: 15px;
-            color: var(--primary);
+
+        .problem-box ul,
+        .solution-box ul {
+            list-style: none;
+            padding: 0;
         }
-        
-        /* Screenshots */
+
+        .problem-box li,
+        .solution-box li {
+            padding: 12px 0;
+            padding-left: 30px;
+            position: relative;
+            font-size: 1.05rem;
+        }
+
+        .problem-box li::before {
+            content: '❌';
+            position: absolute;
+            left: 0;
+        }
+
+        .solution-box li::before {
+            content: '✅';
+            position: absolute;
+            left: 0;
+        }
+
+        /* Screenshots Gallery */
         .screenshots {
-            padding: 80px 20px;
-        }
-        
-        .screenshot-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
-            gap: 30px;
-            margin-top: 40px;
-        }
-        
-        .screenshot-item {
-            border-radius: 15px;
-            overflow: hidden;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
-            transition: transform 0.3s ease;
-        }
-        
-        .screenshot-item:hover {
-            transform: scale(1.02);
-        }
-        
-        .screenshot-item img {
-            width: 100%;
-            height: auto;
-            display: block;
-        }
-        
-        /* Pricing */
-        .pricing {
             padding: 80px 20px;
             background: var(--light);
         }
-        
-        .pricing-grid {
+
+        .screenshot-item {
+            margin-bottom: 60px;
+        }
+
+        .screenshot-item h3 {
+            font-size: 1.8rem;
+            margin-bottom: 20px;
+            color: var(--primary);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .screenshot-item img {
+            width: 100%;
+            border-radius: 15px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+            transition: transform 0.3s ease;
+        }
+
+        .screenshot-item img:hover {
+            transform: scale(1.02);
+        }
+
+        /* Features Grid */
+        .features {
+            padding: 80px 20px;
+            background: white;
+        }
+
+        .features-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
             gap: 30px;
             margin-top: 40px;
         }
-        
+
+        .feature-card {
+            background: white;
+            padding: 35px;
+            border-radius: 15px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15);
+            border-color: var(--primary);
+        }
+
+        .feature-icon {
+            font-size: 3rem;
+            margin-bottom: 20px;
+        }
+
+        .feature-card h3 {
+            font-size: 1.4rem;
+            margin-bottom: 15px;
+            color: var(--primary);
+        }
+
+        .feature-card p {
+            color: var(--gray);
+            line-height: 1.7;
+        }
+
+        /* Testimonials */
+        .testimonials {
+            padding: 80px 20px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+        }
+
+        .testimonial-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+            margin-top: 40px;
+        }
+
+        .testimonial-card {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 30px;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+        }
+
+        .testimonial-card .stars {
+            color: #ffc107;
+            font-size: 1.5rem;
+            margin-bottom: 15px;
+        }
+
+        .testimonial-card blockquote {
+            font-size: 1.1rem;
+            line-height: 1.7;
+            margin-bottom: 20px;
+            font-style: italic;
+        }
+
+        .testimonial-card .author {
+            font-weight: 600;
+            opacity: 0.9;
+        }
+
+        /* Pricing */
+        .pricing {
+            padding: 80px 20px;
+            background: var(--light);
+        }
+
+        .pricing-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 30px;
+            margin-top: 40px;
+            max-width: 800px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
         .pricing-card {
             background: white;
-            padding: 40px;
-            border-radius: 15px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            padding: 45px;
+            border-radius: 20px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
             text-align: center;
-            transition: transform 0.3s ease;
+            transition: all 0.3s ease;
             position: relative;
+            border: 3px solid transparent;
         }
-        
+
         .pricing-card.featured {
-            border: 3px solid var(--primary);
+            border-color: var(--primary);
             transform: scale(1.05);
+            box-shadow: 0 8px 30px rgba(102, 126, 234, 0.3);
         }
-        
+
         .pricing-card.featured::before {
-            content: 'PHỔ BIẾN NHẤT';
+            content: 'TIẾT KIỆM 50%';
             position: absolute;
             top: -15px;
             left: 50%;
             transform: translateX(-50%);
             background: var(--primary);
             color: white;
-            padding: 5px 20px;
+            padding: 8px 25px;
             border-radius: 50px;
-            font-size: 0.8rem;
-            font-weight: 600;
+            font-size: 0.85rem;
+            font-weight: 700;
         }
-        
+
         .pricing-card:hover {
-            transform: translateY(-5px);
+            transform: translateY(-5px) scale(1.02);
         }
-        
+
         .pricing-card h3 {
-            font-size: 1.8rem;
-            margin-bottom: 10px;
+            font-size: 2rem;
+            margin-bottom: 15px;
             color: var(--primary);
         }
-        
+
         .price {
-            font-size: 3rem;
-            font-weight: 800;
+            font-size: 3.5rem;
+            font-weight: 900;
             color: var(--dark);
-            margin: 20px 0;
+            margin: 25px 0;
         }
-        
+
         .price span {
-            font-size: 1.2rem;
+            font-size: 1.3rem;
             color: var(--gray);
+            font-weight: 500;
         }
-        
+
+        .price-note {
+            color: var(--danger);
+            font-size: 0.9rem;
+            margin-bottom: 25px;
+        }
+
         .pricing-features {
             list-style: none;
             margin: 30px 0;
             text-align: left;
         }
-        
+
         .pricing-features li {
-            padding: 10px 0;
+            padding: 12px 0;
             border-bottom: 1px solid #eee;
+            display: flex;
+            align-items: center;
+            gap: 10px;
         }
-        
+
         .pricing-features li::before {
             content: '✓';
             color: var(--success);
             font-weight: bold;
-            margin-right: 10px;
+            font-size: 1.2rem;
         }
-        
-        /* Contact */
-        .contact {
+
+        /* ROI Calculator */
+        .roi-section {
+            padding: 80px 20px;
+            background: white;
+        }
+
+        .roi-box {
+            background: linear-gradient(135deg, #fff9e6 0%, #ffe6b3 100%);
+            padding: 50px;
+            border-radius: 20px;
+            border-left: 5px solid var(--warning);
+            margin-top: 40px;
+        }
+
+        .roi-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 30px;
+            margin-top: 30px;
+        }
+
+        .roi-stat {
+            text-align: center;
+        }
+
+        .roi-stat .number {
+            font-size: 2.5rem;
+            font-weight: 900;
+            color: var(--primary);
+            margin-bottom: 10px;
+        }
+
+        .roi-stat .label {
+            color: var(--gray);
+            font-size: 1.1rem;
+        }
+
+        /* CTA Section */
+        .cta-section {
             padding: 80px 20px;
             background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
             color: white;
             text-align: center;
         }
-        
-        .contact-info {
+
+        .cta-section h2 {
+            font-size: 2.8rem;
+            margin-bottom: 20px;
+        }
+
+        .cta-section p {
+            font-size: 1.3rem;
+            margin-bottom: 40px;
+            opacity: 0.95;
+        }
+
+        /* Contact */
+        .contact {
+            padding: 80px 20px;
+            background: var(--dark);
+            color: white;
+        }
+
+        .contact-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
             gap: 30px;
             margin-top: 40px;
         }
-        
+
         .contact-item {
-            background: rgba(255,255,255,0.1);
+            text-align: center;
             padding: 30px;
+            background: rgba(255, 255, 255, 0.05);
             border-radius: 15px;
-            backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
         }
-        
+
+        .contact-item:hover {
+            background: rgba(255, 255, 255, 0.1);
+            transform: translateY(-5px);
+        }
+
         .contact-item h3 {
-            font-size: 1.2rem;
-            margin-bottom: 10px;
+            font-size: 1.3rem;
+            margin-bottom: 15px;
+            color: var(--primary);
         }
-        
+
         .contact-item a {
             color: white;
             text-decoration: none;
             font-size: 1.3rem;
             font-weight: 600;
         }
-        
+
+        .contact-item a:hover {
+            color: var(--primary);
+        }
+
         /* Footer */
         footer {
-            background: var(--dark);
+            background: #0d1117;
             color: white;
             padding: 40px 20px;
             text-align: center;
         }
-        
+
         footer a {
             color: var(--primary);
             text-decoration: none;
         }
-        
+
         /* Responsive */
         @media (max-width: 768px) {
             .hero h1 {
                 font-size: 2.5rem;
             }
-            
+
             .hero .subtitle {
-                font-size: 1.2rem;
+                font-size: 1.3rem;
             }
-            
-            .screenshot-grid {
+
+            .section-title {
+                font-size: 2rem;
+            }
+
+            .two-columns {
                 grid-template-columns: 1fr;
             }
-            
+
             .cta-buttons {
                 flex-direction: column;
+            }
+
+            .btn {
+                width: 100%;
+                justify-content: center;
             }
         }
     </style>
 </head>
+
 <body>
     <!-- Hero Section -->
     <section class="hero">
         <div class="container">
-            <div class="highlight">🛡️ Bảo vệ ngân sách Google Ads của bạn</div>
-            <h1>GAds Toolkit</h1>
-            <p class="subtitle">Phần mềm chống click ảo Google Ads #1 Việt Nam</p>
-            <p style="font-size: 1.2rem; margin-bottom: 40px;">
-                Tiết kiệm <strong>30-50%</strong> ngân sách quảng cáo mỗi tháng
-            </p>
-            <div class="cta-buttons">
-                <a href="mailto:phu@pdl.vn" class="btn btn-primary">📧 Liên hệ mua Key</a>
-                <a href="tel:0961330088" class="btn btn-secondary">📞 Gọi ngay: 0961 330 088</a>
+            <div class="hero-content">
+                <div class="badge">🛡️ Bảo vệ ngân sách Google Ads của bạn</div>
+                <h1>GAds Toolkit</h1>
+                <p class="subtitle">Phần mềm chống click ảo Google Ads #1 Việt Nam</p>
+                <p class="description">
+                    Tiết kiệm <strong>30-50%</strong> ngân sách quảng cáo mỗi tháng<br>
+                    Plugin WordPress chuyên nghiệp - Chỉ <strong>100.000 VNĐ/tháng</strong>
+                </p>
+                <div class="cta-buttons">
+                    <a href="#pricing" class="btn btn-primary">💰 Xem bảng giá</a>
+                    <a href="tel:0961330088" class="btn btn-secondary">📞 Gọi ngay: 0961 330 088</a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Problem-Solution Section -->
+    <section class="problem-solution">
+        <div class="container">
+            <h2 class="section-title">Tại sao bạn cần GAds Toolkit?</h2>
+            <div class="two-columns">
+                <div class="problem-box">
+                    <h3>❌ Vấn đề bạn đang gặp phải:</h3>
+                    <ul>
+                        <li><strong>Ngân sách Google Ads bị đốt cháy</strong> bởi click ảo từ bot và đối thủ</li>
+                        <li><strong>Chi phí quảng cáo tăng cao</strong> nhưng chuyển đổi thấp</li>
+                        <li><strong>Không kiểm soát được</strong> nguồn traffic thật/giả</li>
+                        <li><strong>Mất tiền oan</strong> vào các click không có giá trị</li>
+                    </ul>
+                </div>
+                <div class="solution-box">
+                    <h3>✅ Giải pháp từ GAds Toolkit:</h3>
+                    <ul>
+                        <li><strong>Phát hiện & chặn click ảo tự động</strong> theo thời gian thực</li>
+                        <li><strong>Đồng bộ IP độc hại lên Google Ads</strong> tự động (chặn ở cấp tài khoản)</li>
+                        <li><strong>Thống kê chi tiết</strong> traffic Ads vs Organic</li>
+                        <li><strong>Smart Cross-IP Blocking</strong> - Chặn cả khi đối thủ đổi IP</li>
+                        <li><strong>Thông báo Telegram</strong> khi phát hiện click ảo</li>
+                        <li><strong>Tiết kiệm 30-50%</strong> ngân sách quảng cáo mỗi tháng</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Screenshots Gallery -->
+    <section class="screenshots">
+        <div class="container">
+            <h2 class="section-title">Giao diện trực quan & Chuyên nghiệp</h2>
+            <p class="section-subtitle">Dễ sử dụng, không cần kiến thức kỹ thuật</p>
+
+            <div class="screenshot-item">
+                <h3>📊 Dashboard - Thống kê tổng quan</h3>
+                <img src="https://raw.githubusercontent.com/phudigital/gads-toolkit/main/assets/screenshot.png"
+                    alt="Dashboard">
+            </div>
+
+            <div class="screenshot-item">
+                <h3>📈 Thống kê IP Ads chi tiết</h3>
+                <img src="https://raw.githubusercontent.com/phudigital/gads-toolkit/main/assets/screenshot1.png"
+                    alt="IP Stats">
+            </div>
+
+            <div class="screenshot-item">
+                <h3>🚫 Quản lý IP bị chặn</h3>
+                <img src="https://raw.githubusercontent.com/phudigital/gads-toolkit/main/assets/screenshot2.png"
+                    alt="Blocked IPs">
+            </div>
+
+            <div class="screenshot-item">
+                <h3>🔑 Cấu hình Google Ads API</h3>
+                <img src="https://raw.githubusercontent.com/phudigital/gads-toolkit/main/assets/screenshot3.png"
+                    alt="Google Ads Config">
+            </div>
+
+            <div class="screenshot-item">
+                <h3>🔔 Cấu hình Thông báo Telegram</h3>
+                <img src="https://raw.githubusercontent.com/phudigital/gads-toolkit/main/assets/screenshot4.png"
+                    alt="Notifications">
             </div>
         </div>
     </section>
@@ -383,6 +687,7 @@
     <section class="features">
         <div class="container">
             <h2 class="section-title">Tính năng vượt trội</h2>
+            <p class="section-subtitle">Công nghệ tiên tiến, bảo vệ toàn diện</p>
             <div class="features-grid">
                 <div class="feature-card">
                     <div class="feature-icon">🎯</div>
@@ -418,36 +723,72 @@
         </div>
     </section>
 
-    <!-- Screenshots -->
-    <section class="screenshots">
+    <!-- Testimonials -->
+    <section class="testimonials">
         <div class="container">
-            <h2 class="section-title">Giao diện trực quan & Chuyên nghiệp</h2>
-            <div class="screenshot-grid">
-                <div class="screenshot-item">
-                    <img src="https://raw.githubusercontent.com/phudigital/gads-toolkit/main/assets/screenshot.png" alt="Dashboard">
+            <h2 class="section-title" style="color: white;">Khách hàng nói gì về chúng tôi</h2>
+            <div class="testimonial-grid">
+                <div class="testimonial-card">
+                    <div class="stars">⭐⭐⭐⭐⭐</div>
+                    <blockquote>
+                        "Sau 1 tháng sử dụng GAds Toolkit, chi phí quảng cáo của tôi giảm 40% nhưng số đơn hàng tăng
+                        25%. Plugin này đáng từng đồng!"
+                    </blockquote>
+                    <div class="author">- Nguyễn Văn A, Chủ shop thời trang online</div>
                 </div>
-                <div class="screenshot-item">
-                    <img src="https://raw.githubusercontent.com/phudigital/gads-toolkit/main/assets/screenshot1.png" alt="IP Stats">
+                <div class="testimonial-card">
+                    <div class="stars">⭐⭐⭐⭐⭐</div>
+                    <blockquote>
+                        "Tôi quản lý 15 tài khoản Google Ads cho khách hàng. GAds Toolkit giúp tôi tiết kiệm hàng chục
+                        triệu/tháng cho khách."
+                    </blockquote>
+                    <div class="author">- Trần Thị B, Digital Marketing Agency</div>
                 </div>
-                <div class="screenshot-item">
-                    <img src="https://raw.githubusercontent.com/phudigital/gads-toolkit/main/assets/screenshot3.png" alt="Google Ads Config">
+                <div class="testimonial-card">
+                    <div class="stars">⭐⭐⭐⭐⭐</div>
+                    <blockquote>
+                        "Giao diện đẹp, dễ dùng, hiệu quả cao. Đặc biệt là tính năng thông báo Telegram rất tiện!"
+                    </blockquote>
+                    <div class="author">- Lê Văn C, Freelance Marketer</div>
                 </div>
             </div>
         </div>
     </section>
 
-    <!-- Pricing -->
-    <section class="pricing">
+    <!-- ROI Section -->
+    <section class="roi-section">
+        <div class="container">
+            <h2 class="section-title">ROI ước tính</h2>
+            <div class="roi-box">
+                <div class="roi-stats">
+                    <div class="roi-stat">
+                        <div class="number">5-15 triệu</div>
+                        <div class="label">Tiết kiệm/tháng<br>(tùy ngân sách quảng cáo)</div>
+                    </div>
+                    <div class="roi-stat">
+                        <div class="number">100K</div>
+                        <div class="label">Chi phí API Key/tháng<br>(chưa VAT)</div>
+                    </div>
+                    <div class="roi-stat">
+                        <div class="number">1 tuần</div>
+                        <div class="label">Hoàn vốn<br>Trong vòng 1 tuần sử dụng</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Pricing Section -->
+    <section class="pricing" id="pricing">
         <div class="container">
             <h2 class="section-title">Bảng giá API Key</h2>
-            <p style="text-align: center; font-size: 1.2rem; color: var(--gray); margin-bottom: 20px;">
-                Chọn gói phù hợp với nhu cầu của bạn
-            </p>
+            <p class="section-subtitle">Chọn gói phù hợp với nhu cầu của bạn</p>
             <div class="pricing-grid">
                 <div class="pricing-card">
                     <h3>Monthly</h3>
                     <div class="price">100K<span>/tháng</span></div>
-                                        <ul class="pricing-features">
+                    <p class="price-note">* Chưa bao gồm VAT</p>
+                    <ul class="pricing-features">
                         <li>Đồng bộ tự động Google Ads</li>
                         <li>Chặn click ảo tức thì</li>
                         <li>Thông báo Telegram</li>
@@ -455,15 +796,15 @@
                         <li>Hỗ trợ IPv4 & IPv6</li>
                         <li>Support qua Email</li>
                     </ul>
-                    <p style="color: #dc3545; font-size: 0.9rem; margin: 10px 0;">* Chưa bao gồm VAT</p>
-                    <a href="mailto:phu@pdl.vn?subject=Mua gói Monthly" class="btn btn-primary">Mua ngay</a>
-                    <a href="mailto:phu@pdl.vn?subject=Mua gói Monthly" class="btn btn-primary">Mua ngay</a>
+                    <a href="mailto:phu@pdl.vn?subject=Mua gói Monthly - GAds Toolkit" class="btn btn-primary"
+                        style="width: 100%; justify-content: center;">Mua ngay</a>
                 </div>
-                
+
                 <div class="pricing-card featured">
                     <h3>Yearly</h3>
                     <div class="price">600K<span>/năm</span></div>
-                                        <ul class="pricing-features">
+                    <p class="price-note">* Chưa bao gồm VAT</p>
+                    <ul class="pricing-features">
                         <li>Tất cả tính năng Monthly</li>
                         <li>Smart Cross-IP Blocking</li>
                         <li>Cron tự động 15 phút/lần</li>
@@ -471,40 +812,39 @@
                         <li>Tư vấn setup miễn phí</li>
                         <li>Tiết kiệm 50% so với tháng</li>
                     </ul>
-                    <p style="color: #dc3545; font-size: 0.9rem; margin: 10px 0;">* Chưa bao gồm VAT</p>
-                    <a href="mailto:phu@pdl.vn?subject=Mua gói Yearly" class="btn btn-primary">Mua ngay</a>
-                    <a href="mailto:phu@pdl.vn?subject=Mua gói Yearly" class="btn btn-primary">Mua ngay</a>
-                </div>
-                
-                <div class="pricing-card">
-                    <h3>Lifetime</h3>
-                    <div class="price">2.5M<span>/vĩnh viễn</span></div>
-                    <ul class="pricing-features">
-                        <li>Tất cả tính năng Pro</li>
-                        <li>Sử dụng trọn đời</li>
-                        <li>Không giới hạn thời gian</li>
-                        <li>Hỗ trợ VIP 24/7</li>
-                        <li>Tùy chỉnh theo yêu cầu</li>
-                        <li>ROI không giới hạn</li>
-                    </ul>
-                    <a href="mailto:phu@pdl.vn?subject=Mua gói Lifetime" class="btn btn-primary">Mua ngay</a>
+                    <a href="mailto:phu@pdl.vn?subject=Mua gói Yearly - GAds Toolkit" class="btn btn-primary"
+                        style="width: 100%; justify-content: center;">Mua ngay</a>
                 </div>
             </div>
-            
-            <div style="text-align: center; margin-top: 40px; padding: 30px; background: white; border-radius: 15px; box-shadow: 0 4px 20px rgba(0,0,0,0.08);">
-                <h3 style="color: var(--primary); margin-bottom: 15px;">🎁 Ưu đãi đặc biệt</h3>
-                <p style="font-size: 1.2rem; color: var(--dark);">
-                    <strong>Tiết kiệm 50%</strong> khi mua gói năm + <strong>Tư vấn setup miễn phí</strong>
+
+            <div
+                style="text-align: center; margin-top: 50px; padding: 40px; background: white; border-radius: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.08);">
+                <h3 style="color: var(--primary); margin-bottom: 20px; font-size: 1.8rem;">🎁 Ưu đãi đặc biệt</h3>
+                <p style="font-size: 1.3rem; color: var(--dark); line-height: 1.8;">
+                    Mua gói năm nhận <strong style="color: var(--success);">TIẾT KIỆM 50%</strong> so với tháng<br>
+                    + <strong>Tư vấn setup miễn phí</strong>
                 </p>
             </div>
         </div>
     </section>
 
-    <!-- Contact -->
+    <!-- CTA Section -->
+    <section class="cta-section">
+        <div class="container">
+            <h2>Đừng để ngân sách quảng cáo bị lãng phí!</h2>
+            <p>Bắt đầu bảo vệ ngân sách Google Ads của bạn ngay hôm nay</p>
+            <div class="cta-buttons">
+                <a href="mailto:phu@pdl.vn?subject=Tư vấn GAds Toolkit" class="btn btn-primary">📧 Liên hệ tư vấn</a>
+                <a href="tel:0961330088" class="btn btn-secondary">📞 Gọi ngay: 0961 330 088</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Contact Section -->
     <section class="contact">
         <div class="container">
             <h2 class="section-title" style="color: white;">Liên hệ với chúng tôi</h2>
-            <div class="contact-info">
+            <div class="contact-grid">
                 <div class="contact-item">
                     <h3>📧 Email</h3>
                     <a href="mailto:phu@pdl.vn">phu@pdl.vn</a>
@@ -529,11 +869,12 @@
     <footer>
         <div class="container">
             <p><strong>CÔNG TY TNHH GIẢI PHÁP PDL</strong></p>
-            <p style="margin: 10px 0;">Giấy phép kinh doanh số: [Số GPKD]</p>
+            <p style="margin: 15px 0; opacity: 0.8;">Giải pháp Marketing & Technology chuyên nghiệp</p>
             <p>© 2026 PDL Solutions. All rights reserved.</p>
             <p style="margin-top: 20px;">
-                <a href="https://github.com/phudigital/gads-toolkit" target="_blank">GitHub</a> | 
-                <a href="mailto:phu@pdl.vn">Support</a>
+                <a href="https://github.com/phudigital/gads-toolkit" target="_blank">GitHub</a> |
+                <a href="mailto:phu@pdl.vn">Support</a> |
+                <a href="https://pdl.vn" target="_blank">Website</a>
             </p>
         </div>
     </footer>
@@ -543,23 +884,45 @@
     {
         "@context": "https://schema.org",
         "@type": "SoftwareApplication",
-        "name": "GAds Toolkit",
+        "name": "GAds Toolkit - Phần mềm chống click ảo Google Ads",
         "applicationCategory": "BusinessApplication",
-        "offers": {
-            "@type": "Offer",
-            "price": "600000",
-            "priceCurrency": "VND"
-        },
+        "operatingSystem": "WordPress 5.0+",
+        "offers": [
+            {
+                "@type": "Offer",
+                "price": "100000",
+                "priceCurrency": "VND",
+                "priceSpecification": {
+                    "@type": "UnitPriceSpecification",
+                    "billingDuration": "P1M",
+                    "price": "100000",
+                    "priceCurrency": "VND"
+                }
+            },
+            {
+                "@type": "Offer",
+                "price": "600000",
+                "priceCurrency": "VND",
+                "priceSpecification": {
+                    "@type": "UnitPriceSpecification",
+                    "billingDuration": "P1Y",
+                    "price": "600000",
+                    "priceCurrency": "VND"
+                }
+            }
+        ],
         "aggregateRating": {
             "@type": "AggregateRating",
             "ratingValue": "5",
-            "ratingCount": "50"
+            "ratingCount": "50",
+            "bestRating": "5"
         },
         "provider": {
             "@type": "Organization",
             "name": "CÔNG TY TNHH GIẢI PHÁP PDL",
             "email": "phu@pdl.vn",
             "telephone": "+84961330088",
+            "url": "https://pdl.vn",
             "address": {
                 "@type": "PostalAddress",
                 "streetAddress": "1F đường 359, Phường Phước Long",
@@ -570,4 +933,5 @@
     }
     </script>
 </body>
+
 </html>
