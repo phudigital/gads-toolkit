@@ -108,10 +108,13 @@ function tkgadm_check_suspicious_ips() {
     $table_stats = $wpdb->prefix . 'gads_toolkit_stats';
     $table_blocked = $wpdb->prefix . 'gads_toolkit_blocked';
     $threshold = get_option('tkgadm_alert_threshold', 5);
+
+    // Use WP timezone consistently (DB server timezone may differ)
+    $since_time = wp_date('Y-m-d H:i:s', current_time('timestamp') - HOUR_IN_SECONDS);
     
     // Lấy IP có nhiều clicks Ads nhưng chưa bị chặn
     // phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-    $suspicious_ips = $wpdb->get_results($wpdb->prepare("
+    $suspicious_ips = $wpdb->get_results($wpdb->prepare("\
         SELECT 
             s.ip_address,
             COUNT(DISTINCT s.gclid) as ad_clicks,
@@ -122,11 +125,11 @@ function tkgadm_check_suspicious_ips() {
         WHERE s.gclid IS NOT NULL 
         AND s.gclid != ''
         AND b.ip_address IS NULL
-        AND s.visit_time >= DATE_SUB(NOW(), INTERVAL 1 HOUR)
+        AND s.visit_time >= %s
         GROUP BY s.ip_address
         HAVING ad_clicks >= %d
         ORDER BY ad_clicks DESC
-    ", $threshold));
+    ", $since_time, $threshold));
     
     if (empty($suspicious_ips)) {
         return; // Không có IP nghi ngờ
@@ -184,10 +187,18 @@ function tkgadm_send_daily_report() {
     global $wpdb;
     $table_stats = $wpdb->prefix . 'gads_toolkit_stats';
     $table_blocked = $wpdb->prefix . 'gads_toolkit_blocked';
+
+    // Calculate yesterday range in WP timezone (avoid MySQL CURDATE() timezone mismatch)
+    $tz = wp_timezone();
+    $yesterday_start = (new DateTimeImmutable('yesterday', $tz))->setTime(0, 0, 0);
+    $yesterday_end = $yesterday_start->modify('+1 day');
+    $yesterday_start_mysql = $yesterday_start->format('Y-m-d H:i:s');
+    $yesterday_end_mysql = $yesterday_end->format('Y-m-d H:i:s');
     
     // Thống kê hôm qua (Organic chỉ đếm records có time_on_page hợp lệ để lọc bot)
     // phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-    $stats = $wpdb->get_row("
+    // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+    $stats = $wpdb->get_row($wpdb->prepare("
         SELECT 
             COUNT(DISTINCT CASE WHEN gclid IS NOT NULL AND gclid != '' THEN ip_address END) as ads_ips,
             COUNT(DISTINCT CASE WHEN (gclid IS NULL OR gclid = '') AND time_on_page IS NOT NULL AND time_on_page > 0 THEN ip_address END) as organic_ips,
@@ -195,8 +206,8 @@ function tkgadm_send_daily_report() {
             SUM(CASE WHEN (gclid IS NULL OR gclid = '') AND time_on_page IS NOT NULL AND time_on_page > 0 THEN visit_count ELSE 0 END) as organic_visits,
             COUNT(DISTINCT CASE WHEN gclid IS NOT NULL AND gclid != '' THEN gclid END) as unique_clicks
         FROM $table_stats
-        WHERE DATE(visit_time) = CURDATE() - INTERVAL 1 DAY
-    ");
+        WHERE visit_time >= %s AND visit_time < %s
+    ", $yesterday_start_mysql, $yesterday_end_mysql));
     
     // phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
     $blocked_count = $wpdb->get_var("SELECT COUNT(*) FROM $table_blocked");
@@ -206,7 +217,7 @@ function tkgadm_send_daily_report() {
     
     // Email message
     $message_email = "📊 BÁO CÁO TRAFFIC HÀNG NGÀY\n";
-    $message_email .= "Ngày: " . wp_date('d/m/Y', strtotime('-1 day')) . "\n\n";
+    $message_email .= "Ngày: " . $yesterday_start->format('d/m/Y') . "\n\n";
     $message_email .= "=== TỔNG QUAN ===\n";
     $message_email .= sprintf("Tổng lượt truy cập: %d\n", $total_visits);
     $message_email .= sprintf("- Google Ads: %d (%s%%)\n", $stats->ads_visits, $ads_ratio);
@@ -216,11 +227,11 @@ function tkgadm_send_daily_report() {
     $message_email .= sprintf("IP Organic: %d\n", $stats->organic_ips);
     $message_email .= sprintf("Unique Ads Clicks: %d\n", $stats->unique_clicks);
     $message_email .= sprintf("IP đã chặn: %d\n\n", $blocked_count);
-    $message_email .= "Dashboard: " . admin_url('admin.php?page=tkgad-analytics');
+    $message_email .= "Dashboard: " . admin_url('admin.php?page=tkgad-moi');
     
     // Telegram message
     $message_telegram = "📊 *BÁO CÁO TRAFFIC HÀNG NGÀY*\n";
-    $message_telegram .= "_" . wp_date('d/m/Y', strtotime('-1 day')) . "_\n\n";
+    $message_telegram .= "_" . $yesterday_start->format('d/m/Y') . "_\n\n";
     $message_telegram .= "📈 *Tổng lượt truy cập:* " . number_format($total_visits) . "\n";
     $message_telegram .= sprintf("├ 🎯 Google Ads: *%s* (%s%%)\n", number_format($stats->ads_visits), $ads_ratio);
     $message_telegram .= sprintf("└ 🌱 Organic: %s\n\n", number_format($stats->organic_visits));
@@ -229,7 +240,7 @@ function tkgadm_send_daily_report() {
     $message_telegram .= sprintf("├ IP Organic: %d\n", $stats->organic_ips);
     $message_telegram .= sprintf("├ Unique Clicks: %d\n", $stats->unique_clicks);
     $message_telegram .= sprintf("└ 🚫 IP đã chặn: %d\n\n", $blocked_count);
-    $message_telegram .= "👉 [Xem Dashboard](" . admin_url('admin.php?page=tkgad-analytics') . ")";
+    $message_telegram .= "👉 [Xem Dashboard](" . admin_url('admin.php?page=tkgad-moi') . ")";
     
     // Gửi thông báo theo platform đã chọn
     if (get_option('tkgadm_alert_platform_email', '1') === '1') {
@@ -255,21 +266,23 @@ function tkgadm_schedule_notifications() {
         wp_schedule_event(time(), $frequency, 'tkgadm_hourly_alert');
     }
     
-    // Schedule daily report theo time setting
+    // Schedule daily report theo time setting (WP timezone)
     if (!wp_next_scheduled('tkgadm_daily_report')) {
         $report_time = get_option('tkgadm_daily_report_time', '08:00');
-        list($hour, $minute) = explode(':', $report_time);
-        
-        // Tính timestamp cho lần chạy đầu tiên
-        $now = current_time('timestamp');
-        $scheduled_time = strtotime("today {$hour}:{$minute}:00");
-        
-        // Nếu giờ hôm nay đã qua, schedule cho ngày mai
-        if ($scheduled_time < $now) {
-            $scheduled_time = strtotime("tomorrow {$hour}:{$minute}:00");
+        $parts = explode(':', $report_time);
+        $hour = isset($parts[0]) ? intval($parts[0]) : 8;
+        $minute = isset($parts[1]) ? intval($parts[1]) : 0;
+
+        $tz = wp_timezone();
+        $now_ts = current_time('timestamp');
+        $today = (new DateTimeImmutable('now', $tz))->setTime($hour, $minute, 0);
+        $scheduled_ts = $today->getTimestamp();
+
+        if ($scheduled_ts <= $now_ts) {
+            $scheduled_ts = $today->modify('+1 day')->getTimestamp();
         }
-        
-        wp_schedule_event($scheduled_time, 'daily', 'tkgadm_daily_report');
+
+        wp_schedule_event($scheduled_ts, 'daily', 'tkgadm_daily_report');
     }
 }
 

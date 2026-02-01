@@ -4,6 +4,14 @@ All notable changes to **GAds Toolkit - Phần mềm chống click ảo Google A
 
 ## [3.7.0] - 2026-01-22
 
+## [3.7.1] - 2026-02-01
+
+### 🐛 Fixed
+
+- **Daily Traffic Report**: Sửa lỗi báo cáo Email/Telegram ra toàn 0 do lệch timezone giữa WordPress và MySQL (lọc theo range “hôm qua” trong WP timezone).
+- **Hourly Suspicious IP Check**: Đồng bộ mốc thời gian “1 giờ qua” theo WordPress timezone.
+- **Dashboard Link**: Sửa đường dẫn dashboard trong báo cáo daily về đúng slug hiện tại.
+
 ### 💰 Pricing
 
 - **New Pricing Structure**:
