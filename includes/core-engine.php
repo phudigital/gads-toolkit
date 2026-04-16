@@ -313,9 +313,8 @@ function tkgadm_track_visit() {
                     tkgadm_sync_ip_to_google_ads([$ip]);
                 }
                 // Gửi thông báo
-                $rule_info = [['limit' => 'N/A', 'duration' => 'N/A', 'unit' => 'Cross-IP Detection']];
                 if (function_exists('tkgadm_send_auto_block_notification')) {
-                    tkgadm_send_auto_block_notification([$ip], $rule_info);
+                    tkgadm_send_auto_block_notification([['ip' => $ip, 'rule_text' => 'Cross-IP']]);
                 }
             }
         }
@@ -374,7 +373,8 @@ function tkgadm_check_ip_instant($ip) {
                 
                 // 2. Gửi thông báo
                 if (function_exists('tkgadm_send_auto_block_notification')) {
-                    tkgadm_send_auto_block_notification([$ip], [$rule]);
+                    $unit_text = $rule['unit'] === 'HOUR' ? 'giờ' : ($rule['unit'] === 'DAY' ? 'ngày' : 'tuần');
+                    tkgadm_send_auto_block_notification([['ip' => $ip, 'rule_text' => "{$rule['limit']} click trong {$rule['duration']} {$unit_text}"]]);
                 }
                 break;
             }
@@ -550,6 +550,7 @@ function tkgadm_run_auto_block_scan() {
     $stats_table = $wpdb->prefix . 'gads_toolkit_stats';
     
     $new_blocked_ips = [];
+    $new_blocked_ips_data = [];
     
     foreach ($rules as $rule) {
         $limit = intval($rule['limit']);
@@ -585,6 +586,7 @@ function tkgadm_run_auto_block_scan() {
             // Block IP
             if (tkgadm_block_ip_internal($ip, $reason_msg)) {
                 $new_blocked_ips[] = $ip;
+                $new_blocked_ips_data[] = ['ip' => $ip, 'rule_text' => "$limit click trong " . "$duration " . strtolower($unit_vn)];
             }
         }
     }
@@ -604,41 +606,34 @@ function tkgadm_run_auto_block_scan() {
         }
         
         // Gửi thông báo
-        tkgadm_send_auto_block_notification($new_blocked_ips, $rules);
+        tkgadm_send_auto_block_notification($new_blocked_ips_data);
     }
 }
 
 /**
  * Gửi thông báo khi có IP bị chặn tự động
  */
-function tkgadm_send_auto_block_notification($blocked_ips, $rules) {
-    if (empty($blocked_ips)) return;
+function tkgadm_send_auto_block_notification($blocked_ips_data) {
+    if (empty($blocked_ips_data)) return;
 
-    $count = count($blocked_ips);
+    $count = count($blocked_ips_data);
     
     // Email message
     $message_email = "[CHẶN TỰ ĐỘNG] {$count} IP\n-------------------\n";
     $message_telegram = "[CHẶN TỰ ĐỘNG] {$count} IP\n-------------------\n";
     
-    // Danh sách IP
-    foreach ($blocked_ips as $ip) {
-        $message_email .= "{$ip}\n";
-        $message_telegram .= "`{$ip}`\n";
+    // Danh sách IP kèm rule
+    foreach ($blocked_ips_data as $data) {
+        $ip = $data['ip'];
+        $rule_text = $data['rule_text'];
+        $message_email .= "{$ip} ({$rule_text})\n";
+        $message_telegram .= "`{$ip}` ({$rule_text})\n";
     }
     
-    $rules_text = [];
-    foreach ($rules as $rule) {
-        $unit_char = strtolower($rule['unit']) === 'hour' ? 'h' : (strtolower($rule['unit']) === 'day' ? 'n' : 't');
-        $rules_text[] = "{$rule['limit']}cl/{$rule['duration']}{$unit_char}";
-    }
-    $rule_str = implode(', ', $rules_text);
+    $message_email .= "\nĐồng bộ: Thành công\n";
+    $message_email .= "Mở Dashboard (" . admin_url('admin.php?page=tkgad-moi') . ")";
     
-    $message_email .= "\nQuy tắc: {$rule_str}\n";
-    $message_email .= "Đồng bộ: Thành công\n";
-    $message_email .= "[Mở Dashboard] " . admin_url('admin.php?page=tkgad-moi');
-    
-    $message_telegram .= "\nQuy tắc: {$rule_str}\n";
-    $message_telegram .= "Đồng bộ: Thành công\n";
+    $message_telegram .= "\nĐồng bộ: Thành công\n";
     $message_telegram .= "[Mở Dashboard](" . admin_url('admin.php?page=tkgad-moi') . ")";
     
     // Gửi thông báo theo platform đã chọn
