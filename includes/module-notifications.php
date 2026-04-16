@@ -12,43 +12,6 @@ if (!defined('ABSPATH')) exit;
  * ============================================================================
  */
 
-/**
- * Hook vào phpmailer_init để cấu hình SMTP riêng cho plugin
- */
-add_action('phpmailer_init', 'tkgadm_configure_smtp', 10, 1);
-function tkgadm_configure_smtp($phpmailer) {
-    // Chỉ áp dụng nếu user bật "use custom SMTP"
-    if (get_option('tkgadm_use_custom_smtp', '0') !== '1') {
-        return; // Dùng cấu hình WordPress mặc định
-    }
-    
-    $smtp_host = get_option('tkgadm_smtp_host', '');
-    $smtp_port = get_option('tkgadm_smtp_port', 587);
-    $smtp_secure = get_option('tkgadm_smtp_secure', 'tls');
-    $smtp_auth = get_option('tkgadm_smtp_auth', '1');
-    $smtp_username = get_option('tkgadm_smtp_username', '');
-    $smtp_password = get_option('tkgadm_smtp_password', '');
-    $smtp_from_email = get_option('tkgadm_smtp_from_email', '');
-    $smtp_from_name = get_option('tkgadm_smtp_from_name', 'GAds Toolkit');
-    
-    // Chỉ cấu hình nếu có đủ thông tin
-    if (empty($smtp_host) || empty($smtp_username)) {
-        return;
-    }
-    
-    $phpmailer->isSMTP();
-    $phpmailer->Host = $smtp_host;
-    $phpmailer->Port = $smtp_port;
-    $phpmailer->SMTPSecure = $smtp_secure;
-    $phpmailer->SMTPAuth = ($smtp_auth === '1');
-    $phpmailer->Username = $smtp_username;
-    $phpmailer->Password = $smtp_password;
-    
-    if (!empty($smtp_from_email)) {
-        $phpmailer->From = $smtp_from_email;
-        $phpmailer->FromName = $smtp_from_name;
-    }
-}
 
 /**
  * Gửi tin nhắn Telegram
@@ -316,16 +279,6 @@ function tkgadm_render_notifications_page() {
         update_option('tkgadm_alert_frequency', sanitize_text_field(wp_unslash($_POST['alert_frequency'] ?? 'hourly')));
         update_option('tkgadm_daily_report_time', sanitize_text_field(wp_unslash($_POST['daily_report_time'] ?? '08:00')));
         
-        // SMTP settings
-        update_option('tkgadm_use_custom_smtp', isset($_POST['use_custom_smtp']) ? '1' : '0');
-        update_option('tkgadm_smtp_host', sanitize_text_field(wp_unslash($_POST['smtp_host'] ?? '')));
-        update_option('tkgadm_smtp_port', intval($_POST['smtp_port'] ?? 587));
-        update_option('tkgadm_smtp_secure', sanitize_text_field(wp_unslash($_POST['smtp_secure'] ?? 'tls')));
-        update_option('tkgadm_smtp_auth', isset($_POST['smtp_auth']) ? '1' : '0');
-        update_option('tkgadm_smtp_username', sanitize_text_field(wp_unslash($_POST['smtp_username'] ?? '')));
-        update_option('tkgadm_smtp_password', sanitize_text_field(wp_unslash($_POST['smtp_password'] ?? '')));
-        update_option('tkgadm_smtp_from_email', sanitize_email(wp_unslash($_POST['smtp_from_email'] ?? '')));
-        update_option('tkgadm_smtp_from_name', sanitize_text_field(wp_unslash($_POST['smtp_from_name'] ?? '')));
         
         // Reschedule cron jobs với settings mới
         tkgadm_schedule_notifications();
@@ -347,16 +300,6 @@ function tkgadm_render_notifications_page() {
     $alert_frequency = get_option('tkgadm_alert_frequency', 'hourly');
     $daily_report_time = get_option('tkgadm_daily_report_time', '08:00');
     
-    // SMTP settings
-    $use_custom_smtp = get_option('tkgadm_use_custom_smtp', '0');
-    $smtp_host = get_option('tkgadm_smtp_host', '');
-    $smtp_port = get_option('tkgadm_smtp_port', 587);
-    $smtp_secure = get_option('tkgadm_smtp_secure', 'tls');
-    $smtp_auth = get_option('tkgadm_smtp_auth', '1');
-    $smtp_username = get_option('tkgadm_smtp_username', '');
-    $smtp_password = get_option('tkgadm_smtp_password', '');
-    $smtp_from_email = get_option('tkgadm_smtp_from_email', '');
-    $smtp_from_name = get_option('tkgadm_smtp_from_name', 'GAds Toolkit');
     
     ?>
     <div class="wrap">
@@ -384,68 +327,6 @@ function tkgadm_render_notifications_page() {
                                 <p class="description" style="margin-top: 3px; font-size: 12px;">Phân tách bằng dấu phẩy. Để trống nếu không dùng.</p>
                             </div>
 
-                            <div style="margin-bottom: 15px;">
-                                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 13px;">
-                                    <input type="checkbox" name="use_custom_smtp" value="1" <?php checked($use_custom_smtp, '1'); ?> id="use-custom-smtp">
-                                    <span>Sử dụng SMTP riêng</span>
-                                </label>
-                                <p class="description" style="margin-top: 3px; font-size: 12px;">Bật để cấu hình SMTP riêng cho plugin</p>
-                            </div>
-
-                            <!-- SMTP Config (Collapsible) -->
-                            <div id="smtp-config-section" style="<?php echo $use_custom_smtp === '1' ? '' : 'display:none;'; ?> background: #f9f9f9; padding: 12px; border-radius: 5px; border: 1px solid #ddd;">
-                                <h4 style="margin: 0 0 10px 0; font-size: 13px;">⚙️ SMTP Server</h4>
-                                
-                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px;">
-                                    <div>
-                                        <label style="display: block; font-size: 12px; margin-bottom: 3px;">Host</label>
-                                        <input type="text" name="smtp_host" value="<?php echo esc_attr($smtp_host); ?>" class="widefat" placeholder="smtp.gmail.com" style="padding: 4px; font-size: 12px;">
-                                    </div>
-                                    <div>
-                                        <label style="display: block; font-size: 12px; margin-bottom: 3px;">Port</label>
-                                        <input type="number" name="smtp_port" value="<?php echo esc_attr($smtp_port); ?>" class="widefat" style="padding: 4px; font-size: 12px;">
-                                    </div>
-                                </div>
-
-                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px;">
-                                    <div>
-                                        <label style="display: block; font-size: 12px; margin-bottom: 3px;">Encryption</label>
-                                        <select name="smtp_secure" class="widefat" style="padding: 4px; font-size: 12px;">
-                                            <option value="tls" <?php selected($smtp_secure, 'tls'); ?>>TLS</option>
-                                            <option value="ssl" <?php selected($smtp_secure, 'ssl'); ?>>SSL</option>
-                                            <option value="" <?php selected($smtp_secure, ''); ?>>None</option>
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label style="display: flex; align-items: center; gap: 5px; font-size: 12px; padding-top: 20px;">
-                                            <input type="checkbox" name="smtp_auth" value="1" <?php checked($smtp_auth, '1'); ?>>
-                                            <span>Yêu cầu auth</span>
-                                        </label>
-                                    </div>
-                                </div>
-
-                                <div style="margin-bottom: 10px;">
-                                    <label style="display: block; font-size: 12px; margin-bottom: 3px;">Username</label>
-                                    <input type="text" name="smtp_username" value="<?php echo esc_attr($smtp_username); ?>" class="widefat" placeholder="your-email@gmail.com" style="padding: 4px; font-size: 12px;">
-                                </div>
-
-                                <div style="margin-bottom: 10px;">
-                                    <label style="display: block; font-size: 12px; margin-bottom: 3px;">Password</label>
-                                    <input type="password" name="smtp_password" value="<?php echo esc_attr($smtp_password); ?>" class="widefat" placeholder="App Password" style="padding: 4px; font-size: 12px;">
-                                    <p class="description" style="margin-top: 2px; font-size: 11px;">⚠ Gmail yêu cầu App Password</p>
-                                </div>
-
-                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-                                    <div>
-                                        <label style="display: block; font-size: 12px; margin-bottom: 3px;">From Email</label>
-                                        <input type="email" name="smtp_from_email" value="<?php echo esc_attr($smtp_from_email); ?>" class="widefat" placeholder="noreply@domain.com" style="padding: 4px; font-size: 12px;">
-                                    </div>
-                                    <div>
-                                        <label style="display: block; font-size: 12px; margin-bottom: 3px;">From Name</label>
-                                        <input type="text" name="smtp_from_name" value="<?php echo esc_attr($smtp_from_name); ?>" class="widefat" placeholder="GAds Toolkit" style="padding: 4px; font-size: 12px;">
-                                    </div>
-                                </div>
-                            </div>
                         </div>
 
                         <!-- Telegram Settings -->
@@ -560,17 +441,6 @@ function tkgadm_render_notifications_page() {
                 </div>
             </form>
 
-            <script>
-            jQuery(document).ready(function($) {
-                $('#use-custom-smtp').on('change', function() {
-                    if ($(this).is(':checked')) {
-                        $('#smtp-config-section').slideDown();
-                    } else {
-                        $('#smtp-config-section').slideUp();
-                    }
-                });
-            });
-            </script>
 
             <!-- Deep Test Module -->
             <div class="tkgadm-table-container" style="margin-top: 30px; border-left: 4px solid #9c27b0;">
