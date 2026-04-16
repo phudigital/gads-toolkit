@@ -618,22 +618,21 @@ function tkgadm_send_auto_block_notification($blocked_ips_data) {
 
     $count = count($blocked_ips_data);
     
+    $customer_id = get_option('tkgadm_gads_customer_id', 'Chưa kết nối');
+    
     // Email message
-    $message_email = "[CHẶN TỰ ĐỘNG] {$count} IP\n-------------------\n";
-    $message_telegram = "[CHẶN TỰ ĐỘNG] {$count} IP\n-------------------\n";
+    $message_email = "Đã chặn {$count} IP click ảo GAds {$customer_id}\n";
+    $message_telegram = "Đã chặn {$count} IP click ảo GAds {$customer_id}\n";
     
     // Danh sách IP kèm rule
     foreach ($blocked_ips_data as $data) {
         $ip = $data['ip'];
-        $rule_text = $data['rule_text'];
-        $message_email .= "{$ip} ({$rule_text})\n";
-        $message_telegram .= "`{$ip}` ({$rule_text})\n";
+        $rule_text = $data['rule_text']; // Ví dụ: "2 click trong 1 ngày"
+        $message_email .= "├ {$ip}\n├ {$rule_text}\n";
+        $message_telegram .= "├ `{$ip}`\n├ {$rule_text}\n";
     }
     
-    $message_email .= "\nĐồng bộ: Thành công\n";
     $message_email .= "Mở Dashboard (" . admin_url('admin.php?page=tkgad-moi') . ")";
-    
-    $message_telegram .= "\nĐồng bộ: Thành công\n";
     $message_telegram .= "[Mở Dashboard](" . admin_url('admin.php?page=tkgad-moi') . ")";
     
     // Gửi thông báo theo platform đã chọn
