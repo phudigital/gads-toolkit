@@ -2,6 +2,16 @@
 
 All notable changes to **GAds Toolkit - Phần mềm chống click ảo Google Ads** will be documented in this file.
 
+## [3.7.3] - 2026-04-16
+
+### 🗑️ Removed
+
+- **Custom SMTP**: Xóa hoàn toàn chức năng Custom SMTP (cấu hình qua hook `phpmailer_init`) để khắc phục lỗi xung đột toàn cục khiến Contact Form 7 và các plugin khác không gửi được mail. Plugin giờ sử dụng mail default của site.
+
+### 📚 Documentation
+
+- **AI Technical Memory**: Tạo file `docs/technical-memory.md` tài liệu hóa kiến trúc Dual-Mode API, logic Central Service và các rule strict để AI Coding dễ dàng nâng cấp các phiên bản sau mà không làm vỡ cấu trúc gốc.
+
 ## [3.7.0] - 2026-01-22
 
 ## [3.7.1] - 2026-02-01
