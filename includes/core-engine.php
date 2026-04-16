@@ -617,33 +617,29 @@ function tkgadm_send_auto_block_notification($blocked_ips, $rules) {
     $count = count($blocked_ips);
     
     // Email message
-    $message_email = "🛡️ CHẶN CLICK ẢO TỰ ĐỘNG\n\n";
-    $message_email .= "Hệ thống đã tự động chặn {$count} IP vi phạm quy tắc:\n\n";
-    
-    // Telegram message
-    $message_telegram = "🛡️ *CHẶN CLICK ẢO TỰ ĐỘNG*\n\n";
-    $message_telegram .= "Hệ thống đã tự động chặn *{$count} IP* vi phạm quy tắc:\n\n";
+    $message_email = "[CHẶN TỰ ĐỘNG] {$count} IP\n-------------------\n";
+    $message_telegram = "[CHẶN TỰ ĐỘNG] {$count} IP\n-------------------\n";
     
     // Danh sách IP
     foreach ($blocked_ips as $ip) {
-        $message_email .= "• {$ip}\n";
-        $message_telegram .= "• `{$ip}`\n";
+        $message_email .= "{$ip}\n";
+        $message_telegram .= "`{$ip}`\n";
     }
     
-    $message_email .= "\n=== QUY TẮC ÁP DỤNG ===\n";
-    $message_telegram .= "\n*Quy tắc áp dụng:*\n";
-    
+    $rules_text = [];
     foreach ($rules as $rule) {
-        $unit_text = $rule['unit'] === 'hour' ? 'giờ' : ($rule['unit'] === 'day' ? 'ngày' : 'tuần');
-        $message_email .= "- {$rule['limit']} click trong {$rule['duration']} {$unit_text}\n";
-        $message_telegram .= "├ {$rule['limit']} click trong {$rule['duration']} {$unit_text}\n";
+        $unit_char = strtolower($rule['unit']) === 'hour' ? 'h' : (strtolower($rule['unit']) === 'day' ? 'n' : 't');
+        $rules_text[] = "{$rule['limit']}cl/{$rule['duration']}{$unit_char}";
     }
+    $rule_str = implode(', ', $rules_text);
     
-    $message_email .= "\nCác IP này đã được đồng bộ lên Google Ads.\n";
-    $message_email .= "Dashboard: " . admin_url('admin.php?page=tkgad-moi');
+    $message_email .= "\nQuy tắc: {$rule_str}\n";
+    $message_email .= "Đồng bộ: Thành công\n";
+    $message_email .= "[Mở Dashboard] " . admin_url('admin.php?page=tkgad-moi');
     
-    $message_telegram .= "\n✅ Đã đồng bộ lên Google Ads\n";
-    $message_telegram .= "👉 [Xem Dashboard](" . admin_url('admin.php?page=tkgad-moi') . ")";
+    $message_telegram .= "\nQuy tắc: {$rule_str}\n";
+    $message_telegram .= "Đồng bộ: Thành công\n";
+    $message_telegram .= "[Mở Dashboard](" . admin_url('admin.php?page=tkgad-moi') . ")";
     
     // Gửi thông báo theo platform đã chọn
     if (get_option('tkgadm_alert_platform_email', '1') === '1') {
