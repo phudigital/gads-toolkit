@@ -311,8 +311,8 @@ function tkgadm_sync_ip_to_google_ads($ips_to_block) {
         ];
     }
 
-    // Google Ads API Endpoint (v19)
-    $api_version = 'v19'; 
+    // Google Ads API Endpoint (v20)
+    $api_version = 'v20'; 
     $url = "https://googleads.googleapis.com/{$api_version}/customers/{$customer_id}/customerNegativeCriteria:mutate";
 
     $manager_id = str_replace('-', '', get_option('tkgadm_gads_manager_id'));
