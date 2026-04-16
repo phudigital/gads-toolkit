@@ -2,6 +2,12 @@
 
 All notable changes to **GAds Toolkit - Phần mềm chống click ảo Google Ads** will be documented in this file.
 
+## [3.7.4] - 2026-04-16
+
+### 🎨 UI/UX
+
+- **Notification Templates Restyle**: Cập nhật lại toàn bộ template thông báo gửi qua Telegram và Email (Chặn tự động, Báo cáo ngày, IP nguy hiểm) sang định dạng Minimalist Compact Log (chuẩn hệ thống, tối ưu chiều ngang và lược bỏ các icon không cần thiết để hiển thị mượt trên thiết bị di động).
+
 ## [3.7.3] - 2026-04-16
 
 ### 🗑️ Removed
