@@ -100,33 +100,37 @@ function tkgadm_check_suspicious_ips() {
     
     // Tạo message
     $count = count($suspicious_ips);
-    $message_email = "🚨 CẢNH BÁO IP NGI NGỜ\n\n";
-    $message_email .= "Phát hiện {$count} IP có hành vi bất thường trong 1 giờ qua:\n\n";
     
-    $message_telegram = "🚨 *CẢNH BÁO IP NGI NGỜ*\n\n";
-    $message_telegram .= "Phát hiện *{$count} IP* có hành vi bất thường trong 1 giờ qua:\n\n";
+    // Email message (Clean List)
+    $message_email = "CANH BAO IP NGHI NGO\n";
+    $message_email .= "Period: 1h qua | Count: {$count}\n\n";
     
     foreach ($suspicious_ips as $ip_data) {
         $message_email .= sprintf(
-            "IP: %s\n- Ads Clicks: %d\n- Tổng visits: %d\n- Lần cuối: %s\n\n",
-            $ip_data->ip_address,
-            $ip_data->ad_clicks,
-            $ip_data->total_visits,
-            $ip_data->last_visit
-        );
-        
-        $message_telegram .= sprintf(
-            "🔴 `%s`\n├ Ads Clicks: *%d*\n├ Tổng visits: %d\n└ Lần cuối: %s\n\n",
+            "IP: %s | Clicks: %d | Visits: %d | Time: %s\n",
             $ip_data->ip_address,
             $ip_data->ad_clicks,
             $ip_data->total_visits,
             $ip_data->last_visit
         );
     }
+    $message_email .= "\nDashboard: " . admin_url('admin.php?page=tkgad-moi');
     
-    $message_email .= "Vui lòng kiểm tra và chặn IP nếu cần thiết.\n";
-    $message_email .= "Dashboard: " . admin_url('admin.php?page=tkgad-moi');
+    // Telegram message (Monospace Table)
+    $message_telegram = "*CẢNH BÁO IP NGHI NGỜ*\n";
+    $message_telegram .= "1h qua | Count: {$count}\n\n";
+    $message_telegram .= "```\n";
+    $message_telegram .= str_pad("IP ADDRESS", 16) . " " . str_pad("ADS", 6) . " " . str_pad("VISIT", 6) . " TIME\n";
+    $message_telegram .= "------------------------------------------\n";
     
+    foreach ($suspicious_ips as $ip_data) {
+        $time_only = date('H:i:s', strtotime($ip_data->last_visit));
+        $message_telegram .= str_pad($ip_data->ip_address, 16) . " " . 
+                             str_pad($ip_data->ad_clicks, 6) . " " . 
+                             str_pad($ip_data->total_visits, 6) . " " . 
+                             $time_only . "\n";
+    }
+    $message_telegram .= "```\n";
     $message_telegram .= "👉 [Xem Dashboard](" . admin_url('admin.php?page=tkgad-moi') . ")";
     
     // Gửi thông báo theo platform đã chọn
@@ -178,31 +182,37 @@ function tkgadm_send_daily_report() {
     $total_visits = $stats->ads_visits + $stats->organic_visits;
     $ads_ratio = $total_visits > 0 ? round(($stats->ads_visits / $total_visits) * 100, 1) : 0;
     
-    // Email message
-    $message_email = "📊 BÁO CÁO TRAFFIC HÀNG NGÀY\n";
-    $message_email .= "Ngày: " . $yesterday_start->format('d/m/Y') . "\n\n";
-    $message_email .= "=== TỔNG QUAN ===\n";
-    $message_email .= sprintf("Tổng lượt truy cập: %d\n", $total_visits);
-    $message_email .= sprintf("- Google Ads: %d (%s%%)\n", $stats->ads_visits, $ads_ratio);
-    $message_email .= sprintf("- Organic: %d\n\n", $stats->organic_visits);
-    $message_email .= "=== CHI TIẾT ===\n";
-    $message_email .= sprintf("IP từ Ads: %d\n", $stats->ads_ips);
-    $message_email .= sprintf("IP Organic: %d\n", $stats->organic_ips);
-    $message_email .= sprintf("Unique Ads Clicks: %d\n", $stats->unique_clicks);
-    $message_email .= sprintf("IP đã chặn: %d\n\n", $blocked_count);
+    $org_ratio = (100 - $ads_ratio);
+
+    // Email message (Clean)
+    $message_email = "BAO CAO TRAFFIC HANG NGAY\n";
+    $message_email .= "Ngay: " . $yesterday_start->format('d/m/Y') . "\n\n";
+    $message_email .= "--- TONG QUAN ---\n";
+    $message_email .= sprintf("Tong traffic : %d\n", $total_visits);
+    $message_email .= sprintf("- Google Ads : %d (%s%%)\n", $stats->ads_visits, $ads_ratio);
+    $message_email .= sprintf("- Organic    : %d\n\n", $stats->organic_visits);
+    $message_email .= "--- CHI TIET ---\n";
+    $message_email .= sprintf("IP tu Ads    : %d\n", $stats->ads_ips);
+    $message_email .= sprintf("IP Organic   : %d\n", $stats->organic_ips);
+    $message_email .= sprintf("Unique Clicks: %d\n", $stats->unique_clicks);
+    $message_email .= sprintf("IP da chan   : %d\n\n", $blocked_count);
     $message_email .= "Dashboard: " . admin_url('admin.php?page=tkgad-moi');
     
-    // Telegram message
-    $message_telegram = "📊 *BÁO CÁO TRAFFIC HÀNG NGÀY*\n";
+    // Telegram message (Clean Monospace Table)
+    $message_telegram = "*BÁO CÁO TRAFFIC HÀNG NGÀY*\n";
     $message_telegram .= "_" . $yesterday_start->format('d/m/Y') . "_\n\n";
-    $message_telegram .= "📈 *Tổng lượt truy cập:* " . number_format($total_visits) . "\n";
-    $message_telegram .= sprintf("├ 🎯 Google Ads: *%s* (%s%%)\n", number_format($stats->ads_visits), $ads_ratio);
-    $message_telegram .= sprintf("└ 🌱 Organic: %s\n\n", number_format($stats->organic_visits));
-    $message_telegram .= "📊 *Chi tiết:*\n";
-    $message_telegram .= sprintf("├ IP từ Ads: %d\n", $stats->ads_ips);
-    $message_telegram .= sprintf("├ IP Organic: %d\n", $stats->organic_ips);
-    $message_telegram .= sprintf("├ Unique Clicks: %d\n", $stats->unique_clicks);
-    $message_telegram .= sprintf("└ 🚫 IP đã chặn: %d\n\n", $blocked_count);
+    $message_telegram .= "```\n";
+    $message_telegram .= str_pad("METRIC", 16) . " " . str_pad("VALUE", 10) . " RATIO\n";
+    $message_telegram .= "----------------------------------\n";
+    $message_telegram .= str_pad("Total Traffic", 16) . " " . str_pad(number_format($total_visits), 10) . " 100%\n";
+    $message_telegram .= str_pad("Google Ads", 16) . " " . str_pad(number_format($stats->ads_visits), 10) . " {$ads_ratio}%\n";
+    $message_telegram .= str_pad("Organic", 16) . " " . str_pad(number_format($stats->organic_visits), 10) . " {$org_ratio}%\n";
+    $message_telegram .= "----------------------------------\n";
+    $message_telegram .= str_pad("IPs from Ads", 16) . " " . number_format($stats->ads_ips) . "\n";
+    $message_telegram .= str_pad("IPs Organic", 16) . " " . number_format($stats->organic_ips) . "\n";
+    $message_telegram .= str_pad("Unique Clicks", 16) . " " . number_format($stats->unique_clicks) . "\n";
+    $message_telegram .= str_pad("IPs Blocked", 16) . " " . number_format($blocked_count) . "\n";
+    $message_telegram .= "```\n";
     $message_telegram .= "👉 [Xem Dashboard](" . admin_url('admin.php?page=tkgad-moi') . ")";
     
     // Gửi thông báo theo platform đã chọn
