@@ -1305,18 +1305,31 @@ function getDashboardHTML({ turnstileSiteKey, turnstileEnabled }) {
             } catch(e) {}
         }
 
+        function getLogPresentation(log) {
+            const succeeded = log.result
+                ? log.result === 'success'
+                : Boolean(log.success);
+
+            return {
+                succeeded,
+                client: log.client || log.client_url || log.ip || '-',
+                detail: log.detail || log.error || log.message || '',
+            };
+        }
+
         function renderOverviewLogs(logs) {
             const tbody = document.getElementById('overview-logs-tbody');
             tbody.innerHTML = '';
             logs.forEach(log => {
                 const tr = document.createElement('tr');
-                const badgeClass = log.success ? 'badge-success' : 'badge-danger';
-                const resultText = log.success ? 'Thành công' : 'Thất bại';
+                const presentation = getLogPresentation(log);
+                const badgeClass = presentation.succeeded ? 'badge-success' : 'badge-danger';
+                const resultText = presentation.succeeded ? 'Thành công' : 'Thất bại';
 
                 tr.innerHTML = \`
                     <td>\${formatLogDate(log.time)}</td>
                     <td>\${log.action || '-'}</td>
-                    <td>\${truncateStr(log.client_url || log.ip, 20)}</td>
+                    <td>\${truncateStr(presentation.client, 20)}</td>
                     <td><span class="badge \${badgeClass}">\${resultText}</span></td>
                 \`;
                 tbody.appendChild(tr);
@@ -1590,22 +1603,18 @@ function getDashboardHTML({ turnstileSiteKey, turnstileEnabled }) {
 
                 logs.forEach(log => {
                     const tr = document.createElement('tr');
-                    const badgeClass = log.success ? 'badge-success' : 'badge-danger';
-                    const resultText = log.success ? 'Thành công' : 'Thất bại';
-
-                    let detailStr = '';
-                    if (log.error) detailStr = log.error;
-                    else if (log.message) detailStr = log.message;
+                    const presentation = getLogPresentation(log);
+                    const badgeClass = presentation.succeeded ? 'badge-success' : 'badge-danger';
+                    const resultText = presentation.succeeded ? 'Thành công' : 'Thất bại';
 
                     tr.innerHTML = \`
                         <td>\${formatLogDate(log.time)}</td>
                         <td>\${log.action || '-'}</td>
                         <td>
-                            \${log.client_url || '-'}<br>
-                            <small style="color:var(--text-muted)">IP: \${log.ip || '-'}</small>
+                            \${presentation.client}
                         </td>
                         <td><span class="badge \${badgeClass}">\${resultText}</span></td>
-                        <td><span style="font-size:12px;color:var(--text-muted)">\${truncateStr(detailStr, 40)}</span></td>
+                        <td><span style="font-size:12px;color:var(--text-muted)">\${truncateStr(presentation.detail, 40)}</span></td>
                     \`;
                     tbody.appendChild(tr);
                 });
