@@ -14,30 +14,30 @@ if (!defined('ABSPATH')) exit;
 
 /**
  * Get OAuth Redirect URI
- * 
+ *
  * Returns the redirect URI to use for OAuth flow.
  * Can be configured to use a central handler or direct WordPress admin URL.
- * 
+ *
  * @return string Redirect URI
  */
 function tkgadm_get_oauth_redirect_uri() {
     // Check if custom redirect URI is configured
     $custom_redirect = get_option('tkgadm_oauth_redirect_uri');
-    
+
     if (!empty($custom_redirect)) {
         // Use custom central redirect handler
         return $custom_redirect;
     }
-    
+
     // Fallback to direct WordPress admin URL (requires adding to Google Console)
     return admin_url('admin.php?page=tkgad-google-ads');
 }
 
 /**
  * Get OAuth State Parameter
- * 
+ *
  * Creates a state parameter containing the return URL and security nonce.
- * 
+ *
  * @return string Base64 encoded state parameter
  */
 function tkgadm_get_oauth_state() {
@@ -46,39 +46,39 @@ function tkgadm_get_oauth_state() {
         'nonce' => wp_create_nonce('tkgadm_oauth_state'),
         'timestamp' => time()
     );
-    
+
     return base64_encode(json_encode($state_data));
 }
 
 /**
  * Verify OAuth State Parameter
- * 
+ *
  * @param string $state Base64 encoded state parameter
  * @return bool True if valid
  */
 function tkgadm_verify_oauth_state($state) {
     $state_data = json_decode(base64_decode($state), true);
-    
+
     if (!$state_data || !isset($state_data['nonce']) || !isset($state_data['timestamp'])) {
         return false;
     }
-    
+
     // Verify nonce
     if (!wp_verify_nonce($state_data['nonce'], 'tkgadm_oauth_state')) {
         return false;
     }
-    
+
     // Check if state is not too old (1 hour max)
     if ((time() - $state_data['timestamp']) > 3600) {
         return false;
     }
-    
+
     return true;
 }
 
 /**
  * Check if using Central Service
- * 
+ *
  * @return bool True if central service is configured
  */
 function tkgadm_is_using_central_service() {
@@ -95,94 +95,94 @@ function tkgadm_is_using_central_service() {
     } else {
         $key = get_option('tkgadm_central_service_api_key');
     }
-    
+
     return !empty($url) && !empty($key);
 }
 
 /**
  * Validate API Key with Central Service
- * 
+ *
  * @param string $api_key API key to validate
  * @return bool|WP_Error True if valid, WP_Error if invalid
  */
 function tkgadm_validate_api_key($api_key) {
     $service_url = defined('GADS_SERVICE_URL') ? GADS_SERVICE_URL : get_option('tkgadm_central_service_url');
-    
+
     if (empty($service_url)) {
         $service_url = 'https://pdl.vn/gads-toolkit/';
     }
-    
+
     // Try to get credentials with this key (health check)
     $url = add_query_arg('api_key', $api_key, trailingslashit($service_url) . 'api/?action=health');
-    
+
     $response = wp_remote_get($url, array(
         'timeout' => 10
     ));
-    
+
     if (is_wp_error($response)) {
         return new WP_Error('connection_error', 'Không thể kết nối đến pdl.vn. Vui lòng kiểm tra kết nối internet.');
     }
-    
+
     $code = wp_remote_retrieve_response_code($response);
     $data = json_decode(wp_remote_retrieve_body($response), true);
-    
+
     if ($code === 401 || $code === 403) {
         return new WP_Error('invalid_key', 'API Key không hợp lệ hoặc đã hết hạn. Vui lòng liên hệ phu@pdl.vn để gia hạn.');
     }
-    
+
     if ($code !== 200 || !isset($data['success']) || !$data['success']) {
         return new WP_Error('validation_failed', 'Không thể xác thực API Key. Vui lòng thử lại.');
     }
-    
+
     return true;
 }
 
 
 /**
  * Get credentials from Central Service
- * 
+ *
  * @return array|WP_Error Credentials or error
  */
 function tkgadm_get_central_service_credentials() {
     $service_url = defined('GADS_SERVICE_URL') ? GADS_SERVICE_URL : get_option('tkgadm_central_service_url');
     $api_key = defined('GADS_API_KEY') ? GADS_API_KEY : get_option('tkgadm_central_service_api_key');
-    
+
     if (empty($service_url) || empty($api_key)) {
         return new WP_Error('missing_service_config', 'Central service not configured');
     }
-    
+
     // Send API Key via URL parameter for better server compatibility
     $url = add_query_arg('api_key', $api_key, trailingslashit($service_url) . 'api/?action=get_credentials');
-    
+
     $response = wp_remote_get($url, array(
         'timeout' => 15
     ));
-    
+
     if (is_wp_error($response)) {
         return $response;
     }
-    
+
     $data = json_decode(wp_remote_retrieve_body($response), true);
-    
+
     if (!isset($data['success']) || !$data['success']) {
         return new WP_Error('service_error', isset($data['error']) ? $data['error'] : 'Failed to get credentials');
     }
-    
+
     return $data['data'];
 }
 
 /**
  * Exchange authorization code for tokens via Central Service
- * 
+ *
  * @param string $code Authorization code from Google
  * @return array|WP_Error Token data or error
  */
 function tkgadm_exchange_code_via_service($code) {
     $service_url = defined('GADS_SERVICE_URL') ? GADS_SERVICE_URL : get_option('tkgadm_central_service_url');
     $api_key = defined('GADS_API_KEY') ? GADS_API_KEY : get_option('tkgadm_central_service_api_key');
-    
+
     $url = add_query_arg('api_key', $api_key, trailingslashit($service_url) . 'api/?action=exchange_code');
-    
+
     $response = wp_remote_post($url, array(
         'headers' => array(
             'Content-Type' => 'application/json'
@@ -190,17 +190,17 @@ function tkgadm_exchange_code_via_service($code) {
         'body' => json_encode(array('code' => $code)),
         'timeout' => 30
     ));
-    
+
     if (is_wp_error($response)) {
         return $response;
     }
-    
+
     $data = json_decode(wp_remote_retrieve_body($response), true);
-    
+
     if (!isset($data['success']) || !$data['success']) {
         return new WP_Error('service_error', isset($data['error']) ? $data['error'] : 'Failed to exchange code');
     }
-    
+
     return $data['data'];
 }
 
@@ -210,7 +210,7 @@ function tkgadm_exchange_code_via_service($code) {
 function tkgadm_get_google_access_token() {
     // Note: When using central service, we don't need to get access token separately
     // The central service handles this internally during sync_ips
-    
+
     $client_id = get_option('tkgadm_gads_client_id');
     $client_secret = get_option('tkgadm_gads_client_secret');
     $refresh_token = get_option('tkgadm_gads_refresh_token');
@@ -266,7 +266,7 @@ function tkgadm_sync_ip_to_google_ads($ips_to_block) {
 
     $customer_id = str_replace('-', '', get_option('tkgadm_gads_customer_id'));
     $developer_token = get_option('tkgadm_gads_developer_token');
-    
+
     if (!$customer_id || !$developer_token) {
         return ['success' => false, 'message' => 'Thiếu Customer ID hoặc Developer Token.'];
     }
@@ -274,11 +274,11 @@ function tkgadm_sync_ip_to_google_ads($ips_to_block) {
     // 1. Prepare operations & Validate IPs
     $operations = [];
     $skipped_count = 0;
-    
+
     foreach ($ips_to_block as $ip) {
         $clean_ip = trim($ip);
         $is_valid = false;
-        
+
         // Google Ads supports:
         // 1. Valid IPv4 / IPv6 addresses
         // 2. Class C subnet masking (x.x.x.*)
@@ -287,7 +287,7 @@ function tkgadm_sync_ip_to_google_ads($ips_to_block) {
         } elseif (preg_match('/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\*$/', $clean_ip)) {
             $is_valid = true;
         }
-        
+
         if ($is_valid) {
             $operations[] = [
                 'create' => [
@@ -301,22 +301,22 @@ function tkgadm_sync_ip_to_google_ads($ips_to_block) {
             $skipped_count++;
         }
     }
-    
+
     if (empty($operations)) {
         return [
-            'success' => true, 
-            'message' => $skipped_count > 0 
-                ? "Không có IP hợp lệ để đồng bộ ($skipped_count IP bị bỏ qua do sai định dạng)." 
+            'success' => true,
+            'message' => $skipped_count > 0
+                ? "Không có IP hợp lệ để đồng bộ ($skipped_count IP bị bỏ qua do sai định dạng)."
                 : "Danh sách IP trống."
         ];
     }
 
     // Google Ads API Endpoint (v20)
-    $api_version = 'v20'; 
+    $api_version = 'v25';
     $url = "https://googleads.googleapis.com/{$api_version}/customers/{$customer_id}/customerNegativeCriteria:mutate";
 
     $manager_id = str_replace('-', '', get_option('tkgadm_gads_manager_id'));
-    
+
     $headers = array(
         'Authorization' => 'Bearer ' . $access_token,
         'developer-token' => $developer_token,
@@ -357,7 +357,7 @@ function tkgadm_sync_ip_to_google_ads($ips_to_block) {
 
     // 200 OK - Check results
     $success_count = isset($body['results']) ? count($body['results']) : 0;
-    
+
     $msg = "Đã đồng bộ thành công $success_count IP";
     if ($skipped_count > 0) {
         $msg .= " (Bỏ qua $skipped_count IP sai định dạng)";
@@ -369,7 +369,7 @@ function tkgadm_sync_ip_to_google_ads($ips_to_block) {
 
 /**
  * Sync IPs via Central Service
- * 
+ *
  * @param array $ips_to_block List of IPs to block
  * @return array Result array with success status and message
  */
@@ -379,11 +379,11 @@ function tkgadm_sync_via_central_service($ips_to_block) {
     $customer_id = get_option('tkgadm_gads_customer_id');
     $manager_id = get_option('tkgadm_gads_manager_id');
     $refresh_token = get_option('tkgadm_gads_refresh_token');
-    
+
     if (!$customer_id || !$refresh_token) {
         return ['success' => false, 'message' => 'Thiếu Customer ID hoặc chưa kết nối Google Ads.'];
     }
-    
+
     $url = add_query_arg('api_key', $api_key, trailingslashit($service_url) . 'api/?action=sync_ips');
 
     $response = wp_remote_post($url, array(
@@ -398,18 +398,18 @@ function tkgadm_sync_via_central_service($ips_to_block) {
         )),
         'timeout' => 60
     ));
-    
+
     if (is_wp_error($response)) {
         return ['success' => false, 'message' => 'Lỗi kết nối Central Service: ' . $response->get_error_message()];
     }
-    
+
     $data = json_decode(wp_remote_retrieve_body($response), true);
-    
+
     if (!isset($data['success']) || !$data['success']) {
         $error_msg = isset($data['error']) ? $data['error'] : 'Unknown error from central service';
         return ['success' => false, 'message' => $error_msg];
     }
-    
+
     $result = $data['data'];
     return [
         'success' => true,
@@ -423,7 +423,7 @@ function tkgadm_sync_via_central_service($ips_to_block) {
 function tkgadm_do_sync_process() {
     global $wpdb;
     $blocking_table = $wpdb->prefix . 'gads_toolkit_blocked';
-    
+
     // phpcs:ignore WordPress.DB.DirectDatabaseQuery
     $blocked_ips = $wpdb->get_col("SELECT ip_address FROM $blocking_table ORDER BY blocked_time DESC LIMIT 500");
 
@@ -446,18 +446,18 @@ function tkgadm_render_google_ads_page() {
     // Only process if NOT saving settings to avoid double-processing expired codes
     if (isset($_GET['code']) && !isset($_POST['tkgadm_gads_save'])) {
         $code = sanitize_text_field($_GET['code']);
-        
+
         // Always use central service in client mode (or fallback to error)
         if (tkgadm_is_using_central_service()) {
             $tokens = tkgadm_exchange_code_via_service($code);
-            
+
             if (is_wp_error($tokens)) {
                 echo '<div class="notice notice-error"><p>Lỗi kết nối Central Service: ' . $tokens->get_error_message() . '</p></div>';
             } else {
                 if (isset($tokens['refresh_token'])) {
                     update_option('tkgadm_gads_refresh_token', $tokens['refresh_token']);
                     echo '<div class="notice notice-success is-dismissible"><p>✅ Đã kết nối thành công với tài khoản Google! (via Central Service)</p></div>';
-                    
+
                     // Clean URL to prevent re-submission of auth code
                     echo '<script>
                         if (window.history.replaceState) {
@@ -472,7 +472,7 @@ function tkgadm_render_google_ads_page() {
             echo '<div class="notice notice-error"><p>Vui lòng nhập <strong>Secure API Key</strong> và lưu lại để kích hoạt kết nối.</p></div>';
         }
     }
-    
+
     // Handle OAuth Error from central redirect
     if (isset($_GET['oauth_error'])) {
         $error = sanitize_text_field($_GET['oauth_error']);
@@ -489,14 +489,14 @@ function tkgadm_render_google_ads_page() {
     // 2. Save Settings
     if (isset($_POST['tkgadm_gads_save']) && check_admin_referer('tkgadm_gads_options')) {
         $validation_error = null;
-        
+
         if (!defined('GADS_API_KEY') && isset($_POST['api_key'])) {
             $new_api_key = sanitize_text_field($_POST['api_key']);
-            
+
             // Validate API Key with Central Service
             if (!empty($new_api_key)) {
                 $validation = tkgadm_validate_api_key($new_api_key);
-                
+
                 if (is_wp_error($validation)) {
                     $validation_error = $validation->get_error_message();
                     echo '<div class="notice notice-error is-dismissible"><p>❌ ' . esc_html($validation_error) . '</p></div>';
@@ -516,13 +516,13 @@ function tkgadm_render_google_ads_page() {
 
         update_option('tkgadm_gads_customer_id', sanitize_text_field($_POST['customer_id']));
         update_option('tkgadm_gads_manager_id', sanitize_text_field($_POST['manager_id']));
-        
+
         $auto_sync = isset($_POST['auto_sync']) ? 1 : 0;
         update_option('tkgadm_auto_sync_hourly', $auto_sync);
-        
+
         $sync_on_block = isset($_POST['sync_on_block']) ? 1 : 0;
         update_option('tkgadm_auto_sync_on_block', $sync_on_block);
-        
+
         // Handle Cron Schedule
         $timestamp = wp_next_scheduled('tkgadm_hourly_sync_event');
         if ($auto_sync && !$timestamp) {
@@ -565,12 +565,12 @@ function tkgadm_render_google_ads_page() {
     }
 
     // 3. Prepare Data
-    $refresh_token = get_option('tkgadm_gads_refresh_token'); 
+    $refresh_token = get_option('tkgadm_gads_refresh_token');
     $customer_id = get_option('tkgadm_gads_customer_id');
     $manager_id = get_option('tkgadm_gads_manager_id');
     $auto_sync = get_option('tkgadm_auto_sync_hourly');
     $sync_on_block = get_option('tkgadm_auto_sync_on_block');
-    
+
     // Get API Key value
     if (defined('GADS_API_KEY')) {
         $api_key = GADS_API_KEY;
@@ -579,20 +579,20 @@ function tkgadm_render_google_ads_page() {
         $api_key = get_option('tkgadm_central_service_api_key');
         $api_key_readonly = false;
     }
-    
+
     // Auth URL Logic for Client
     $auth_url = '';
     $connect_error = null;
-    
+
     if (tkgadm_is_using_central_service()) {
         $credentials = tkgadm_get_central_service_credentials();
         if (!is_wp_error($credentials)) {
             $client_id = $credentials['client_id'];
             $redirect_uri = $credentials['oauth_redirect_uri'];
-            
+
             // Generate State for security
             $state = tkgadm_get_oauth_state();
-            
+
             $params = array(
                 'client_id' => $client_id,
                 'redirect_uri' => $redirect_uri,
@@ -609,7 +609,7 @@ function tkgadm_render_google_ads_page() {
     } else {
          $connect_error = 'Vui lòng nhập API Key để kết nối.';
     }
-    
+
     // Render HTML
     ?>
     <div class="wrap">
@@ -620,12 +620,12 @@ function tkgadm_render_google_ads_page() {
             </div>
 
             <div class="tkgadm-main-content" style="display: grid; grid-template-columns: 1fr 350px; gap: 20px;">
-                
+
                 <!-- Settings Form -->
                 <div>
                     <form method="post" action="" style="background: white; padding: 25px; border-radius: 10px; border: 1px solid #ddd;">
                         <?php wp_nonce_field('tkgadm_gads_options'); ?>
-                        
+
                         <!-- API Settings & Connection Combined -->
                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 25px;">
                             <div>
@@ -635,7 +635,7 @@ function tkgadm_render_google_ads_page() {
                                         <button type="button" id="edit-api-btn" class="button button-small">✏️ Chỉnh sửa</button>
                                     <?php endif; ?>
                                 </div>
-                                
+
                                 <div class="form-group" style="margin-bottom: 12px;">
                                     <label style="display: block; font-weight: 500; margin-bottom: 5px; font-size: 13px;">Secure API Key</label>
                                     <input type="password" name="api_key" id="api_key_field" value="<?php echo esc_attr($api_key); ?>" class="widefat api-input" style="padding: 6px; font-size: 13px; background-color: #f0f0f1;" <?php echo ($api_key || $api_key_readonly) ? 'readonly' : ''; ?>>
@@ -657,7 +657,7 @@ function tkgadm_render_google_ads_page() {
 
                             <div>
                                 <h2 style="margin: 0 0 15px 0;">🔗 Kết nối Google</h2>
-                                
+
                                 <?php if ($refresh_token): ?>
                                     <div style="padding: 12px; background: #d4edda; border: 1px solid #c3e6cb; border-radius: 5px; color: #155724; margin-bottom: 10px; font-size: 13px;">
                                         <strong>✅ Đã kết nối thành công!</strong>
@@ -708,18 +708,18 @@ function tkgadm_render_google_ads_page() {
                                 $('#save-actions').slideUp();
                                 $('#edit-api-btn').show();
                                 // Reset values to original (optional but good UX)
-                                location.reload(); 
+                                location.reload();
                             });
                         });
                         </script>
 
                         <hr style="margin: 20px 0; border: 0; border-top: 1px solid #eee;">
-                        
+
                         <!-- Sync Options & Auto Block Combined -->
                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
                             <div>
                                 <h3 style="margin: 0 0 12px 0; font-size: 15px;">⚙️ Tùy chọn Đồng bộ</h3>
-                                
+
                                 <div style="margin-bottom: 10px;">
                                     <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 13px;">
                                         <input type="checkbox" name="auto_sync" value="1" <?php checked($auto_sync, 1); ?>>
@@ -736,19 +736,19 @@ function tkgadm_render_google_ads_page() {
                             </div>
 
                             <div>
-                                <?php 
+                                <?php
                                 $auto_block_enabled = get_option('tkgadm_auto_block_enabled');
                                 $auto_block_rules = get_option('tkgadm_auto_block_rules', []);
                                 if (!is_array($auto_block_rules)) $auto_block_rules = [];
                                 $is_connected = !empty($refresh_token);
                                 ?>
-                                
+
                                 <h3 style="margin: 0 0 12px 0; font-size: 15px; display: flex; align-items: center; gap: 8px;">
                                     🛡️ Chặn Tự Động
                                     <?php if ($is_connected): ?>
-                                        <?php 
-                                            $cron_active = wp_next_scheduled('tkgadm_auto_block_scan_event'); 
-                                            if ($cron_active && $auto_block_enabled): 
+                                        <?php
+                                            $cron_active = wp_next_scheduled('tkgadm_auto_block_scan_event');
+                                            if ($cron_active && $auto_block_enabled):
                                         ?>
                                             <span style="font-size: 11px; background: #d4edda; color: #155724; padding: 2px 6px; border-radius: 3px; font-weight: normal;" title="Lần chạy tiếp: <?php echo wp_date('H:i:s d/m', $cron_active); ?>">✅ Hoạt động</span>
                                         <?php elseif ($auto_block_enabled): ?>
@@ -775,7 +775,7 @@ function tkgadm_render_google_ads_page() {
                         <?php if ($is_connected && $auto_block_enabled): ?>
                             <div id="tkgadm-auto-block-rules" style="background: #f9f9f9; padding: 15px; border-radius: 5px; border: 1px solid #ddd; margin-top: 15px;">
                                 <label style="display: block; font-weight: 500; margin-bottom: 10px; font-size: 13px;">📋 Quy tắc chặn:</label>
-                                
+
                                 <div id="rules-container">
                                     <?php foreach ($auto_block_rules as $index => $rule): ?>
                                         <div class="rule-row" style="display: flex; gap: 8px; align-items: center; margin-bottom: 8px; font-size: 13px;">
@@ -792,7 +792,7 @@ function tkgadm_render_google_ads_page() {
                                         </div>
                                     <?php endforeach; ?>
                                 </div>
-                                
+
                                 <button type="button" id="add-rule-btn" class="button button-small" style="font-size: 12px; padding: 4px 10px;">+ Thêm điều kiện</button>
                             </div>
 
@@ -825,7 +825,7 @@ function tkgadm_render_google_ads_page() {
                             });
                             </script>
                         <?php endif; ?>
-                        
+
                         <div style="margin-top: 20px;">
                             <button type="submit" name="tkgadm_gads_save" class="button button-secondary">💾 Cập nhật tùy chọn</button>
                         </div>
@@ -836,11 +836,11 @@ function tkgadm_render_google_ads_page() {
                 <div>
                     <div style="background: white; padding: 20px; border-radius: 10px; border: 1px solid #ddd; position: sticky; top: 50px;">
                         <h3 style="margin: 0 0 15px 0; font-size: 16px;">🚀 Thao tác nhanh</h3>
-                        
+
                         <button id="manual-sync-btn" class="button button-primary" style="width: 100%; text-align: center; margin-bottom: 12px; padding: 8px; font-size: 13px;" <?php disabled(!$refresh_token); ?>>
                             ☁️ Upload IP lên Google Ads
                         </button>
-                        
+
                         <?php if (!$refresh_token): ?>
                             <p style="color: #d63638; font-size: 12px; margin: 0 0 15px 0;">* Cần kết nối Google trước</p>
                         <?php endif; ?>
@@ -853,7 +853,7 @@ function tkgadm_render_google_ads_page() {
                         </div>
 
                         <hr style="margin: 15px 0; border: 0; border-top: 1px solid #eee;">
-                        
+
                         <h4 style="margin: 0 0 10px 0; font-size: 14px;">🔍 Trạng thái gần nhất</h4>
                         <?php
                             $last_sync = get_option('tkgadm_last_sync_time');
@@ -893,7 +893,7 @@ function tkgadm_render_google_ads_page() {
                     success: function(response) {
                         spinner.hide();
                         btn.prop('disabled', false);
-                        
+
                         if (response.success) {
                             msg.html('<span style="color: green;">✅ ' + response.data.message + '</span>');
                         } else {
@@ -925,17 +925,17 @@ function tkgadm_render_google_ads_page() {
 add_action('wp_ajax_tkgadm_manual_sync_gads', 'tkgadm_ajax_manual_sync_gads');
 function tkgadm_ajax_manual_sync_gads() {
     check_ajax_referer('tkgadm_sync_gads', 'nonce');
-    
+
     if (!current_user_can('manage_options')) {
         wp_send_json_error('Không có quyền truy cập.');
     }
-    
+
     $result = tkgadm_do_sync_process();
-    
+
     // Update last sync status
     update_option('tkgadm_last_sync_time', time());
     update_option('tkgadm_last_sync_message', $result['message']);
-    
+
     if ($result['success']) {
         wp_send_json_success(['message' => $result['message']]);
     } else {
@@ -951,9 +951,9 @@ function tkgadm_handle_hourly_sync() {
     if (!get_option('tkgadm_auto_sync_hourly')) {
         return;
     }
-    
+
     $result = tkgadm_do_sync_process();
-    
+
     // Log result
     update_option('tkgadm_last_sync_time', time());
     update_option('tkgadm_last_sync_message', '(Auto) ' . $result['message']);
@@ -967,12 +967,12 @@ function tkgadm_register_site_heartbeat($api_key = null) {
         $api_key = defined('GADS_API_KEY') ? GADS_API_KEY : get_option('tkgadm_central_service_api_key');
     }
     $service_url = defined('GADS_SERVICE_URL') ? GADS_SERVICE_URL : get_option('tkgadm_central_service_url');
-    
+
     if (empty($api_key) || empty($service_url)) return;
-    
+
     // Register URL
     $url = add_query_arg('api_key', $api_key, trailingslashit($service_url) . 'api/?action=register_site');
-    
+
     wp_remote_post($url, array(
         'headers' => array('Content-Type' => 'application/json'),
         'body' => json_encode(array('site_url' => home_url())),

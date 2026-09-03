@@ -2,6 +2,15 @@
 
 All notable changes to **GAds Toolkit - Phần mềm chống click ảo Google Ads** will be documented in this file.
 
+## [4.0.0] - 2026-09-03
+
+### 🚀 Major Architectural Changes
+- **Migrated Central Service to Cloudflare Workers**: Viết lại hoàn toàn kiến trúc Central Service. Chuyển từ PHP/VPS sang Cloudflare Workers (JavaScript) để tối ưu hiệu năng và độ ổn định.
+- **Zero Hardcode Architecture**: Mọi cấu hình (Google Ads API Version, License Keys, Rate limits...) hiện được lưu trữ trên Cloudflare KV. Cho phép thay đổi trực tiếp mà không cần sửa code hay re-deploy.
+- **Worker Admin Dashboard**: Tích hợp sẵn giao diện quản trị Admin Dashboard (Inline HTML) ngay bên trong Cloudflare Worker để quản lý client và cấu hình hệ thống.
+- **Fix Google Ads API 404 Error**: Cập nhật API endpoint từ `v20` (đã bị sunset) sang phiên bản mới nhất `v25` thông qua Cloudflare KV. Hệ thống sẽ tự động miễn nhiễm với các đợt sunset trong tương lai.
+- **Clean up repository**: Di chuyển kiến trúc PHP cũ (`admin`, `central-service`) vào thư mục `archive/old-central-service-php` để chuẩn bị cho repo mới. Cập nhật lại toàn bộ tài liệu Technical Memory.
+
 ## [3.7.5] - 2026-04-16
 
 ### 📦 Package

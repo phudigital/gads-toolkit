@@ -23,6 +23,7 @@ node_modules/
 vendor/
 help/
 central-service/
+cloudflare-worker/.wrangler/
 
 
 # Backup files
@@ -38,7 +39,6 @@ gads-toolkit.zip
 .DS_Store
 central-service/config.php
 .gemini
-
 
 
 

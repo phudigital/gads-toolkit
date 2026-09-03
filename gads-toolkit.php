@@ -16,13 +16,13 @@ if (!defined('ABSPATH')) {
 }
 
 // Define plugin constants
-define('GADS_TOOLKIT_VERSION', '3.7.5');
+define('GADS_TOOLKIT_VERSION', '4.0.0');
 define('GADS_TOOLKIT_PATH', plugin_dir_path(__FILE__));
 define('GADS_TOOLKIT_URL', plugin_dir_url(__FILE__));
 
 // --- CẤU HÌNH CENTRAL SERVICE (DÀNH CHO CLIENT) ---
-// Thay đổi giá trị này trước khi gửi plugin cho khách hàng
-define('GADS_SERVICE_URL', 'https://pdl.vn/gads-toolkit');
+// Thay đổi giá trị này bằng URL của Cloudflare Worker trước khi build
+define('GADS_SERVICE_URL', 'https://gads.pdl.vn');
 // define('GADS_API_KEY', 'YOUR_API_KEY'); // Đã tắt để cho phép nhập trong Admin
 // --------------------------------------------------
 

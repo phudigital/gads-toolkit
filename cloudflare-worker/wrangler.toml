@@ -1,0 +1,53 @@
+# ============================================================
+# GAds Toolkit Central Service — Cloudflare Worker Configuration
+# ============================================================
+
+name = "gads-central-service"
+main = "src/index.js"
+compatibility_date = "2026-09-03"
+
+# -----------------------------------------------------------
+# Custom Domain
+# -----------------------------------------------------------
+routes = [
+  { pattern = "gads.pdl.vn/*", zone_name = "pdl.vn" }
+]
+
+# -----------------------------------------------------------
+# KV Namespace Binding
+# -----------------------------------------------------------
+# Tạo KV namespace trước:
+#   wrangler kv namespace create GADS_KV
+# Rồi paste ID vào đây
+[[kv_namespaces]]
+binding = "GADS_KV"
+id = "58e63c1fcf81455da218ffb72daa76d1"
+
+# Cho môi trường preview/dev:
+# preview_id = "YOUR_PREVIEW_KV_NAMESPACE_ID_HERE"
+
+# -----------------------------------------------------------
+# Cron Triggers (Heartbeat - ping wp-cron các site khách)
+# -----------------------------------------------------------
+[triggers]
+crons = ["*/10 * * * *"]   # Mỗi 10 phút
+
+# -----------------------------------------------------------
+# Environment Variables (Non-secret)
+# -----------------------------------------------------------
+[vars]
+ENVIRONMENT = "production"
+
+# -----------------------------------------------------------
+# Secrets (Set via CLI, KHÔNG ghi vào file này!)
+# -----------------------------------------------------------
+# Chạy các lệnh sau để set secrets:
+#
+#   wrangler secret put GADS_CLIENT_ID
+#   wrangler secret put GADS_CLIENT_SECRET
+#   wrangler secret put GADS_DEVELOPER_TOKEN
+#   wrangler secret put ADMIN_TOKEN
+#
+# ADMIN_TOKEN là token để đăng nhập Admin Dashboard.
+# Tự chọn một chuỗi bảo mật, ví dụ: openssl rand -hex 32
+# -----------------------------------------------------------
