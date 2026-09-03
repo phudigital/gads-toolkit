@@ -79,16 +79,50 @@ export async function verifyApiKey(request, env) {
  *
  * @param {Request} request
  * @param {Object} env
- * @returns {boolean} - True if authenticated
+ * @returns {Promise<boolean>} True if authenticated
  */
-export function verifyAdminToken(request, env) {
+export async function verifyAdminToken(request, env) {
   const authHeader = request.headers.get('Authorization') || '';
   if (!authHeader.startsWith('Bearer ')) {
     return false;
   }
 
-  const token = authHeader.slice(7);
-  return token === env.ADMIN_TOKEN;
+  return verifyAdminTokenValue(authHeader.slice(7), env);
+}
+
+/**
+ * Verify the effective dashboard token. The Worker secret acts as the initial
+ * recovery token; subsequent rotations are stored as a one-way hash in KV.
+ * @param {unknown} token
+ * @param {Object} env
+ * @returns {Promise<boolean>}
+ */
+export async function verifyAdminTokenValue(token, env) {
+  if (typeof token !== 'string' || !token) return false;
+
+  const storedHash = await env.GADS_KV.get('config:admin_token_hash');
+  if (storedHash) {
+    return timingSafeEqual(await hashAdminToken(token), storedHash);
+  }
+
+  return typeof env.ADMIN_TOKEN === 'string' && timingSafeEqual(token, env.ADMIN_TOKEN);
+}
+
+/**
+ * Hash a high-entropy Admin Token before storing it in KV.
+ * @param {string} token
+ * @returns {Promise<string>}
+ */
+export async function hashAdminToken(token) {
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(token));
+  return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('');
+}
+
+function timingSafeEqual(left, right) {
+  const leftBytes = new TextEncoder().encode(left);
+  const rightBytes = new TextEncoder().encode(right);
+  if (leftBytes.byteLength !== rightBytes.byteLength) return false;
+  return crypto.subtle.timingSafeEqual(leftBytes, rightBytes);
 }
 
 /**

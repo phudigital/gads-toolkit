@@ -37,6 +37,7 @@ crons = ["*/10 * * * *"]   # Mỗi 10 phút
 # -----------------------------------------------------------
 [vars]
 ENVIRONMENT = "production"
+TURNSTILE_SITE_KEY = "0x4AAAAAAElwX3Sma_XFYZb4"
 
 # -----------------------------------------------------------
 # Secrets (Set via CLI, KHÔNG ghi vào file này!)
@@ -47,7 +48,9 @@ ENVIRONMENT = "production"
 #   wrangler secret put GADS_CLIENT_SECRET
 #   wrangler secret put GADS_DEVELOPER_TOKEN
 #   wrangler secret put ADMIN_TOKEN
+#   wrangler secret put TURNSTILE_SECRET_KEY
 #
 # ADMIN_TOKEN là token để đăng nhập Admin Dashboard.
 # Tự chọn một chuỗi bảo mật, ví dụ: openssl rand -hex 32
+# TURNSTILE_SECRET_KEY là secret key của widget TURNSTILE_SITE_KEY.
 # -----------------------------------------------------------

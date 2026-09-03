@@ -1,10 +1,48 @@
+import { hashAdminToken, verifyAdminToken, verifyAdminTokenValue } from './auth.js';
+import { logActivity } from './utils.js';
+
+const TURNSTILE_VERIFY_URL = 'https://challenges.cloudflare.com/turnstile/v0/siteverify';
+
+async function validateTurnstile(request, env, token) {
+  if (!env.TURNSTILE_SECRET_KEY) return true;
+  if (typeof token !== 'string' || !token) return false;
+
+  try {
+    const response = await fetch(TURNSTILE_VERIFY_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        secret: env.TURNSTILE_SECRET_KEY,
+        response: token,
+        remoteip: request.headers.get('CF-Connecting-IP') || undefined,
+        idempotency_key: crypto.randomUUID(),
+      }),
+    });
+    const result = await response.json();
+    const expectedHostname = new URL(request.url).hostname;
+    return response.ok && result.success === true
+      && result.action === 'admin_login'
+      && result.hostname === expectedHostname;
+  } catch (error) {
+    console.error('Turnstile verification failed:', error.message);
+    return false;
+  }
+}
+
+function isValidAdminToken(token) {
+  return typeof token === 'string' && token.length >= 32 && token.length <= 256;
+}
+
 export async function handleAdminRequest(request, env, path) {
   const method = request.method;
 
   // Serve Dashboard HTML
   if (path === '' || path === '/') {
     if (method === 'GET') {
-      return new Response(getDashboardHTML(), {
+      return new Response(getDashboardHTML({
+        turnstileSiteKey: env.TURNSTILE_SITE_KEY || '',
+        turnstileEnabled: Boolean(env.TURNSTILE_SECRET_KEY),
+      }), {
         headers: { 'Content-Type': 'text/html;charset=UTF-8' }
       });
     }
@@ -14,7 +52,8 @@ export async function handleAdminRequest(request, env, path) {
   if (path === '/api/login' && method === 'POST') {
     try {
       const body = await request.json();
-      if (body.token === env.ADMIN_TOKEN) {
+      const isVerified = await validateTurnstile(request, env, body.turnstile_token);
+      if (isVerified && await verifyAdminTokenValue(body.token, env)) {
         return new Response(JSON.stringify({ success: true }), {
           headers: { 'Content-Type': 'application/json' }
         });
@@ -29,8 +68,7 @@ export async function handleAdminRequest(request, env, path) {
   }
 
   // --- Authentication Check for all other API routes ---
-  const authHeader = request.headers.get('Authorization');
-  if (!authHeader || authHeader !== `Bearer ${env.ADMIN_TOKEN}`) {
+  if (!await verifyAdminToken(request, env)) {
     return new Response(JSON.stringify({ success: false, error: 'Unauthorized' }), {
       status: 401,
       headers: { 'Content-Type': 'application/json' }
@@ -46,6 +84,32 @@ export async function handleAdminRequest(request, env, path) {
   });
 
   try {
+    // API Route: Rotate Admin Token
+    if (path === '/api/security/admin-token' && method === 'PUT') {
+      const body = await request.json();
+      const { current_token, new_token } = body;
+
+      if (!await verifyAdminTokenValue(current_token, env)) {
+        return jsonResponse({ error: 'Admin Token hiện tại không hợp lệ.' }, 401);
+      }
+      if (!isValidAdminToken(new_token)) {
+        return jsonResponse({ error: 'Admin Token mới phải có từ 32 đến 256 ký tự.' }, 400);
+      }
+      if (await verifyAdminTokenValue(new_token, env)) {
+        return jsonResponse({ error: 'Admin Token mới phải khác token hiện tại.' }, 400);
+      }
+
+      await env.GADS_KV.put('config:admin_token_hash', await hashAdminToken(new_token));
+      await logActivity(
+        env,
+        'admin_token_rotated',
+        request.headers.get('CF-Connecting-IP') || 'unknown',
+        'success',
+        'Admin Token was rotated'
+      );
+      return jsonResponse({ success: true });
+    }
+
     // API Route: Stats
     if (path === '/api/stats' && method === 'GET') {
       const licensesList = await env.GADS_KV.list({ prefix: 'license:' });
@@ -215,7 +279,14 @@ export async function handleAdminRequest(request, env, path) {
   return jsonResponse({ error: 'Not Found' }, 404);
 }
 
-function getDashboardHTML() {
+function getDashboardHTML({ turnstileSiteKey, turnstileEnabled }) {
+  const turnstileScript = turnstileEnabled && turnstileSiteKey
+    ? '<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>'
+    : '';
+  const turnstileWidget = turnstileEnabled && turnstileSiteKey
+    ? `<div id="turnstile-widget" class="cf-turnstile" data-sitekey="${turnstileSiteKey}" data-action="admin_login" data-size="flexible"></div>`
+    : '';
+
   return `<!DOCTYPE html>
 <html lang="vi">
 <head>
@@ -223,6 +294,7 @@ function getDashboardHTML() {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>GAds Toolkit - Admin Dashboard</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    ${turnstileScript}
     <style>
         :root {
             --primary: #667eea;
@@ -751,6 +823,7 @@ function getDashboardHTML() {
                     <label>Admin Token</label>
                     <input type="password" id="admin-token" required placeholder="Nhập token...">
                 </div>
+                ${turnstileWidget}
                 <button type="submit" class="btn">Đăng nhập</button>
             </form>
         </div>
@@ -781,6 +854,11 @@ function getDashboardHTML() {
                 <li class="nav-item">
                     <a class="nav-link" data-page="config">
                         <span class="nav-icon">⚙️</span> Cấu hình
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" data-page="security">
+                        <span class="nav-icon">🔐</span> Bảo mật
                     </a>
                 </li>
                 <li class="nav-item">
@@ -937,6 +1015,32 @@ function getDashboardHTML() {
                 </div>
             </div>
 
+            <!-- Security Page -->
+            <div id="page-security" class="page-section hidden">
+                <h1>Bảo mật quản trị</h1>
+
+                <div class="card" style="max-width: 600px;">
+                    <form id="admin-token-form">
+                        <div class="input-group">
+                            <label>Admin Token hiện tại</label>
+                            <input type="password" id="current-admin-token" required autocomplete="current-password">
+                        </div>
+                        <div class="input-group">
+                            <label>Admin Token mới</label>
+                            <div class="flex-input">
+                                <input type="password" id="new-admin-token" required minlength="32" autocomplete="new-password">
+                                <button type="button" class="btn btn-outline" onclick="generateAdminToken()">Tạo token</button>
+                            </div>
+                        </div>
+                        <div class="input-group">
+                            <label>Xác nhận Admin Token mới</label>
+                            <input type="password" id="confirm-admin-token" required minlength="32" autocomplete="new-password">
+                        </div>
+                        <button type="submit" class="btn">Cập nhật Admin Token</button>
+                    </form>
+                </div>
+            </div>
+
             <!-- Logs Page -->
             <div id="page-logs" class="page-section hidden">
                 <div class="page-header">
@@ -1024,6 +1128,24 @@ function getDashboardHTML() {
                 .map(b => b.toString(16).padStart(2, '0')).join('');
         }
 
+        function generateAdminToken() {
+            const token = Array.from(crypto.getRandomValues(new Uint8Array(32)))
+                .map(b => b.toString(16).padStart(2, '0')).join('');
+            document.getElementById('new-admin-token').value = token;
+            document.getElementById('confirm-admin-token').value = token;
+        }
+
+        function getTurnstileToken() {
+            const widget = document.getElementById('turnstile-widget');
+            if (!widget || !window.turnstile) return '';
+            return window.turnstile.getResponse(widget) || '';
+        }
+
+        function resetTurnstile() {
+            const widget = document.getElementById('turnstile-widget');
+            if (widget && window.turnstile) window.turnstile.reset(widget);
+        }
+
         function showToast(msg, type = 'success') {
             const toast = document.getElementById('toast');
             toast.textContent = msg;
@@ -1085,19 +1207,21 @@ function getDashboardHTML() {
         document.getElementById('login-form').addEventListener('submit', async (e) => {
             e.preventDefault();
             const token = document.getElementById('admin-token').value;
+            const turnstile_token = getTurnstileToken();
 
             try {
                 const res = await fetch(API_BASE + '/login', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ token })
+                    body: JSON.stringify({ token, turnstile_token })
                 });
 
                 if (res.ok) {
                     localStorage.setItem('adminToken', token);
                     initDashboard();
                 } else {
-                    showToast('Token không hợp lệ', 'error');
+                    resetTurnstile();
+                    showToast('Thông tin đăng nhập hoặc xác minh bảo mật không hợp lệ', 'error');
                 }
             } catch (err) {
                 showToast('Lỗi kết nối', 'error');
@@ -1116,10 +1240,8 @@ function getDashboardHTML() {
             if (!token) return false;
 
             try {
-                const res = await fetch(API_BASE + '/login', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ token })
+                const res = await fetch(API_BASE + '/stats', {
+                    headers: { 'Authorization': 'Bearer ' + token }
                 });
                 return res.ok;
             } catch {
@@ -1154,6 +1276,7 @@ function getDashboardHTML() {
             else if (pageId === 'licenses') loadLicenses();
             else if (pageId === 'clients') loadClients();
             else if (pageId === 'config') loadConfig();
+            else if (pageId === 'security') loadSecurity();
             else if (pageId === 'logs') loadLogs();
         }
 
@@ -1427,6 +1550,34 @@ function getDashboardHTML() {
             try {
                 await apiCall('/config', { method: 'PUT', body: JSON.stringify(payload) });
                 showToast('Đã lưu cấu hình');
+            } catch(e) {}
+        });
+
+        // -- Security --
+        function loadSecurity() {
+            document.getElementById('admin-token-form').reset();
+        }
+
+        document.getElementById('admin-token-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const current_token = document.getElementById('current-admin-token').value;
+            const new_token = document.getElementById('new-admin-token').value;
+            const confirmation = document.getElementById('confirm-admin-token').value;
+
+            if (new_token !== confirmation) {
+                showToast('Xác nhận Admin Token mới chưa khớp', 'error');
+                return;
+            }
+
+            try {
+                await apiCall('/security/admin-token', {
+                    method: 'PUT',
+                    body: JSON.stringify({ current_token, new_token })
+                });
+                localStorage.setItem('adminToken', new_token);
+                document.getElementById('admin-token-form').reset();
+                showToast('Đã cập nhật Admin Token');
             } catch(e) {}
         });
 
