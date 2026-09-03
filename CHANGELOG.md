@@ -2,6 +2,14 @@
 
 All notable changes to **GAds Toolkit - Phần mềm chống click ảo Google Ads** will be documented in this file.
 
+## [4.0.1] - 2026-09-03
+
+### 🐛 Fixed
+- Sửa payload đồng bộ IP lên Google Ads: loại bỏ trường `type` output-only gây lỗi `Request contains an invalid argument.`
+- Chuẩn hóa Customer ID và Manager ID có dấu gạch ngang trước khi gọi API.
+- Chuyển wildcard IPv4 dạng `x.x.x.*` sang CIDR tương đương trước khi gửi Google Ads.
+- Bổ sung mã lỗi, vị trí field và request ID vào thông báo lỗi để chẩn đoán nhanh hơn.
+
 ## [4.0.0] - 2026-09-03
 
 ### 🚀 Major Architectural Changes
