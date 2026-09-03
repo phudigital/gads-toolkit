@@ -7,6 +7,7 @@ import {
   normalizeIpForGoogleAds,
   formatGoogleAdsError,
 } from './utils.js';
+import { APP_VERSION } from './version.js';
 
 export async function handleApiRequest(request, env) {
   const url = new URL(request.url);
@@ -26,7 +27,7 @@ export async function handleApiRequest(request, env) {
       return jsonResponse({
         success: true,
         status: 'healthy',
-        version: '2.0.0',
+        version: APP_VERSION,
         timestamp: Date.now()
       });
     }

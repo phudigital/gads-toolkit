@@ -5,11 +5,19 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PLUGIN_SLUG="$(basename "$SCRIPT_DIR")"
 PLUGINS_DIR="$(dirname "$SCRIPT_DIR")"
 MAIN_FILE="$SCRIPT_DIR/gads-toolkit.php"
+WORKER_DIR="$SCRIPT_DIR/cloudflare-worker"
 
 if [[ ! -f "$MAIN_FILE" ]]; then
   echo "ERROR: Khong tim thay file chinh: $MAIN_FILE"
   exit 1
 fi
+
+if [[ ! -f "$WORKER_DIR/package.json" ]]; then
+  echo "ERROR: Khong tim thay Cloudflare Worker: $WORKER_DIR"
+  exit 1
+fi
+
+(cd "$WORKER_DIR" && npm run check:version)
 
 VERSION="$(sed -n "s/.*GADS_TOOLKIT_VERSION', '\([^']*\)'.*/\1/p" "$MAIN_FILE" | head -n 1)"
 if [[ -z "$VERSION" ]]; then

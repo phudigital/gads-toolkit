@@ -2,6 +2,16 @@
 
 All notable changes to **GAds Toolkit - Phần mềm chống click ảo Google Ads** will be documented in this file.
 
+## [4.0.2] - 2026-09-03
+
+### Changed
+- Hiển thị phiên bản GAds Toolkit trong sidebar Admin Dashboard; Worker, package và plugin được kiểm tra bắt buộc phải cùng phiên bản trước khi phát hành.
+- Chuyển nút đổi mật khẩu Admin vào cụm thao tác cạnh nút đăng xuất.
+- Mật khẩu Admin mới yêu cầu tối thiểu 12 ký tự.
+
+### Fixed
+- Activity Log hiển thị đúng trạng thái, client và chi tiết của các lượt đồng bộ IP thành công.
+
 ## [4.0.1] - 2026-09-03
 
 ### 🐛 Fixed

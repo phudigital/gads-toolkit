@@ -1,5 +1,6 @@
 import { hashAdminToken, verifyAdminToken, verifyAdminTokenValue } from './auth.js';
 import { logActivity } from './utils.js';
+import { APP_VERSION } from './version.js';
 
 const TURNSTILE_VERIFY_URL = 'https://challenges.cloudflare.com/turnstile/v0/siteverify';
 
@@ -30,7 +31,7 @@ async function validateTurnstile(request, env, token) {
 }
 
 function isValidAdminToken(token) {
-  return typeof token === 'string' && token.length >= 32 && token.length <= 256;
+  return typeof token === 'string' && token.length >= 12 && token.length <= 256;
 }
 
 export async function handleAdminRequest(request, env, path) {
@@ -90,13 +91,13 @@ export async function handleAdminRequest(request, env, path) {
       const { current_token, new_token } = body;
 
       if (!await verifyAdminTokenValue(current_token, env)) {
-        return jsonResponse({ error: 'Admin Token hiện tại không hợp lệ.' }, 401);
+        return jsonResponse({ error: 'Mật khẩu Admin hiện tại không hợp lệ.' }, 401);
       }
       if (!isValidAdminToken(new_token)) {
-        return jsonResponse({ error: 'Admin Token mới phải có từ 32 đến 256 ký tự.' }, 400);
+        return jsonResponse({ error: 'Mật khẩu Admin mới phải có từ 12 đến 256 ký tự.' }, 400);
       }
       if (await verifyAdminTokenValue(new_token, env)) {
-        return jsonResponse({ error: 'Admin Token mới phải khác token hiện tại.' }, 400);
+        return jsonResponse({ error: 'Mật khẩu Admin mới phải khác mật khẩu hiện tại.' }, 400);
       }
 
       await env.GADS_KV.put('config:admin_token_hash', await hashAdminToken(new_token));
@@ -105,7 +106,7 @@ export async function handleAdminRequest(request, env, path) {
         'admin_token_rotated',
         request.headers.get('CF-Connecting-IP') || 'unknown',
         'success',
-        'Admin Token was rotated'
+        'Admin password was changed'
       );
       return jsonResponse({ success: true });
     }
@@ -488,11 +489,25 @@ function getDashboardHTML({ turnstileSiteKey, turnstileEnabled }) {
             font-size: 20px;
         }
 
-        .logout-btn {
+        .sidebar-version {
+            display: block;
+            margin-top: 6px;
+            color: rgba(255,255,255,0.72);
+            font-size: 12px;
+            font-weight: 500;
+            letter-spacing: 0;
+        }
+
+        .sidebar-actions {
             position: absolute;
             bottom: 30px;
             left: 20px;
             right: 20px;
+            display: grid;
+            gap: 8px;
+        }
+
+        .sidebar-action-btn {
             background: rgba(255,255,255,0.1);
             color: white;
             border: none;
@@ -503,7 +518,7 @@ function getDashboardHTML({ turnstileSiteKey, turnstileEnabled }) {
             transition: background 0.3s;
         }
 
-        .logout-btn:hover {
+        .sidebar-action-btn:hover {
             background: rgba(255,255,255,0.2);
         }
 
@@ -820,8 +835,8 @@ function getDashboardHTML({ turnstileSiteKey, turnstileEnabled }) {
             <p>Admin Dashboard</p>
             <form id="login-form">
                 <div class="input-group">
-                    <label>Admin Token</label>
-                    <input type="password" id="admin-token" required placeholder="Nhập token...">
+                    <label>Mật khẩu Admin</label>
+                    <input type="password" id="admin-token" required placeholder="Nhập mật khẩu...">
                 </div>
                 ${turnstileWidget}
                 <button type="submit" class="btn">Đăng nhập</button>
@@ -834,7 +849,7 @@ function getDashboardHTML({ turnstileSiteKey, turnstileEnabled }) {
 
         <!-- Sidebar -->
         <div class="sidebar" id="sidebar">
-            <div class="sidebar-header">GAds Toolkit</div>
+            <div class="sidebar-header">GAds Toolkit<span class="sidebar-version">v${APP_VERSION}</span></div>
             <ul class="nav-list">
                 <li class="nav-item">
                     <a class="nav-link active" data-page="overview">
@@ -857,17 +872,15 @@ function getDashboardHTML({ turnstileSiteKey, turnstileEnabled }) {
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" data-page="security">
-                        <span class="nav-icon">🔐</span> Bảo mật
-                    </a>
-                </li>
-                <li class="nav-item">
                     <a class="nav-link" data-page="logs">
                         <span class="nav-icon">📋</span> Activity Log
                     </a>
                 </li>
             </ul>
-            <button class="logout-btn" onclick="logout()">Đăng xuất</button>
+            <div class="sidebar-actions">
+                <button type="button" class="sidebar-action-btn" onclick="navigateToPage('security')">Đổi mật khẩu Admin</button>
+                <button type="button" class="sidebar-action-btn" onclick="logout()">Đăng xuất</button>
+            </div>
         </div>
 
         <!-- Main Content -->
@@ -1017,26 +1030,26 @@ function getDashboardHTML({ turnstileSiteKey, turnstileEnabled }) {
 
             <!-- Security Page -->
             <div id="page-security" class="page-section hidden">
-                <h1>Bảo mật quản trị</h1>
+                <h1>Đổi mật khẩu Admin</h1>
 
                 <div class="card" style="max-width: 600px;">
                     <form id="admin-token-form">
                         <div class="input-group">
-                            <label>Admin Token hiện tại</label>
+                            <label>Mật khẩu Admin hiện tại</label>
                             <input type="password" id="current-admin-token" required autocomplete="current-password">
                         </div>
                         <div class="input-group">
-                            <label>Admin Token mới</label>
+                            <label>Mật khẩu Admin mới</label>
                             <div class="flex-input">
-                                <input type="password" id="new-admin-token" required minlength="32" autocomplete="new-password">
-                                <button type="button" class="btn btn-outline" onclick="generateAdminToken()">Tạo token</button>
+                                <input type="password" id="new-admin-token" required minlength="12" autocomplete="new-password">
+                                <button type="button" class="btn btn-outline" onclick="generateAdminToken()">Tạo mật khẩu mạnh</button>
                             </div>
                         </div>
                         <div class="input-group">
-                            <label>Xác nhận Admin Token mới</label>
-                            <input type="password" id="confirm-admin-token" required minlength="32" autocomplete="new-password">
+                            <label>Xác nhận mật khẩu Admin mới</label>
+                            <input type="password" id="confirm-admin-token" required minlength="12" autocomplete="new-password">
                         </div>
-                        <button type="submit" class="btn">Cập nhật Admin Token</button>
+                        <button type="submit" class="btn">Cập nhật mật khẩu Admin</button>
                     </form>
                 </div>
             </div>
@@ -1250,20 +1263,23 @@ function getDashboardHTML({ turnstileSiteKey, turnstileEnabled }) {
         }
 
         // --- Navigation ---
-        document.querySelectorAll('.nav-link').forEach(link => {
-            link.addEventListener('click', (e) => {
-                document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
-                e.currentTarget.classList.add('active');
-
-                const pageId = e.currentTarget.getAttribute('data-page');
-
-                document.querySelectorAll('.page-section').forEach(p => p.classList.add('hidden'));
-                document.getElementById('page-' + pageId).classList.remove('hidden');
-
-                if (window.innerWidth <= 768) toggleSidebar();
-
-                loadPageData(pageId);
+        function navigateToPage(pageId) {
+            document.querySelectorAll('.nav-link').forEach(link => {
+                link.classList.toggle('active', link.getAttribute('data-page') === pageId);
             });
+
+            document.querySelectorAll('.page-section').forEach(page => page.classList.add('hidden'));
+            document.getElementById('page-' + pageId).classList.remove('hidden');
+
+            if (window.innerWidth <= 768) {
+                document.getElementById('sidebar').classList.remove('open');
+            }
+
+            loadPageData(pageId);
+        }
+
+        document.querySelectorAll('.nav-link').forEach(link => {
+            link.addEventListener('click', () => navigateToPage(link.getAttribute('data-page')));
         });
 
         function toggleSidebar() {
@@ -1579,7 +1595,7 @@ function getDashboardHTML({ turnstileSiteKey, turnstileEnabled }) {
             const confirmation = document.getElementById('confirm-admin-token').value;
 
             if (new_token !== confirmation) {
-                showToast('Xác nhận Admin Token mới chưa khớp', 'error');
+                showToast('Xác nhận mật khẩu Admin mới chưa khớp', 'error');
                 return;
             }
 
@@ -1590,7 +1606,7 @@ function getDashboardHTML({ turnstileSiteKey, turnstileEnabled }) {
                 });
                 localStorage.setItem('adminToken', new_token);
                 document.getElementById('admin-token-form').reset();
-                showToast('Đã cập nhật Admin Token');
+                showToast('Đã cập nhật mật khẩu Admin');
             } catch(e) {}
         });
 

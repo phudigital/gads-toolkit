@@ -14,7 +14,7 @@
  *   GADS_DEVELOPER_TOKEN → Google Ads Developer Token (secret)
  *   ADMIN_TOKEN        → Admin Dashboard login token (secret)
  *
- * @version 2.0.0
+ * @version 4.0.2
  */
 
 import { handleApiRequest } from './api.js';
@@ -22,6 +22,7 @@ import { handleOAuthRedirect } from './oauth.js';
 import { handleAdminRequest } from './admin.js';
 import { handleCron } from './cron.js';
 import { corsResponse, errorResponse, jsonResponse } from './utils.js';
+import { APP_VERSION } from './version.js';
 
 export default {
   /**
@@ -57,7 +58,7 @@ export default {
       if (path === '/' || path === '') {
         return jsonResponse({
           service: 'GAds Toolkit Central Service',
-          version: '2.0.0',
+          version: APP_VERSION,
           status: 'running',
           docs: {
             api: '/api?action=health',
