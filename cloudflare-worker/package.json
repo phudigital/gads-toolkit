@@ -1,6 +1,7 @@
 {
   "name": "gads-central-service",
   "version": "2.0.0",
+  "type": "module",
   "description": "GAds Toolkit Central Service — Cloudflare Worker",
   "private": true,
   "scripts": {

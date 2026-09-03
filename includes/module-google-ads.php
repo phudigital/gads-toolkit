@@ -246,6 +246,26 @@ function tkgadm_get_google_access_token() {
 }
 
 /**
+ * Normalize an IP format accepted by the plugin to one accepted by Google Ads.
+ * The UI supports x.x.x.*; Google Ads expects the equivalent CIDR block.
+ */
+function tkgadm_normalize_google_ads_ip($ip) {
+    $clean_ip = trim((string) $ip);
+
+    if (preg_match('/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.\*$/', $clean_ip, $matches)) {
+        $octets = array_map('intval', array_slice($matches, 1, 3));
+        foreach ($octets as $octet) {
+            if ($octet < 0 || $octet > 255) {
+                return null;
+            }
+        }
+        return implode('.', $octets) . '.0/24';
+    }
+
+    return filter_var($clean_ip, FILTER_VALIDATE_IP) ? $clean_ip : null;
+}
+
+/**
  * Sync IPs to Google Ads (Account Level)
  */
 function tkgadm_sync_ip_to_google_ads($ips_to_block) {
@@ -276,22 +296,11 @@ function tkgadm_sync_ip_to_google_ads($ips_to_block) {
     $skipped_count = 0;
 
     foreach ($ips_to_block as $ip) {
-        $clean_ip = trim($ip);
-        $is_valid = false;
+        $clean_ip = tkgadm_normalize_google_ads_ip($ip);
 
-        // Google Ads supports:
-        // 1. Valid IPv4 / IPv6 addresses
-        // 2. Class C subnet masking (x.x.x.*)
-        if (filter_var($clean_ip, FILTER_VALIDATE_IP)) {
-            $is_valid = true;
-        } elseif (preg_match('/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\*$/', $clean_ip)) {
-            $is_valid = true;
-        }
-
-        if ($is_valid) {
+        if ($clean_ip) {
             $operations[] = [
                 'create' => [
-                    'type' => 'IP_BLOCK',
                     'ip_block' => [
                         'ip_address' => $clean_ip
                     ]
@@ -311,7 +320,7 @@ function tkgadm_sync_ip_to_google_ads($ips_to_block) {
         ];
     }
 
-    // Google Ads API Endpoint (v20)
+    // Google Ads API Endpoint
     $api_version = 'v25';
     $url = "https://googleads.googleapis.com/{$api_version}/customers/{$customer_id}/customerNegativeCriteria:mutate";
 
@@ -376,12 +385,16 @@ function tkgadm_sync_ip_to_google_ads($ips_to_block) {
 function tkgadm_sync_via_central_service($ips_to_block) {
     $service_url = defined('GADS_SERVICE_URL') ? GADS_SERVICE_URL : get_option('tkgadm_central_service_url');
     $api_key = defined('GADS_API_KEY') ? GADS_API_KEY : get_option('tkgadm_central_service_api_key');
-    $customer_id = get_option('tkgadm_gads_customer_id');
-    $manager_id = get_option('tkgadm_gads_manager_id');
+    $customer_id = preg_replace('/[\s-]+/', '', (string) get_option('tkgadm_gads_customer_id'));
+    $manager_id = preg_replace('/[\s-]+/', '', (string) get_option('tkgadm_gads_manager_id'));
     $refresh_token = get_option('tkgadm_gads_refresh_token');
 
-    if (!$customer_id || !$refresh_token) {
+    if (!$customer_id || !preg_match('/^\d{10}$/', $customer_id) || !$refresh_token) {
         return ['success' => false, 'message' => 'Thiếu Customer ID hoặc chưa kết nối Google Ads.'];
+    }
+
+    if ($manager_id && !preg_match('/^\d{10}$/', $manager_id)) {
+        return ['success' => false, 'message' => 'Manager ID không hợp lệ. Hãy nhập đủ 10 chữ số, có thể có dấu gạch ngang.'];
     }
 
     $url = add_query_arg('api_key', $api_key, trailingslashit($service_url) . 'api/?action=sync_ips');

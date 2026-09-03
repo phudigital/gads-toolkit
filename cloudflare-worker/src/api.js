@@ -1,5 +1,12 @@
 import { verifyApiKey, checkRateLimit } from './auth.js';
-import { jsonResponse, errorResponse, logActivity, isValidIp } from './utils.js';
+import {
+  jsonResponse,
+  errorResponse,
+  logActivity,
+  normalizeAdsCustomerId,
+  normalizeIpForGoogleAds,
+  formatGoogleAdsError,
+} from './utils.js';
 
 export async function handleApiRequest(request, env) {
   const url = new URL(request.url);
@@ -82,6 +89,15 @@ export async function handleApiRequest(request, env) {
         return errorResponse('Missing required parameters (customer_id, refresh_token, ips)', 400);
       }
 
+      const customerId = normalizeAdsCustomerId(customer_id);
+      const managerId = manager_id ? normalizeAdsCustomerId(manager_id) : null;
+      if (!customerId) {
+        return errorResponse('Customer ID không hợp lệ. Hãy nhập đủ 10 chữ số, có thể có dấu gạch ngang.', 400);
+      }
+      if (manager_id && !managerId) {
+        return errorResponse('Manager ID không hợp lệ. Hãy nhập đủ 10 chữ số, có thể có dấu gạch ngang.', 400);
+      }
+
       // a. Get access token from refresh token
       const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
         method: 'POST',
@@ -106,9 +122,7 @@ export async function handleApiRequest(request, env) {
       const apiVersion = await env.GADS_KV.get('config:api_version') || 'v25';
 
       // c. Validate IPs (IPv4, IPv6, or Google Ads-compatible x.x.x.* wildcard)
-      const validIps = ips
-        .map(ip => typeof ip === 'string' ? ip.trim() : '')
-        .filter(ip => isValidIp(ip));
+      const validIps = [...new Set(ips.map(normalizeIpForGoogleAds).filter(Boolean))];
 
       if (validIps.length === 0) {
         return jsonResponse({ success: true, message: 'No valid IPs to sync' });
@@ -117,13 +131,12 @@ export async function handleApiRequest(request, env) {
       // d. Build operations array
       const operations = validIps.map(ipAddress => ({
         create: {
-          type: 'IP_BLOCK',
           ip_block: { ip_address: ipAddress }
         }
       }));
 
       // e. POST to Google Ads API
-      const adsUrl = `https://googleads.googleapis.com/${apiVersion}/customers/${customer_id}/customerNegativeCriteria:mutate`;
+      const adsUrl = `https://googleads.googleapis.com/${apiVersion}/customers/${customerId}/customerNegativeCriteria:mutate`;
       const adsHeaders = {
         'Authorization': `Bearer ${accessToken}`,
         'developer-token': env.GADS_DEVELOPER_TOKEN,
@@ -131,8 +144,8 @@ export async function handleApiRequest(request, env) {
       };
 
       // f. Add login-customer-id if manager_id provided
-      if (manager_id) {
-        adsHeaders['login-customer-id'] = manager_id;
+      if (managerId) {
+        adsHeaders['login-customer-id'] = managerId;
       }
 
       const adsResponse = await fetch(adsUrl, {
@@ -148,18 +161,18 @@ export async function handleApiRequest(request, env) {
       const adsResult = await adsResponse.json();
 
       if (!adsResponse.ok) {
-        // Assume logActivity function exists
+        const errorMessage = formatGoogleAdsError(adsResult);
         await logActivity(
           env,
           'sync_ips_failed',
-          customer_id,
+          customerId,
           'error',
-          adsResult.error?.message || 'Failed to sync IPs'
+          errorMessage
         );
-        return errorResponse(adsResult.error?.message || 'Failed to sync IPs', adsResponse.status);
+        return errorResponse(errorMessage, adsResponse.status);
       }
 
-      await logActivity(env, 'sync_ips_success', customer_id, 'success', `${validIps.length} IPs synced`);
+      await logActivity(env, 'sync_ips_success', customerId, 'success', `${validIps.length} IPs synced`);
 
       // g. Return success/error result
       return jsonResponse({

@@ -35,10 +35,9 @@ cloudflare-worker/.wrangler/
 # WordPress specific
 wp-config.php
 wp-content/uploads/
-gads-toolkit.zip
+*.zip
 .DS_Store
 central-service/config.php
 .gemini
-
 
 

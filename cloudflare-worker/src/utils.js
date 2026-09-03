@@ -146,6 +146,59 @@ export function isValidIp(ip) {
 }
 
 /**
+ * Normalize a Google Ads customer or manager ID.
+ * Google Ads expects the 10-digit value without display separators.
+ * @param {unknown} value
+ * @returns {string|null}
+ */
+export function normalizeAdsCustomerId(value) {
+  const normalized = String(value ?? '').trim().replace(/[\s-]/g, '');
+  return /^\d{10}$/.test(normalized) ? normalized : null;
+}
+
+/**
+ * Convert the wildcard format supported by the plugin UI to CIDR, which is
+ * the format accepted by CustomerNegativeCriterion.ip_block.ip_address.
+ * @param {unknown} value
+ * @returns {string|null}
+ */
+export function normalizeIpForGoogleAds(value) {
+  if (typeof value !== 'string') return null;
+
+  const trimmed = value.trim();
+  const wildcardMatch = trimmed.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.\*$/);
+  if (wildcardMatch) {
+    const octets = wildcardMatch.slice(1, 4).map(Number);
+    if (octets.some((octet) => octet < 0 || octet > 255)) return null;
+    return `${octets.join('.')}.0/24`;
+  }
+
+  return isValidIp(trimmed) ? trimmed : null;
+}
+
+/**
+ * Extract useful Google Ads failure details from an API response.
+ * @param {Object} response
+ * @returns {string}
+ */
+export function formatGoogleAdsError(response) {
+  const error = response?.error || {};
+  const details = Array.isArray(error.details) ? error.details : [];
+  const failures = details.flatMap((detail) => Array.isArray(detail.errors) ? detail.errors : []);
+  const messages = failures.map((failure) => {
+    const code = failure.errorCode ? ` [${JSON.stringify(failure.errorCode)}]` : '';
+    const location = failure.location?.fieldPathElements?.length
+      ? ` tại ${failure.location.fieldPathElements.map((item) => item.fieldName + (item.index !== undefined ? `[${item.index}]` : '')).join('.')}`
+      : '';
+    return `${failure.message || 'Google Ads request failed'}${code}${location}`;
+  });
+  const requestId = details.find((detail) => detail.requestId)?.requestId;
+  const baseMessage = error.message || 'Failed to sync IPs';
+  const suffix = messages.length ? ` ${messages.join('; ')}` : '';
+  return `${baseMessage}${suffix}${requestId ? ` (request ID: ${requestId})` : ''}`;
+}
+
+/**
  * Get all KV keys with a given prefix
  * @param {KVNamespace} kv - KV namespace
  * @param {string} prefix - Key prefix
