@@ -1,6 +1,6 @@
 # 🛡️ Phần mềm chống click ảo Google Ads - GAds Toolkit
 
-![Version](https://img.shields.io/badge/version-4.1.3-blue.svg)
+![Version](https://img.shields.io/badge/version-4.1.5-blue.svg)
 ![WordPress](https://img.shields.io/badge/WordPress-5.0%2B-blue.svg)
 ![PHP](https://img.shields.io/badge/PHP-7.4%2B-purple.svg)
 ![License](https://img.shields.io/badge/license-GPL--2.0-green.svg)
@@ -11,25 +11,17 @@
 
 ## 📸 Giao diện trực quan & Dễ sử dụng
 
-### 📊 Dashboard - Thống kê tổng quan
+Khám phá sức mạnh của GAds Toolkit qua bản demo tương tác trực tiếp tại:
+👉 **[Trải nghiệm Bản Demo Tương Tác](https://phudigital.github.io/gads-toolkit/#trai-nghiem)**
 
-![Dashboard](https://raw.githubusercontent.com/phudigital/gads-toolkit/main/assets/screenshot.png)
+![Dashboard Thống kê](https://raw.githubusercontent.com/phudigital/gads-toolkit/main/assets/screenshot-dashboard.png)
 
-### 📈 Thống kê IP Ads chi tiết
-
-![IP Ads Stats](https://raw.githubusercontent.com/phudigital/gads-toolkit/main/assets/screenshot1.png)
-
-### 🚫 Quản lý IP bị chặn
-
-![Blocked IPs](https://raw.githubusercontent.com/phudigital/gads-toolkit/main/assets/screenshot2.png)
-
-### 🔑 Cấu hình Google Ads API
-
-![Google Ads Config](https://raw.githubusercontent.com/phudigital/gads-toolkit/main/assets/screenshot3.png)
-
-### 🔔 Cấu hình Thông báo Telegram
-
-![Notifications](https://raw.githubusercontent.com/phudigital/gads-toolkit/main/assets/screenshot4.png)
+Trải nghiệm đầy đủ các tính năng:
+- **Dashboard Thống Kê:** Theo dõi lưu lượng Ads vs Organic, tỷ lệ chặn.
+- **Quản Lý IP Bị Chặn:** Theo dõi và quản lý danh sách IP nghi ngờ.
+- **Cấu hình Google Ads API:** Đồng bộ tự động IP lên Google Ads.
+- **Cấu hình Quy Tắc Chặn:** Thiết lập các quy tắc chặn thông minh.
+- **Thông Báo Telegram/Email:** Cấu hình nhận cảnh báo theo thời gian thực.
 
 ---
 
@@ -193,7 +185,7 @@ git clone https://github.com/phudigital/gads-toolkit.git
 ### 💬 Liên hệ hỗ trợ
 
 - **Email:** phu@pdl.vn
-- **Zalo/Telegram:** 0123456789
+- **Zalo/Telegram:** 0961 330 088
 - **GitHub Issues:** [Báo lỗi tại đây](https://github.com/phudigital/gads-toolkit/issues)
 
 **Thời gian hỗ trợ:** 9:00 - 18:00 (T2-T6)  
