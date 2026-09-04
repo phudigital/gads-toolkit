@@ -530,6 +530,58 @@ function tkgadm_add_admin_menu() {
 }
 
 /**
+ * Shared visual navigation for the plugin workspace.
+ *
+ * WordPress keeps its global admin menu available, while this compact
+ * navigation gives the GAds screens the same clear hierarchy as the product
+ * dashboard. It is deliberately output by each page rather than injected
+ * globally so other WordPress admin pages remain untouched.
+ *
+ * @param string $active_page Current plugin screen slug.
+ */
+function tkgadm_render_admin_workspace($active_page) {
+    $items = array(
+        'dashboard' => array(
+            'label' => 'Tổng quan',
+            'icon'  => 'fa-chart-pie',
+            'url'   => admin_url('admin.php?page=tkgad-moi'),
+        ),
+        'data' => array(
+            'label' => 'Dữ liệu & IP chặn',
+            'icon'  => 'fa-database',
+            'url'   => admin_url('admin.php?page=tkgad-maintenance'),
+        ),
+        'settings' => array(
+            'label' => 'Cấu hình',
+            'icon'  => 'fa-sliders',
+            'url'   => admin_url('admin.php?page=tkgad-settings'),
+        ),
+    );
+    ?>
+    <section class="tkgadm-workspace" aria-label="GAds Toolkit">
+        <div class="tkgadm-workspace__bar">
+            <div class="tkgadm-workspace__brand">
+                <span class="tkgadm-workspace__brand-icon" aria-hidden="true"><i class="fa-solid fa-rocket"></i></span>
+                <span>GAds Toolkit</span>
+            </div>
+            <div class="tkgadm-workspace__meta">
+                <span class="tkgadm-workspace__status"><span aria-hidden="true"></span> Hệ thống sẵn sàng</span>
+                <span class="tkgadm-workspace__version">v<?php echo esc_html(GADS_TOOLKIT_VERSION); ?></span>
+            </div>
+        </div>
+        <nav class="tkgadm-workspace__nav" aria-label="Điều hướng GAds Toolkit">
+            <?php foreach ($items as $slug => $item) : ?>
+                <a class="tkgadm-workspace__link <?php echo $slug === $active_page ? 'is-active' : ''; ?>" href="<?php echo esc_url($item['url']); ?>" <?php echo $slug === $active_page ? 'aria-current="page"' : ''; ?>>
+                    <i class="fa-solid <?php echo esc_attr($item['icon']); ?>" aria-hidden="true"></i>
+                    <span><?php echo esc_html($item['label']); ?></span>
+                </a>
+            <?php endforeach; ?>
+        </nav>
+    </section>
+    <?php
+}
+
+/**
  * Enqueue admin assets
  */
 add_action('admin_enqueue_scripts', 'tkgadm_enqueue_admin_assets');
@@ -562,7 +614,7 @@ function tkgadm_enqueue_admin_assets($hook) {
         'tkgadm-admin-style',
         GADS_TOOLKIT_URL . 'assets/admin-style.css',
         array(),
-        GADS_TOOLKIT_VERSION
+        GADS_TOOLKIT_VERSION . '.' . filemtime(GADS_TOOLKIT_PATH . 'assets/admin-style.css')
     );
 
     wp_enqueue_script(

@@ -112,7 +112,8 @@ function tkgadm_render_settings_page() {
     $report_time = get_option('tkgadm_daily_report_time', '08:00');
 
     ?>
-    <div class="wp-wrap tkgadm-settings-page space-y-6" style="padding: 20px 0;">
+    <div class="wp-wrap tkgadm-page tkgadm-settings-page space-y-6" style="padding: 20px 0;">
+        <?php tkgadm_render_admin_workspace('settings'); ?>
         <form method="POST" action="">
             <?php wp_nonce_field('tkgadm_settings_nonce'); ?>
             <div class="space-y-6">
