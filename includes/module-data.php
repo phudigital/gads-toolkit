@@ -61,8 +61,7 @@ function tkgadm_render_maintenance_page() {
     $default_end_date = $date_range && $date_range->max_date ? date('Y-m-d', strtotime($date_range->max_date)) : '';
     
     ?>
-        <div class="wp-wrap tkgadm-page tkgadm-data-page space-y-6" style="padding: 20px 0;">
-        <?php tkgadm_render_admin_workspace('data'); ?>
+        <div class="wp-wrap space-y-6" style="padding: 20px 0;">
         <div class="space-y-6">
             <!-- Header -->
             <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5 flex justify-between items-center">

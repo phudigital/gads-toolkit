@@ -132,8 +132,7 @@ function tkgadm_render_dashboard_page() {
         }
     </style>
 
-    <div class="wp-wrap tkgadm-page tkgadm-dashboard-page space-y-6" style="padding: 20px 0;">
-        <?php tkgadm_render_admin_workspace('dashboard'); ?>
+    <div class="wp-wrap space-y-6" style="padding: 20px 0;">
         <!-- Header & Filters -->
         <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5 flex flex-col md:flex-row justify-between items-center gap-4">
             <div>
