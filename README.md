@@ -1,6 +1,6 @@
 # 🛡️ Phần mềm chống click ảo Google Ads - GAds Toolkit
 
-![Version](https://img.shields.io/badge/version-4.0.2-blue.svg)
+![Version](https://img.shields.io/badge/version-4.1.3-blue.svg)
 ![WordPress](https://img.shields.io/badge/WordPress-5.0%2B-blue.svg)
 ![PHP](https://img.shields.io/badge/PHP-7.4%2B-purple.svg)
 ![License](https://img.shields.io/badge/license-GPL--2.0-green.svg)
@@ -141,8 +141,8 @@ git clone https://github.com/phudigital/gads-toolkit.git
 ### Bước 3: Cấu hình cơ bản
 
 1. Vào **GAds Toolkit → Dashboard** để xem thống kê
-2. Vào **Quản lý IP** để chặn IP thủ công
-3. **(Bản Pro)** Vào **Cấu hình Google Ads** để nhập API Key và kết nối
+2. Vào **Quản lý dữ liệu** để tra cứu và lọc IP bị chặn
+3. **(Bản Pro)** Vào **Cấu hình & Tích hợp** để nhập API Key và kết nối tài khoản Google Ads
 
 ---
 
@@ -153,22 +153,22 @@ git clone https://github.com/phudigital/gads-toolkit.git
 1. Truy cập **GAds Toolkit → Dashboard**
 2. Chọn khoảng thời gian (Hôm nay, 7 ngày, 30 ngày...)
 3. Xem biểu đồ phân tích Ads Traffic vs Organic Traffic
-4. Click vào IP để xem chi tiết hành vi
+4. Click vào IP để xem chi tiết hành vi, hoặc dùng toggle switch để chặn/bỏ chặn nhanh
 
 ### 🚫 Chặn IP thủ công
 
-1. Vào **Quản lý dữ liệu → Quản lý IP bị chặn**
-2. Nhập IP cần chặn (hỗ trợ nhiều IP cùng lúc)
-3. Nhấn **Chặn IP**
+1. Vào **GAds Toolkit → Quản lý dữ liệu**
+2. Tra cứu, lọc danh sách IP bị chặn theo số phiên và mốc thời gian
+3. Copy hoặc quản lý trạng thái chặn IP
 4. **(Bản Pro)** IP tự động đồng bộ lên Google Ads
 
 ### 🔥 Kích hoạt chặn tự động (Bản Pro)
 
-1. Vào **Cấu hình Google Ads**
+1. Vào **GAds Toolkit → Cấu hình & Tích hợp**
 2. Nhập **API Key** (mua từ phu@pdl.vn)
 3. Kết nối tài khoản Google Ads
-4. Bật **Chặn tự động** và cấu hình quy tắc
-5. Ví dụ: "Chặn nếu 1 IP click quá 5 lần trong 1 giờ"
+4. Chuyển sang tab **Quy tắc Chặn Tự Động**, thiết lập ngưỡng (ví dụ: "Chặn nếu 1 IP click quá 5 lần trong 1 giờ")
+5. Chuyển sang tab **Cấu hình Thông Báo** để nhận cảnh báo qua Telegram hoặc Email
 
 ---
 

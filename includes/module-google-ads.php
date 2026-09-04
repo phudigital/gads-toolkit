@@ -90,13 +90,25 @@ function tkgadm_is_using_central_service() {
     }
 
     // 2. Check API Key (Priority: Constant > Option)
-    if (defined('GADS_API_KEY')) {
-        $key = GADS_API_KEY;
-    } else {
-        $key = get_option('tkgadm_central_service_api_key');
-    }
+    $key = tkgadm_get_central_service_api_key();
 
     return !empty($url) && !empty($key);
+}
+
+/**
+ * Get Central Service API key with backward compatibility for the redesigned settings page.
+ */
+function tkgadm_get_central_service_api_key() {
+    if (defined('GADS_API_KEY')) {
+        return GADS_API_KEY;
+    }
+
+    $key = get_option('tkgadm_central_service_api_key');
+    if (empty($key)) {
+        $key = get_option('tkgadm_gads_api_key');
+    }
+
+    return $key;
 }
 
 /**
@@ -145,7 +157,7 @@ function tkgadm_validate_api_key($api_key) {
  */
 function tkgadm_get_central_service_credentials() {
     $service_url = defined('GADS_SERVICE_URL') ? GADS_SERVICE_URL : get_option('tkgadm_central_service_url');
-    $api_key = defined('GADS_API_KEY') ? GADS_API_KEY : get_option('tkgadm_central_service_api_key');
+    $api_key = tkgadm_get_central_service_api_key();
 
     if (empty($service_url) || empty($api_key)) {
         return new WP_Error('missing_service_config', 'Central service not configured');
@@ -179,7 +191,7 @@ function tkgadm_get_central_service_credentials() {
  */
 function tkgadm_exchange_code_via_service($code) {
     $service_url = defined('GADS_SERVICE_URL') ? GADS_SERVICE_URL : get_option('tkgadm_central_service_url');
-    $api_key = defined('GADS_API_KEY') ? GADS_API_KEY : get_option('tkgadm_central_service_api_key');
+    $api_key = tkgadm_get_central_service_api_key();
 
     $url = add_query_arg('api_key', $api_key, trailingslashit($service_url) . 'api/?action=exchange_code');
 
@@ -384,7 +396,7 @@ function tkgadm_sync_ip_to_google_ads($ips_to_block) {
  */
 function tkgadm_sync_via_central_service($ips_to_block) {
     $service_url = defined('GADS_SERVICE_URL') ? GADS_SERVICE_URL : get_option('tkgadm_central_service_url');
-    $api_key = defined('GADS_API_KEY') ? GADS_API_KEY : get_option('tkgadm_central_service_api_key');
+    $api_key = tkgadm_get_central_service_api_key();
     $customer_id = preg_replace('/[\s-]+/', '', (string) get_option('tkgadm_gads_customer_id'));
     $manager_id = preg_replace('/[\s-]+/', '', (string) get_option('tkgadm_gads_manager_id'));
     $refresh_token = get_option('tkgadm_gads_refresh_token');
@@ -586,12 +598,11 @@ function tkgadm_render_google_ads_page() {
 
     // Get API Key value
     if (defined('GADS_API_KEY')) {
-        $api_key = GADS_API_KEY;
         $api_key_readonly = true;
     } else {
-        $api_key = get_option('tkgadm_central_service_api_key');
         $api_key_readonly = false;
     }
+    $api_key = tkgadm_get_central_service_api_key();
 
     // Auth URL Logic for Client
     $auth_url = '';
@@ -735,14 +746,20 @@ function tkgadm_render_google_ads_page() {
 
                                 <div style="margin-bottom: 10px;">
                                     <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 13px;">
-                                        <input type="checkbox" name="auto_sync" value="1" <?php checked($auto_sync, 1); ?>>
+                                        <span class="tkgadm-switch">
+                                            <input type="checkbox" name="auto_sync" value="1" class="tkgadm-switch__input" aria-label="Bật tự động đồng bộ mỗi giờ" <?php checked($auto_sync, 1); ?>>
+                                            <span class="tkgadm-switch__track" aria-hidden="true"></span>
+                                        </span>
                                         <span>Tự động mỗi giờ (Cron)</span>
                                     </label>
                                 </div>
 
                                 <div style="margin-bottom: 10px;">
                                     <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 13px;">
-                                        <input type="checkbox" name="sync_on_block" value="1" <?php checked($sync_on_block, 1); ?>>
+                                        <span class="tkgadm-switch">
+                                            <input type="checkbox" name="sync_on_block" value="1" class="tkgadm-switch__input" aria-label="Bật đồng bộ ngay khi chặn" <?php checked($sync_on_block, 1); ?>>
+                                            <span class="tkgadm-switch__track" aria-hidden="true"></span>
+                                        </span>
                                         <span>Đồng bộ ngay khi chặn</span>
                                     </label>
                                 </div>
@@ -775,7 +792,10 @@ function tkgadm_render_google_ads_page() {
                                 <?php if ($is_connected): ?>
                                     <div style="margin-bottom: 10px;">
                                         <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 13px;">
-                                            <input type="checkbox" name="tkgadm_auto_block_enabled" value="1" <?php checked($auto_block_enabled, 1); ?>>
+                                            <span class="tkgadm-switch">
+                                                <input type="checkbox" name="tkgadm_auto_block_enabled" value="1" class="tkgadm-switch__input" aria-label="Bật chặn theo hành vi" <?php checked($auto_block_enabled, 1); ?>>
+                                                <span class="tkgadm-switch__track" aria-hidden="true"></span>
+                                            </span>
                                             <span>Kích hoạt chặn theo hành vi</span>
                                         </label>
                                     </div>
@@ -977,7 +997,7 @@ function tkgadm_handle_hourly_sync() {
  */
 function tkgadm_register_site_heartbeat($api_key = null) {
     if (!$api_key) {
-        $api_key = defined('GADS_API_KEY') ? GADS_API_KEY : get_option('tkgadm_central_service_api_key');
+        $api_key = tkgadm_get_central_service_api_key();
     }
     $service_url = defined('GADS_SERVICE_URL') ? GADS_SERVICE_URL : get_option('tkgadm_central_service_url');
 

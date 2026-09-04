@@ -44,13 +44,16 @@ jQuery(document).ready(function ($) {
   // Toggle blocked view
   $("#toggle-blocked-view").on("click", function () {
     const currentShow = $(this).data("show");
+    const urlParams = new URLSearchParams(window.location.search);
+    urlParams.set("page", "tkgad-moi");
+
     if (currentShow === "1" || currentShow === 1) {
-      // Đang hiện IP chặn -> chuyển sang hiện tất cả
-      window.location.href = "?page=tkgad-moi";
+      urlParams.delete("show_blocked");
     } else {
-      // Đang hiện tất cả -> chuyển sang chỉ hiện IP chặn
-      window.location.href = "?page=tkgad-moi&show_blocked=1";
+      urlParams.set("show_blocked", "1");
     }
+
+    window.location.href = "?" + urlParams.toString();
   });
 
   // Sort table by visits
@@ -82,7 +85,98 @@ jQuery(document).ready(function ($) {
     $.each($rows, function (index, row) {
       $tbody.append(row);
     });
+
+    refreshDashboardTable();
   });
+
+  let dashboardCurrentPage = 1;
+  const dashboardPageSize = 10;
+
+  function getFilteredDashboardRows() {
+    const searchValue = ($("#search-ip-input").val() || "").toLowerCase();
+    return $("#ip-table-body .ip-row").filter(function () {
+      return $(this).text().toLowerCase().indexOf(searchValue) > -1;
+    });
+  }
+
+  function refreshDashboardTable() {
+    const $rows = $("#ip-table-body .ip-row");
+    if (!$rows.length) {
+      return;
+    }
+
+    const $filteredRows = getFilteredDashboardRows();
+    const totalRows = $filteredRows.length;
+    const totalPages = Math.max(Math.ceil(totalRows / dashboardPageSize), 1);
+    dashboardCurrentPage = Math.min(Math.max(dashboardCurrentPage, 1), totalPages);
+
+    $rows.hide();
+
+    const startIndex = (dashboardCurrentPage - 1) * dashboardPageSize;
+    const endIndex = Math.min(startIndex + dashboardPageSize, totalRows);
+    $filteredRows.slice(startIndex, endIndex).show();
+
+    $("#total-ips-count").text(totalRows);
+    $("#table-info").text(
+      totalRows > 0
+        ? `Hiển thị ${startIndex + 1}-${endIndex} của ${totalRows} IPs`
+        : "Hiển thị 0 của 0 IPs",
+    );
+
+    let html = "";
+    html += `<button type="button" class="dashboard-page-btn px-3 py-1 rounded border border-gray-200 hover:bg-gray-50 disabled:opacity-50 h-8 border-solid cursor-pointer" data-page="${dashboardCurrentPage - 1}" ${dashboardCurrentPage === 1 ? "disabled" : ""}>Trước</button>`;
+
+    const visiblePages = Math.min(totalPages, 3);
+    for (let page = 1; page <= visiblePages; page++) {
+      const activeClass =
+        page === dashboardCurrentPage
+          ? "bg-blue-600 text-white font-medium border-none"
+          : "border border-gray-200 hover:bg-gray-50 border-solid";
+      html += `<button type="button" class="dashboard-page-btn px-3 py-1 rounded ${activeClass} h-8 cursor-pointer" data-page="${page}">${page}</button>`;
+    }
+
+    html += `<button type="button" class="dashboard-page-btn px-3 py-1 rounded border border-gray-200 hover:bg-gray-50 h-8 border-solid cursor-pointer" data-page="${dashboardCurrentPage + 1}" ${dashboardCurrentPage >= totalPages ? "disabled" : ""}>Tiếp</button>`;
+
+    $("#pagination-controls").html(html);
+  }
+
+  function updateBlockedIpCache(ip, isBlocked) {
+    const textarea = document.getElementById("blocked-ips-textarea");
+    if (!textarea) {
+      return;
+    }
+
+    const ips = textarea.value
+      .split(/\r?\n/)
+      .map((item) => item.trim())
+      .filter(Boolean);
+    const uniqueIps = new Set(ips);
+
+    if (isBlocked) {
+      uniqueIps.add(ip);
+    } else {
+      uniqueIps.delete(ip);
+    }
+
+    const nextIps = Array.from(uniqueIps);
+    textarea.value = nextIps.join("\n");
+    $("#copy-count-badge").text(nextIps.length);
+  }
+
+  $("#search-ip-input").on("keyup", function () {
+    dashboardCurrentPage = 1;
+    refreshDashboardTable();
+  });
+
+  $(document).on("click", ".dashboard-page-btn", function () {
+    const requestedPage = parseInt($(this).data("page"), 10);
+    if (requestedPage && !$(this).prop("disabled")) {
+      dashboardCurrentPage = requestedPage;
+      refreshDashboardTable();
+    }
+  });
+
+  refreshDashboardTable();
 
   // Open popup modals
   $("#open-manage-ip").on("click", function () {
@@ -110,8 +204,13 @@ jQuery(document).ready(function ($) {
   });
 
   // Copy blocked IPs từ modal (giữ lại cho backward compatibility)
-  $("#copy-blocked-ips").on("click", function () {
+  $("#copy-blocked-ips-modal").on("click", function () {
     var textarea = document.getElementById("blocked-ips-hidden");
+    if (!textarea || !textarea.value) {
+      alert("Chưa có IP nào bị chặn!");
+      return;
+    }
+
     textarea.style.position = "static";
     textarea.select();
     document.execCommand("copy");
@@ -182,6 +281,7 @@ jQuery(document).ready(function ($) {
         data: {
           action: "tkgadm_toggle_block_ip",
           ip: ip,
+          block_action: "block",
           nonce: tkgadm_vars.nonce_block,
         },
       }).then(
@@ -218,7 +318,7 @@ jQuery(document).ready(function ($) {
     const ip = $(this).data("ip");
     const $checkbox = $(this);
     const $row = $checkbox.closest("tr");
-    const $label = $row.find(".tkgadm-toggle-label");
+    const $label = $row.find(".status-label");
     const isBlocking = $checkbox.is(":checked");
 
     // Disable checkbox trong khi xử lý
@@ -238,13 +338,19 @@ jQuery(document).ready(function ($) {
         if (response.success) {
           // Cập nhật UI
           if (response.data.blocked) {
-            $row.addClass("tkgadm-blocked blocked-ip");
-            $row.find(".tkgadm-badge-danger").remove();
-            var badge = $("<span>")
-              .addClass("tkgadm-badge tkgadm-badge-danger")
-              .html("🚫");
-            $row.find("td:first strong").after(" ", badge);
-            $label.removeClass("active").addClass("blocked").text("Đã chặn");
+            updateBlockedIpCache(ip, true);
+            $row.addClass("bg-red-50/30").removeClass("hover:bg-gray-50");
+            if ($row.find(".status-badge").length === 0) {
+              $row
+                .find("td:first")
+                .append(
+                  ' <span class="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800 status-badge">Banned</span>',
+                );
+            }
+            $label
+              .removeClass("text-emerald-600")
+              .addClass("text-red-600")
+              .text("Bị chặn");
             
             // Show sync status message
             if (response.data.sync_message) {
@@ -274,21 +380,28 @@ jQuery(document).ready(function ($) {
               }, 2000);
             }
           } else {
-            $row.removeClass("tkgadm-blocked blocked-ip");
-            $row.find(".tkgadm-badge-danger").remove();
-            $label.removeClass("blocked").addClass("active").text("Hoạt động");
+            updateBlockedIpCache(ip, false);
+            $row.removeClass("bg-red-50/30").addClass("hover:bg-gray-50");
+            $row.find(".status-badge").remove();
+            $label
+              .removeClass("text-red-600")
+              .addClass("text-emerald-600")
+              .text("Hoạt động");
           }
+          refreshDashboardTable();
           $checkbox.prop("disabled", false);
         } else {
           alert("Lỗi: " + response.data);
           // Revert checkbox
           $checkbox.prop("checked", !isBlocking).prop("disabled", false);
+          refreshDashboardTable();
         }
       },
       error: function () {
         alert("Lỗi kết nối!");
         // Revert checkbox
         $checkbox.prop("checked", !isBlocking).prop("disabled", false);
+        refreshDashboardTable();
       },
     });
   });
@@ -609,7 +722,7 @@ jQuery(document).ready(function ($) {
     const totalAds = adsVisits.reduce((a, b) => a + b, 0);
     const totalOrganic = organicVisits.reduce((a, b) => a + b, 0);
     const totalBlocked = blockedCounts.reduce((a, b) => a + b, 0);
-    const avgAds = Math.round(totalAds / data.length);
+    const avgAds = data.length > 0 ? Math.round(totalAds / data.length) : 0;
     const blockRate =
       totalAds > 0 ? ((totalBlocked / totalAds) * 100).toFixed(1) : 0;
 
@@ -628,47 +741,38 @@ jQuery(document).ready(function ($) {
     const ctx = document.getElementById("daily-stats-chart");
     if (!ctx) return;
 
-    const numDays = data.length;
-    const chartTitle = `Thống kê ${numDays} ngày (${data[0].date} → ${data[data.length - 1].date})`;
-
     dailyStatsChart = new Chart(ctx, {
-      type: "bar",
+      type: "line",
       data: {
         labels: labels,
         datasets: [
           {
-            type: "bar",
-            label: "📊 Ads Traffic",
+            label: "Ads Traffic",
             data: adsVisits,
-            backgroundColor: "rgba(102, 126, 234, 0.8)",
-            borderColor: "rgba(102, 126, 234, 1)",
-            borderWidth: 1,
-            stack: "traffic",
-            yAxisID: "y",
-          },
-          {
-            type: "bar",
-            label: "🌱 Organic Traffic",
-            data: organicVisits,
-            backgroundColor: "rgba(76, 175, 80, 0.8)",
-            borderColor: "rgba(76, 175, 80, 1)",
-            borderWidth: 1,
-            stack: "traffic",
-            yAxisID: "y",
-          },
-          {
-            type: "line",
-            label: "🚫 Số IP chặn",
-            data: blockedCounts,
-            backgroundColor: "rgba(255, 99, 132, 0.1)",
-            borderColor: "rgba(255, 99, 132, 1)",
-            borderWidth: 3,
-            tension: 0.4,
+            borderColor: "#2563eb",
+            backgroundColor: "rgba(37, 99, 235, 0.1)",
+            borderWidth: 2,
             fill: true,
-            yAxisID: "y1",
-            pointRadius: 5,
-            pointHoverRadius: 7,
-            pointBackgroundColor: "rgba(255, 99, 132, 1)",
+            tension: 0.4,
+          },
+          {
+            label: "Organic Traffic",
+            data: organicVisits,
+            borderColor: "#10b981",
+            backgroundColor: "transparent",
+            borderWidth: 2,
+            borderDash: [5, 5],
+            fill: false,
+            tension: 0.4,
+          },
+          {
+            label: "IP Bị chặn",
+            data: blockedCounts,
+            borderColor: "#ef4444",
+            backgroundColor: "transparent",
+            borderWidth: 2,
+            tension: 0.4,
+            fill: false,
           },
         ],
       },
@@ -681,71 +785,23 @@ jQuery(document).ready(function ($) {
         },
         plugins: {
           legend: {
-            display: true,
             position: "top",
             labels: {
-              font: { size: 13, weight: "bold" },
-              padding: 15,
-            },
-          },
-          title: {
-            display: true,
-            text: chartTitle,
-            font: { size: 16, weight: "bold" },
-            padding: { bottom: 20 },
-          },
-          tooltip: {
-            callbacks: {
-              footer: function (tooltipItems) {
-                return "💡 Click để xem chi tiết";
-              },
+              usePointStyle: true,
+              boxWidth: 8,
             },
           },
         },
         scales: {
-          x: {
-            stacked: true,
-            title: {
-              display: true,
-              text: "Ngày",
-              font: { size: 12, weight: "bold" },
+          y: {
+            beginAtZero: true,
+            grid: {
+              color: "#f3f4f6",
             },
+          },
+          x: {
             grid: {
               display: false,
-            },
-          },
-          y: {
-            type: "linear",
-            display: true,
-            position: "left",
-            stacked: true,
-            title: {
-              display: true,
-              text: "Số người (Unique IP)",
-              font: { size: 12, weight: "bold" },
-              color: "rgba(102, 126, 234, 1)",
-            },
-            beginAtZero: true,
-            ticks: {
-              color: "rgba(102, 126, 234, 1)",
-            },
-          },
-          y1: {
-            type: "linear",
-            display: true,
-            position: "right",
-            title: {
-              display: true,
-              text: "Số IP chặn",
-              font: { size: 12, weight: "bold" },
-              color: "rgba(255, 99, 132, 1)",
-            },
-            beginAtZero: true,
-            grid: {
-              drawOnChartArea: false,
-            },
-            ticks: {
-              color: "rgba(255, 99, 132, 1)",
             },
           },
         },
@@ -933,13 +989,20 @@ jQuery(document).ready(function ($) {
 
   // Calculate date range from days
   function getDateRangeFromDays(days) {
+    function formatLocalDate(date) {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, "0");
+      const day = String(date.getDate()).padStart(2, "0");
+      return `${year}-${month}-${day}`;
+    }
+
     const to = new Date();
     const from = new Date();
     from.setDate(from.getDate() - days + 1);
 
     return {
-      from: from.toISOString().split("T")[0],
-      to: to.toISOString().split("T")[0],
+      from: formatLocalDate(from),
+      to: formatLocalDate(to),
     };
   }
 
@@ -958,8 +1021,11 @@ jQuery(document).ready(function ($) {
       const days = parseInt(value);
       const range = getDateRangeFromDays(days);
 
-      // Reload page with new date range
-      window.location.href = `?page=tkgad-moi&date_from=${range.from}&date_to=${range.to}`;
+      const urlParams = new URLSearchParams(window.location.search);
+      urlParams.set("page", "tkgad-moi");
+      urlParams.set("date_from", range.from);
+      urlParams.set("date_to", range.to);
+      window.location.href = "?" + urlParams.toString();
     }
   });
 
@@ -978,8 +1044,11 @@ jQuery(document).ready(function ($) {
       return;
     }
 
-    // Reload page with custom date range
-    window.location.href = `?page=tkgad-moi&date_from=${dateFrom}&date_to=${dateTo}`;
+    const urlParams = new URLSearchParams(window.location.search);
+    urlParams.set("page", "tkgad-moi");
+    urlParams.set("date_from", dateFrom);
+    urlParams.set("date_to", dateTo);
+    window.location.href = "?" + urlParams.toString();
   });
 
   // Load initial daily stats based on current URL params or default 30 days

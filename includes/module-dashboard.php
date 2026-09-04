@@ -26,12 +26,18 @@ function tkgadm_render_dashboard_page() {
         WHERE gclid IS NOT NULL AND gclid != ''");
     
     // Mặc định hiển thị 30 ngày gần nhất (theo giờ WordPress)
-    $default_from = date('Y-m-d', strtotime('-30 days', current_time('timestamp')));
+    $default_from = date('Y-m-d', strtotime('-29 days', current_time('timestamp')));
     $default_to = current_time('Y-m-d');
     
     // Lấy tham số filter (nếu user đã chọn thì dùng, không thì dùng default)
     $date_from = isset($_GET['date_from']) ? sanitize_text_field(wp_unslash($_GET['date_from'])) : $default_from;
     $date_to = isset($_GET['date_to']) ? sanitize_text_field(wp_unslash($_GET['date_to'])) : $default_to;
+    if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date_from)) {
+        $date_from = $default_from;
+    }
+    if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date_to)) {
+        $date_to = $default_to;
+    }
     $show_blocked_only = isset($_GET['show_blocked']) && $_GET['show_blocked'] === '1';
     
     // Build query
@@ -117,112 +123,157 @@ function tkgadm_render_dashboard_page() {
     $custom_style = ($selected_period === 'custom') ? 'display: inline-flex;' : 'display: none;';
     $chart_style = ($diff === 1) ? 'display: none;' : 'display: block;';
     ?>
-    <div class="wrap">
-        <div class="tkgadm-wrap">
-            <div class="tkgadm-header">
-                <h1>📊 Thống Kê IP Ads <span style="font-size: 0.5em; color: #666; font-weight: normal; vertical-align: middle;">v<?php echo esc_html($plugin_version); ?></span></h1>
+        <style>
+        /* From Prototype */
+        .wp-wrap {
+            max-width: 1200px;
+            margin: 0 auto;
+            font-family: 'Inter', sans-serif;
+        }
+    </style>
 
-                <div class="tkgadm-filters">
-                    <!-- Time Period Selector -->
-                    <div style="display: inline-flex; gap: 8px; align-items: center; background: white; padding: 8px 12px; border-radius: 8px;">
-                        <label for="time-period" style="color: #666; font-size: 13px; margin: 0;">Thời gian:</label>
-                        <select id="time-period" class="tkgadm-input" style="padding: 6px 12px; border-radius: 6px; border: 1px solid #ddd; font-size: 13px;">
-                            <option value="1" <?php selected($selected_period, 1); ?>>Hôm nay</option>
-                            <option value="7" <?php selected($selected_period, 7); ?>>7 ngày gần nhất</option>
-                            <option value="15" <?php selected($selected_period, 15); ?>>15 ngày gần nhất</option>
-                            <option value="30" <?php selected($selected_period, 30); ?>>30 ngày gần nhất</option>
-                            <option value="60" <?php selected($selected_period, 60); ?>>60 ngày gần nhất</option>
-                            <option value="180" <?php selected($selected_period, 180); ?>>180 ngày gần nhất</option>
-                            <option value="custom" <?php selected($selected_period, 'custom'); ?>>📅 Tùy chỉnh...</option>
-                        </select>
-                    </div>
-                    
-                    <!-- Custom Date Range -->
-                    <div id="custom-date-range" style="<?php echo $custom_style; ?> gap: 5px; align-items: center; background: white; padding: 8px 12px; border-radius: 8px;">
-                        <input type="date" id="date-from" class="tkgadm-input" style="width: 150px; padding: 6px; font-size: 13px;" value="<?php echo esc_attr($date_from); ?>" title="Từ ngày">
-                        <span style="color: #999;">→</span>
-                        <input type="date" id="date-to" class="tkgadm-input" style="width: 150px; padding: 6px; font-size: 13px;" value="<?php echo esc_attr($date_to); ?>" title="Đến ngày">
-                        <button id="apply-custom-range" class="tkgadm-btn tkgadm-btn-primary" style="padding: 6px 12px;">🔍 Áp dụng</button>
-                    </div>
-                    
-                    <!-- Action Buttons -->
-                    <button id="open-manage-ip" class="tkgadm-btn tkgadm-btn-primary" style="background: #28a745;">➕ Chặn IP</button>
-                    
-                    <!-- Copy Blocked IPs -->
-                    <button id="copy-blocked-ips" class="tkgadm-btn tkgadm-btn-secondary" title="Copy toàn bộ danh sách IP đã chặn">
-                        📋 Copy IP chặn (<?php echo count($blocked_ips); ?>)
-                    </button>
-                    <textarea id="blocked-ips-textarea" style="position: absolute; left: -9999px;"><?php echo implode("\n", $blocked_ips); ?></textarea>
-                    
-                    <!-- Toggle Blocked IPs -->
-                    <button id="toggle-blocked-view" class="tkgadm-btn <?php echo $show_blocked_only ? 'tkgadm-btn-primary' : 'tkgadm-btn-secondary'; ?>" data-show="<?php echo $show_blocked_only ? '1' : '0'; ?>">
-                        🚫 <?php echo $show_blocked_only ? 'Hiện tất cả' : 'Chỉ IP chặn'; ?> (<?php echo count($blocked_ips); ?>)
-                    </button>
+    <div class="wp-wrap space-y-6" style="padding: 20px 0;">
+        <!-- Header & Filters -->
+        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5 flex flex-col md:flex-row justify-between items-center gap-4">
+            <div>
+                <h1 class="text-2xl font-bold text-gray-800 flex items-center gap-2 m-0 pb-1">
+                    <i class="fa-solid fa-shield-halved text-blue-600"></i>
+                    Thống Kê IP Ads
+                    <span class="text-xs font-medium bg-blue-100 text-blue-600 px-2 py-1 rounded-full">v<?php echo esc_html($plugin_version); ?></span>
+                </h1>
+                <p class="text-sm text-gray-500 m-0 mt-1">Quản lý và ngăn chặn click tặc Google Ads</p>
+            </div>
+            
+            <div class="flex flex-wrap items-center gap-3">
+                <!-- Time Filter -->
+                <div class="bg-gray-50 border border-gray-200 rounded-lg p-1 flex items-center">
+                    <select id="time-period" class="bg-transparent border-none text-sm text-gray-700 font-medium focus:ring-0 cursor-pointer pr-8 py-1.5 pl-3">
+                        <option value="1" <?php selected($selected_period, 1); ?>>Hôm nay</option>
+                        <option value="7" <?php selected($selected_period, 7); ?>>7 ngày gần nhất</option>
+                        <option value="30" <?php selected($selected_period, 30); ?>>30 ngày gần nhất</option>
+                        <option value="custom" <?php selected($selected_period, 'custom'); ?>>Tùy chỉnh...</option>
+                    </select>
                 </div>
+                
+                <div id="custom-date-range" style="<?php echo $custom_style; ?> gap: 5px; align-items: center;" class="bg-gray-50 border border-gray-200 rounded-lg p-1 h-10 px-2">
+                    <input type="date" id="date-from" class="bg-transparent border-none text-sm p-1" value="<?php echo esc_attr($date_from); ?>">
+                    <span class="text-gray-400">→</span>
+                    <input type="date" id="date-to" class="bg-transparent border-none text-sm p-1" value="<?php echo esc_attr($date_to); ?>">
+                    <button type="button" id="apply-custom-range" class="bg-blue-600 text-white text-xs px-2 py-1 rounded border-none cursor-pointer">Lọc</button>
+                </div>
+
+                <!-- Actions -->
+                <button type="button" id="open-manage-ip" class="bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium py-2 px-4 rounded-lg transition shadow-sm flex items-center gap-2 border-none cursor-pointer">
+                    <i class="fa-solid fa-plus"></i> Chặn IP
+                </button>
+                <button type="button" id="copy-blocked-ips" class="bg-white hover:bg-gray-50 text-gray-700 text-sm font-medium py-2 px-4 rounded-lg border border-gray-200 transition shadow-sm flex items-center gap-2 cursor-pointer">
+                    <i class="fa-regular fa-copy"></i> Copy IP (<span id="copy-count-badge"><?php echo count($blocked_ips); ?></span>)
+                </button>
+                <textarea id="blocked-ips-textarea" style="position: absolute; left: -9999px;"><?php echo implode("\n", $blocked_ips); ?></textarea>
+                
+                <button type="button" id="toggle-blocked-view" data-show="<?php echo $show_blocked_only ? '1' : '0'; ?>" class="bg-white hover:bg-gray-50 text-gray-700 text-sm font-medium py-2 px-4 rounded-lg border border-gray-200 transition shadow-sm flex items-center gap-2 cursor-pointer">
+                    <i class="fa-solid fa-filter"></i> <span id="toggle-blocked-text"><?php echo $show_blocked_only ? 'Hiện tất cả' : 'Chỉ IP chặn'; ?></span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Summary Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-5 gap-4" id="chart-container">
+            <!-- Card 1 -->
+            <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5 flex flex-col justify-center">
+                <div class="flex justify-between items-start mb-2">
+                    <p class="text-sm font-medium text-gray-500 m-0">Tổng người Ads</p>
+                    <div class="p-2 bg-blue-50 rounded-lg text-blue-600"><i class="fa-solid fa-users"></i></div>
+                </div>
+                <h3 id="daily-total-ads" class="text-3xl font-bold text-gray-800 m-0">-</h3>
+                <p class="text-xs text-green-600 mt-2 m-0 font-medium"><i class="fa-solid fa-arrow-trend-up"></i> +12% so với kỳ trước</p>
+            </div>
+            
+            <!-- Card 2 -->
+            <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5 flex flex-col justify-center">
+                <div class="flex justify-between items-start mb-2">
+                    <p class="text-sm font-medium text-gray-500 m-0">Tổng Organic</p>
+                    <div class="p-2 bg-emerald-50 rounded-lg text-emerald-600"><i class="fa-solid fa-leaf"></i></div>
+                </div>
+                <h3 id="daily-total-organic" class="text-3xl font-bold text-gray-800 m-0">-</h3>
+                <p class="text-xs text-green-600 mt-2 m-0 font-medium"><i class="fa-solid fa-arrow-trend-up"></i> +5% so với kỳ trước</p>
             </div>
 
-            <!-- Biểu đồ thống kê hàng ngày -->
-            <div id="chart-container" class="tkgadm-card" style="background: white; padding: 25px; border-radius: 10px; border: 1px solid #ddd; margin-bottom: 30px;">
-                <!-- Summary Cards -->
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; margin-bottom: 25px;">
-                    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 8px; text-align: center;">
-                        <div style="font-size: 13px; opacity: 0.9;">📊 Tổng người Ads</div>
-                        <div id="daily-total-ads" style="font-size: 32px; font-weight: bold; margin-top: 8px;">-</div>
-                    </div>
-                    <div style="background: linear-gradient(135deg, #4caf50 0%, #8bc34a 100%); color: white; padding: 20px; border-radius: 8px; text-align: center;">
-                        <div style="font-size: 13px; opacity: 0.9;">🌱 Tổng người Organic</div>
-                        <div id="daily-total-organic" style="font-size: 32px; font-weight: bold; margin-top: 8px;">-</div>
-                    </div>
-                    <div style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white; padding: 20px; border-radius: 8px; text-align: center;">
-                        <div style="font-size: 13px; opacity: 0.9;">🚫 Tổng lượt chặn</div>
-                        <div id="daily-total-blocked" style="font-size: 32px; font-weight: bold; margin-top: 8px;">-</div>
-                    </div>
-                    <div style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); color: white; padding: 20px; border-radius: 8px; text-align: center;">
-                        <div style="font-size: 13px; opacity: 0.9;">📈 TB người/ngày</div>
-                        <div id="daily-avg-ads" style="font-size: 32px; font-weight: bold; margin-top: 8px;">-</div>
-                    </div>
-                    <div style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); color: white; padding: 20px; border-radius: 8px; text-align: center;">
-                        <div style="font-size: 13px; opacity: 0.9;">⚡ Tỷ lệ chặn</div>
-                        <div id="daily-block-rate" style="font-size: 32px; font-weight: bold; margin-top: 8px;">-</div>
-                    </div>
+            <!-- Card 3 -->
+            <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5 flex flex-col justify-center">
+                <div class="flex justify-between items-start mb-2">
+                    <p class="text-sm font-medium text-gray-500 m-0">Tổng lượt chặn</p>
+                    <div class="p-2 bg-red-50 rounded-lg text-red-600"><i class="fa-solid fa-ban"></i></div>
                 </div>
-                
-                <!-- Chart -->
-                <div style="position: relative; height: 400px; <?php echo $chart_style; ?>">
-                    <canvas id="daily-stats-chart"></canvas>
-                </div>
-                
-
-                
-                <!-- Loading -->
-                <div id="daily-stats-loading" style="display: none; text-align: center; padding: 40px;">
-                    <div style="font-size: 48px;">⏳</div>
-                    <div style="margin-top: 10px; color: #666;">Đang tải dữ liệu...</div>
-                </div>
+                <h3 id="daily-total-blocked" class="text-3xl font-bold text-gray-800 m-0">-</h3>
+                <p class="text-xs text-red-600 mt-2 m-0 font-medium"><i class="fa-solid fa-arrow-trend-up"></i> +24% so với kỳ trước</p>
             </div>
 
-            <div class="tkgadm-table-container">
-                <table class="tkgadm-table">
-                    <thead>
+            <!-- Card 4 -->
+            <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5 flex flex-col justify-center">
+                <div class="flex justify-between items-start mb-2">
+                    <p class="text-sm font-medium text-gray-500 m-0">TB người/ngày</p>
+                    <div class="p-2 bg-purple-50 rounded-lg text-purple-600"><i class="fa-solid fa-chart-line"></i></div>
+                </div>
+                <h3 id="daily-avg-ads" class="text-3xl font-bold text-gray-800 m-0">-</h3>
+                <p class="text-xs text-gray-400 mt-2 m-0 font-medium">Trung bình 30 ngày</p>
+            </div>
+
+            <!-- Card 5 -->
+            <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5 flex flex-col justify-center">
+                <div class="flex justify-between items-start mb-2">
+                    <p class="text-sm font-medium text-gray-500 m-0">Tỷ lệ chặn</p>
+                    <div class="p-2 bg-orange-50 rounded-lg text-orange-600"><i class="fa-solid fa-bolt"></i></div>
+                </div>
+                <h3 id="daily-block-rate" class="text-3xl font-bold text-gray-800 m-0">-</h3>
+                <p class="text-xs text-gray-400 mt-2 m-0 font-medium">Trên tổng click Ads</p>
+            </div>
+            
+            <!-- Loading -->
+            <div id="daily-stats-loading" class="col-span-5 text-center p-10 hidden">
+                <i class="fa-solid fa-circle-notch fa-spin text-3xl text-gray-400"></i>
+                <p class="text-gray-500 mt-2">Đang tải biểu đồ...</p>
+            </div>
+        </div>
+
+        <!-- Chart Section -->
+        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5" style="<?php echo $chart_style; ?>">
+            <h3 class="text-base font-bold text-gray-800 mb-4 m-0 pb-2">Biểu đồ Traffic & Lượt chặn</h3>
+            <div class="h-80 w-full relative">
+                <canvas id="daily-stats-chart"></canvas>
+            </div>
+        </div>
+
+        <!-- Data Table -->
+        <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+            <div class="p-5 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+                <h3 class="text-base font-bold text-gray-800 m-0">Chi tiết IP truy cập</h3>
+                <div class="relative">
+                    <i class="fa-solid fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 text-sm"></i>
+                    <input type="text" id="search-ip-input" placeholder="Tìm kiếm IP..." class="pl-9 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-64 m-0">
+                </div>
+            </div>
+            <div class="overflow-x-auto min-h-[300px]">
+                <table class="w-full text-left text-sm text-gray-600 border-collapse m-0" id="ip-data-table">
+                    <thead class="bg-gray-50 text-gray-700 text-xs uppercase font-semibold">
                         <tr>
-                            <th>🌐 IP Address</th>
-                            <th>🏷️ UTM Term</th>
-                            <th>⏰ Lần truy cập cuối</th>
-                            <th style="cursor:pointer;" class="sortable" data-sort="visits" title="Click để sắp xếp">📊 Thống kê truy cập <span class="sort-icon">⇅</span></th>
-                            <th>⚙️ Hành động</th>
+                            <th class="px-6 py-4 border-b border-gray-100">IP Address</th>
+                            <th class="px-6 py-4 border-b border-gray-100">UTM Term</th>
+                            <th class="px-6 py-4 border-b border-gray-100">Lần truy cập cuối</th>
+                            <th class="px-6 py-4 border-b border-gray-100 sortable cursor-pointer" data-sort="visits">Thống kê <span class="sort-icon">⇅</span></th>
+                            <th class="px-6 py-4 border-b border-gray-100 text-center">Trạng thái</th>
                         </tr>
                     </thead>
-                    <tbody>
+                    <tbody class="divide-y divide-gray-100" id="ip-table-body">
                         <?php if (empty($results)): ?>
-                            <tr><td colspan="5" style="text-align: center; padding: 40px;">Không có dữ liệu</td></tr>
+                            <tr class="no-data-row"><td colspan="5" class="text-center py-10">Không có dữ liệu</td></tr>
                         <?php else: ?>
-                            <?php foreach ($results as $row): 
+                            <?php foreach ($results as $index => $row): 
                                 $is_blocked = in_array($row->ip_address, $blocked_ips);
-                                $row_class = $is_blocked ? 'tkgadm-blocked' : '';
+                                $row_bg = $is_blocked ? 'bg-red-50/30' : 'hover:bg-gray-50';
                                 
-                                // Lấy utm_term từ URL đầu tiên
-                                $urls = explode('|||', $row->urls);
-                                $first_url = $urls[0];
+                                $urls = !empty($row->urls) ? explode('|||', $row->urls) : [];
+                                $first_url = isset($urls[0]) ? $urls[0] : '';
                                 $parsed = wp_parse_url($first_url);
                                 $utm_term = '-';
                                 if (isset($parsed['query'])) {
@@ -230,32 +281,40 @@ function tkgadm_render_dashboard_page() {
                                     $utm_term = isset($params['utm_term']) ? $params['utm_term'] : '-';
                                 }
                                 $utm_display = strlen($utm_term) > 30 ? substr($utm_term, 0, 30) . '...' : $utm_term;
+                                $toggle_id = "toggle" . $index;
                             ?>
-                                <tr class="<?php echo esc_attr($row_class); ?>" data-ip="<?php echo esc_attr($row->ip_address); ?>" data-visits="<?php echo intval($row->total_visits); ?>" data-ad-clicks="<?php echo intval($row->ad_clicks); ?>">
-                                    <td><strong><?php echo esc_html($row->ip_address); ?></strong>
+                                <tr class="ip-row <?php echo $row_bg; ?>" data-ip="<?php echo esc_attr($row->ip_address); ?>" data-visits="<?php echo intval($row->total_visits); ?>" data-ad-clicks="<?php echo intval($row->ad_clicks); ?>">
+                                    <td class="px-6 py-4 font-medium text-gray-900">
+                                        <?php echo esc_html($row->ip_address); ?>
                                         <?php if ($is_blocked): ?>
-                                            <span class="tkgadm-badge tkgadm-badge-danger">🚫</span>
+                                            <span class="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800 status-badge">Banned</span>
                                         <?php endif; ?>
                                     </td>
-                                    <td><?php echo esc_html($utm_display); ?></td>
-                                    <td><a href="#" class="view-details" data-ip="<?php echo esc_attr($row->ip_address); ?>" data-urls="<?php echo esc_attr($row->urls); ?>" style="text-decoration: none; font-weight: bold; color: #007cba;"><?php echo esc_html($row->last_visit); ?> <span class="dashicons dashicons-visibility" style="font-size: 16px; vertical-align: middle;"></span></a></td>
-                                    <td>
-                                        <div style="display: flex; align-items: center; gap: 8px;">
-                                            <span class="tkgadm-badge tkgadm-badge-warning" style="background: #ff9800; color: white;" title="Click quảng cáo (Google Click ID unique)">🎯 <?php echo intval($row->ad_clicks); ?></span>
-                                            <span style="color: #ccc;">|</span>
-                                            <span title="Tổng lượt truy cập" style="color: #666;">📈 <?php echo intval($row->total_visits); ?></span>
+                                    <td class="px-6 py-4 text-gray-500"><?php echo esc_html($utm_display); ?></td>
+                                    <td class="px-6 py-4">
+                                        <a href="#" class="view-details text-blue-600 hover:underline font-medium flex items-center gap-1" data-ip="<?php echo esc_attr($row->ip_address); ?>" data-urls="<?php echo esc_attr((string) $row->urls); ?>">
+                                            <?php echo esc_html(wp_date('d/m/Y, H:i', strtotime($row->last_visit))); ?> <i class="fa-regular fa-eye text-xs"></i>
+                                        </a>
+                                    </td>
+                                    <td class="px-6 py-4">
+                                        <div class="flex items-center gap-3">
+                                            <div class="flex items-center gap-1 text-orange-600 font-medium" title="Click Ads">
+                                                <i class="fa-solid fa-bullseye"></i> <?php echo intval($row->ad_clicks); ?>
+                                            </div>
+                                            <div class="w-px h-4 bg-gray-300"></div>
+                                            <div class="flex items-center gap-1 text-gray-500" title="Tổng lượt">
+                                                <i class="fa-solid fa-chart-simple"></i> <?php echo intval($row->total_visits); ?>
+                                            </div>
                                         </div>
                                     </td>
-                                    <td>
-                                        <?php
-                                        $toggle_label = $is_blocked ? 'Đã chặn' : 'Hoạt động';
-                                        $toggle_class = $is_blocked ? 'blocked' : 'active';
-                                        ?>
-                                        <label class="tkgadm-toggle-switch">
-                                            <input type="checkbox" class="toggle-block" data-ip="<?php echo esc_attr($row->ip_address); ?>" <?php checked($is_blocked); ?>>
-                                            <span class="tkgadm-toggle-slider"></span>
-                                        </label>
-                                        <span class="tkgadm-toggle-label <?php echo esc_attr($toggle_class); ?>"><?php echo esc_html($toggle_label); ?></span>
+                                    <td class="px-6 py-4 text-center">
+                                        <div class="tkgadm-switch mr-2">
+                                            <input type="checkbox" id="<?php echo esc_attr($toggle_id); ?>" class="toggle-block tkgadm-switch__input" data-ip="<?php echo esc_attr($row->ip_address); ?>" aria-label="Chặn địa chỉ IP <?php echo esc_attr($row->ip_address); ?>" <?php checked($is_blocked); ?>>
+                                            <label for="<?php echo esc_attr($toggle_id); ?>" class="tkgadm-switch__track"></label>
+                                        </div>
+                                        <span class="status-label text-xs font-semibold <?php echo $is_blocked ? 'text-red-600' : 'text-emerald-600'; ?>">
+                                            <?php echo $is_blocked ? 'Bị chặn' : 'Hoạt động'; ?>
+                                        </span>
                                     </td>
                                 </tr>
                             <?php endforeach; ?>
@@ -263,46 +322,53 @@ function tkgadm_render_dashboard_page() {
                     </tbody>
                 </table>
             </div>
-        </div>
-
-        <!-- Modal quản lý IP -->
-        <div id="manage-ip-modal" class="tkgadm-modal">
-            <div class="tkgadm-modal-content" style="max-width: 500px;">
-                <div class="tkgadm-modal-header">
-                    <h2>➕ Chặn IP</h2>
-                    <span class="tkgadm-modal-close">&times;</span>
+            
+            <!-- Pagination -->
+            <div class="p-4 border-t border-gray-100 flex items-center justify-between text-sm text-gray-500 bg-white">
+                <div id="table-info">Hiển thị <?php echo empty($results) ? '0' : '1-10'; ?> của <span id="total-ips-count"><?php echo count($results); ?></span> IPs</div>
+                <div class="flex gap-1" id="pagination-controls">
+                    <button class="px-3 py-1 rounded border border-gray-200 hover:bg-gray-50 disabled:opacity-50 h-8 border-solid cursor-pointer">Trước</button>
+                    <button class="px-3 py-1 rounded bg-blue-600 text-white font-medium h-8 border-none cursor-pointer">1</button>
+                    <button class="px-3 py-1 rounded border border-gray-200 hover:bg-gray-50 h-8 border-solid cursor-pointer">2</button>
+                    <button class="px-3 py-1 rounded border border-gray-200 hover:bg-gray-50 h-8 border-solid cursor-pointer">3</button>
+                    <button class="px-3 py-1 rounded border border-gray-200 hover:bg-gray-50 h-8 border-solid cursor-pointer">Tiếp</button>
                 </div>
-                <div style="margin: 20px 0;">
-                    <label style="display: block; margin-bottom: 8px; font-weight: 600;">Nhập danh sách IP (mỗi IP một dòng):</label>
-                    <textarea id="ip-to-block" rows="6" placeholder="Ví dụ:&#10;192.168.1.1&#10;192.168.1.*&#10;103.82.36.122&#10;2402:800:6310:c2ff:c91c:18eb:f87c:75a3" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px; font-family: monospace; font-size: 13px;"></textarea>
-                    <small style="color: #666; display: block; margin-top: 5px;">✓ Hỗ trợ IPv4, IPv6 và wildcard (*) cho IPv4<br>✓ Mỗi IP một dòng, có thể nhập nhiều IP cùng lúc</small>
-                </div>
-                <button id="confirm-block-ip" class="tkgadm-btn tkgadm-btn-primary" style="width: 100%;">🚫 Chặn tất cả IP</button>
             </div>
         </div>
 
-        <!-- Modal chi tiết IP -->
+        <!-- Keep Modals -->
+        <div id="manage-ip-modal" class="tkgadm-modal">
+            <div class="tkgadm-modal-content" style="max-width: 500px; border-radius: 12px; padding: 24px;">
+                <div class="tkgadm-modal-header border-b-0 pb-0 mb-4">
+                    <h2 class="text-xl font-bold m-0 flex items-center gap-2"><i class="fa-solid fa-ban text-red-500"></i> Chặn IP</h2>
+                    <span class="tkgadm-modal-close text-2xl text-gray-400 hover:text-gray-700 cursor-pointer">&times;</span>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Nhập danh sách IP (mỗi IP một dòng):</label>
+                    <textarea id="ip-to-block" rows="6" class="w-full border border-gray-300 rounded p-2 text-sm font-mono focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Ví dụ:&#10;192.168.1.1&#10;192.168.1.*"></textarea>
+                </div>
+                <button id="confirm-block-ip" class="w-full bg-red-600 hover:bg-red-700 text-white font-medium py-2 rounded transition border-none cursor-pointer">🚫 Thực hiện chặn</button>
+            </div>
+        </div>
+
         <div id="url-modal" class="tkgadm-modal">
-            <span class="tkgadm-modal-close">&times;</span>
-            <div class="tkgadm-modal-content">
-                <div class="tkgadm-modal-header">
-                    <h2 id="modal-title">Chi tiết IP</h2>
+            <span class="tkgadm-modal-close text-white right-5 top-5 text-4xl cursor-pointer absolute">&times;</span>
+            <div class="tkgadm-modal-content rounded-xl">
+                <div class="tkgadm-modal-header border-b pb-3 mb-4">
+                    <h2 id="modal-title" class="text-xl font-bold m-0">Chi tiết IP</h2>
                 </div>
-                <div style="margin: 20px 0;">
-                    <canvas id="visit-chart" width="400" height="200"></canvas>
-                </div>
+                <div class="mb-4"><canvas id="visit-chart" width="400" height="200"></canvas></div>
                 <div id="url-list"></div>
             </div>
         </div>
 
-        <!-- Modal chi tiết ngày (Daily Stats) -->
         <div id="daily-details-modal" class="tkgadm-modal">
-            <span class="tkgadm-modal-close">&times;</span>
-            <div class="tkgadm-modal-content">
-                <div class="tkgadm-modal-header">
-                    <h2 id="daily-modal-title">Chi tiết ngày</h2>
+            <span class="tkgadm-modal-close text-white right-5 top-5 text-4xl cursor-pointer absolute">&times;</span>
+            <div class="tkgadm-modal-content tkgadm-modal-lg rounded-xl">
+                <div class="tkgadm-modal-header border-b pb-3 mb-4">
+                    <h2 id="daily-modal-title" class="text-xl font-bold m-0">Chi tiết ngày</h2>
                 </div>
-                <div id="daily-details-content" style="max-height: 500px; overflow-y: auto;"></div>
+                <div id="daily-details-content" class="max-h-[500px] overflow-y-auto"></div>
             </div>
         </div>
     </div>
@@ -341,60 +407,86 @@ function tkgadm_ajax_toggle_block_ip() {
     
     global $wpdb;
     $table = $wpdb->prefix . 'gads_toolkit_blocked';
+    $stats_table = $wpdb->prefix . 'gads_toolkit_stats';
     $ip = sanitize_text_field(wp_unslash($_POST['ip']));
+    $block_action = isset($_POST['block_action']) ? sanitize_text_field(wp_unslash($_POST['block_action'])) : 'toggle';
     $reason = isset($_POST['reason']) ? sanitize_text_field(wp_unslash($_POST['reason'])) : 'Chặn thủ công bởi Admin';
     
-    if (!function_exists('tkgadm_validate_ip_pattern')) {
-         // Should be loaded from core-engine, but just in case
+    if (function_exists('tkgadm_validate_ip_pattern') && !tkgadm_validate_ip_pattern($ip)) {
+        wp_send_json_error('IP không hợp lệ: ' . $ip);
     }
     
     // phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
     $existing = $wpdb->get_row($wpdb->prepare("SELECT * FROM $table WHERE ip_address = %s", $ip));
+
+    if ($block_action === 'toggle') {
+        $block_action = $existing ? 'unblock' : 'block';
+    }
     
-    if ($existing) {
+    if ($block_action === 'unblock') {
+        if (!$existing) {
+            wp_send_json_success(['message' => 'IP chưa nằm trong danh sách chặn: ' . $ip, 'blocked' => false]);
+        }
+
         // Unblock
         // phpcs:ignore WordPress.DB.DirectDatabaseQuery
         $wpdb->delete($table, ['ip_address' => $ip]);
         wp_send_json_success(['message' => 'Đã bỏ chặn IP: ' . $ip, 'blocked' => false]);
-    } else {
-        // Block
-        // phpcs:ignore WordPress.DB.DirectDatabaseQuery
-        $inserted = $wpdb->insert($table, [
-            'ip_address' => $ip,
-            'blocked_time' => current_time('mysql'),
-            'reason' => $reason
-        ]);
+    }
+
+    if ($block_action !== 'block') {
+        wp_send_json_error('Hành động không hợp lệ.');
+    }
+
+    if ($existing) {
+        wp_send_json_success(['message' => 'IP đã nằm trong danh sách chặn: ' . $ip, 'blocked' => true]);
+    }
+
+    // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+    $visit_count = $wpdb->get_var($wpdb->prepare("SELECT SUM(visit_count) FROM $stats_table WHERE ip_address = %s", $ip));
+
+    // Block
+    // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+    $inserted = $wpdb->insert($table, [
+        'ip_address' => $ip,
+        'blocked_time' => current_time('mysql'),
+        'reason' => $reason,
+        'visit_count' => intval($visit_count)
+    ]);
+
+    if (!$inserted) {
+        wp_send_json_error('Không thể thêm IP vào danh sách chặn.');
+    }
         
-        $sync_message = '';
-        $sync_status = 'not_synced';
+    $sync_message = '';
+    $sync_status = 'not_synced';
         
-        // Try to sync if option is enabled
-        if ($inserted && get_option('tkgadm_auto_sync_on_block')) {
-            if (function_exists('tkgadm_sync_ip_to_google_ads')) {
-                $sync_result = tkgadm_sync_ip_to_google_ads([$ip]);
+    // Try to sync if option is enabled
+    if (get_option('tkgadm_auto_sync_on_block')) {
+        if (function_exists('tkgadm_sync_ip_to_google_ads')) {
+            $sync_result = tkgadm_sync_ip_to_google_ads([$ip]);
                 
-                if (isset($sync_result['success']) && $sync_result['success']) {
-                    $sync_message = 'Đã chặn trên Google Ads';
-                    $sync_status = 'synced';
-                } else {
-                    $sync_message = 'Chỉ chặn ở website, chưa đồng bộ Google Ads';
-                    $sync_status = 'not_synced';
-                }
+            if (isset($sync_result['success']) && $sync_result['success']) {
+                $sync_message = 'Đã chặn trên Google Ads';
+                $sync_status = 'synced';
             } else {
                 $sync_message = 'Chỉ chặn ở website, chưa đồng bộ Google Ads';
+                $sync_status = 'not_synced';
             }
         } else {
-            // Sync option is disabled
             $sync_message = 'Chỉ chặn ở website, chưa đồng bộ Google Ads';
         }
-
-        wp_send_json_success([
-            'message' => 'Đã chặn IP: ' . $ip, 
-            'blocked' => true,
-            'sync_message' => $sync_message,
-            'sync_status' => $sync_status
-        ]);
+    } else {
+        // Sync option is disabled
+        $sync_message = 'Chỉ chặn ở website, chưa đồng bộ Google Ads';
     }
+
+    wp_send_json_success([
+        'message' => 'Đã chặn IP: ' . $ip,
+        'blocked' => true,
+        'sync_message' => $sync_message,
+        'sync_status' => $sync_status
+    ]);
 }
 
 /**
@@ -564,8 +656,14 @@ function tkgadm_ajax_get_daily_stats() {
     $table_blocked = $wpdb->prefix . 'gads_toolkit_blocked';
     
     // Lấy date range từ request, mặc định 30 ngày gần nhất
-    $date_from = isset($_POST['date_from']) ? sanitize_text_field(wp_unslash($_POST['date_from'])) : current_time('Y-m-d', strtotime('-30 days'));
+    $date_from = isset($_POST['date_from']) ? sanitize_text_field(wp_unslash($_POST['date_from'])) : date('Y-m-d', strtotime('-29 days', current_time('timestamp')));
     $date_to = isset($_POST['date_to']) ? sanitize_text_field(wp_unslash($_POST['date_to'])) : current_time('Y-m-d');
+    if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date_from)) {
+        $date_from = date('Y-m-d', strtotime('-29 days', current_time('timestamp')));
+    }
+    if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date_to)) {
+        $date_to = current_time('Y-m-d');
+    }
     
     // Lấy dữ liệu Ads visits theo ngày
     // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
@@ -799,4 +897,3 @@ function tkgadm_ajax_get_daily_details() {
 
     wp_send_json_success(['ips' => array_values($grouped_data), 'type' => $type]);
 }
-

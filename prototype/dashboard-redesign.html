@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GAds Toolkit - Dashboard Redesign Prototype</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
+            margin: 0;
+            padding: 20px;
+        }
+        .wp-wrap {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        /* Toggle Switch */
+        .toggle-checkbox:checked {
+            right: 0;
+            border-color: #ef4444; /* red-500 */
+        }
+        .toggle-checkbox:checked + .toggle-label {
+            background-color: #ef4444;
+        }
+        .toggle-checkbox:not(:checked) {
+            border-color: #10b981; /* emerald-500 */
+        }
+        .toggle-checkbox:not(:checked) + .toggle-label {
+            background-color: #10b981;
+        }
+    </style>
+</head>
+<body>
+
+<div class="wp-wrap space-y-6">
+    <!-- Header & Filters -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5 flex flex-col md:flex-row justify-between items-center gap-4">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-800 flex items-center gap-2">
+                <i class="fa-solid fa-shield-halved text-blue-600"></i>
+                Thống Kê IP Ads
+                <span class="text-xs font-medium bg-blue-100 text-blue-600 px-2 py-1 rounded-full">v4.1.3</span>
+            </h1>
+            <p class="text-sm text-gray-500 mt-1">Quản lý và ngăn chặn click tặc Google Ads</p>
+        </div>
+        
+        <div class="flex flex-wrap items-center gap-3">
+            <!-- Time Filter -->
+            <div class="bg-gray-50 border border-gray-200 rounded-lg p-1 flex items-center">
+                <select class="bg-transparent border-none text-sm text-gray-700 font-medium focus:ring-0 cursor-pointer pr-8 py-1.5 pl-3">
+                    <option>Hôm nay</option>
+                    <option>7 ngày gần nhất</option>
+                    <option selected>30 ngày gần nhất</option>
+                    <option>Tùy chỉnh...</option>
+                </select>
+            </div>
+            
+            <!-- Actions -->
+            <button class="bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium py-2 px-4 rounded-lg transition shadow-sm flex items-center gap-2">
+                <i class="fa-solid fa-plus"></i> Chặn IP
+            </button>
+            <button class="bg-white hover:bg-gray-50 text-gray-700 text-sm font-medium py-2 px-4 rounded-lg border border-gray-200 transition shadow-sm flex items-center gap-2">
+                <i class="fa-regular fa-copy"></i> Copy IP (15)
+            </button>
+            <button class="bg-white hover:bg-gray-50 text-gray-700 text-sm font-medium py-2 px-4 rounded-lg border border-gray-200 transition shadow-sm flex items-center gap-2">
+                <i class="fa-solid fa-filter"></i> Chỉ IP chặn
+            </button>
+        </div>
+    </div>
+
+    <!-- Summary Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
+        <!-- Card 1 -->
+        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5 flex flex-col justify-center">
+            <div class="flex justify-between items-start mb-2">
+                <p class="text-sm font-medium text-gray-500">Tổng người Ads</p>
+                <div class="p-2 bg-blue-50 rounded-lg text-blue-600"><i class="fa-solid fa-users"></i></div>
+            </div>
+            <h3 class="text-3xl font-bold text-gray-800">1,245</h3>
+            <p class="text-xs text-green-600 mt-2 font-medium"><i class="fa-solid fa-arrow-trend-up"></i> +12% so với kỳ trước</p>
+        </div>
+        
+        <!-- Card 2 -->
+        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5 flex flex-col justify-center">
+            <div class="flex justify-between items-start mb-2">
+                <p class="text-sm font-medium text-gray-500">Tổng Organic</p>
+                <div class="p-2 bg-emerald-50 rounded-lg text-emerald-600"><i class="fa-solid fa-leaf"></i></div>
+            </div>
+            <h3 class="text-3xl font-bold text-gray-800">8,430</h3>
+            <p class="text-xs text-green-600 mt-2 font-medium"><i class="fa-solid fa-arrow-trend-up"></i> +5% so với kỳ trước</p>
+        </div>
+
+        <!-- Card 3 -->
+        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5 flex flex-col justify-center">
+            <div class="flex justify-between items-start mb-2">
+                <p class="text-sm font-medium text-gray-500">Tổng lượt chặn</p>
+                <div class="p-2 bg-red-50 rounded-lg text-red-600"><i class="fa-solid fa-ban"></i></div>
+            </div>
+            <h3 class="text-3xl font-bold text-gray-800">142</h3>
+            <p class="text-xs text-red-600 mt-2 font-medium"><i class="fa-solid fa-arrow-trend-up"></i> +24% so với kỳ trước</p>
+        </div>
+
+        <!-- Card 4 -->
+        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5 flex flex-col justify-center">
+            <div class="flex justify-between items-start mb-2">
+                <p class="text-sm font-medium text-gray-500">TB người/ngày</p>
+                <div class="p-2 bg-purple-50 rounded-lg text-purple-600"><i class="fa-solid fa-chart-line"></i></div>
+            </div>
+            <h3 class="text-3xl font-bold text-gray-800">41.5</h3>
+            <p class="text-xs text-gray-400 mt-2 font-medium">Trung bình 30 ngày</p>
+        </div>
+
+        <!-- Card 5 -->
+        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5 flex flex-col justify-center">
+            <div class="flex justify-between items-start mb-2">
+                <p class="text-sm font-medium text-gray-500">Tỷ lệ chặn</p>
+                <div class="p-2 bg-orange-50 rounded-lg text-orange-600"><i class="fa-solid fa-bolt"></i></div>
+            </div>
+            <h3 class="text-3xl font-bold text-gray-800">11.4%</h3>
+            <p class="text-xs text-gray-400 mt-2 font-medium">Trên tổng click Ads</p>
+        </div>
+    </div>
+
+    <!-- Chart Section -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+        <h3 class="text-base font-bold text-gray-800 mb-4">Biểu đồ Traffic & Lượt chặn</h3>
+        <div class="h-80 w-full relative">
+            <canvas id="mainChart"></canvas>
+        </div>
+    </div>
+
+    <!-- Data Table -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+        <div class="p-5 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+            <h3 class="text-base font-bold text-gray-800">Chi tiết IP truy cập</h3>
+            <div class="relative">
+                <i class="fa-solid fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 text-sm"></i>
+                <input type="text" placeholder="Tìm kiếm IP..." class="pl-9 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-64">
+            </div>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="w-full text-left text-sm text-gray-600">
+                <thead class="bg-gray-50 text-gray-700 text-xs uppercase font-semibold">
+                    <tr>
+                        <th class="px-6 py-4 border-b border-gray-100">IP Address</th>
+                        <th class="px-6 py-4 border-b border-gray-100">UTM Term</th>
+                        <th class="px-6 py-4 border-b border-gray-100">Lần truy cập cuối</th>
+                        <th class="px-6 py-4 border-b border-gray-100">Thống kê</th>
+                        <th class="px-6 py-4 border-b border-gray-100 text-center">Trạng thái</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100">
+                    <!-- Row 1 (Blocked) -->
+                    <tr class="hover:bg-gray-50 bg-red-50/30">
+                        <td class="px-6 py-4 font-medium text-gray-900">
+                            113.185.45.12
+                            <span class="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800">Banned</span>
+                        </td>
+                        <td class="px-6 py-4 text-gray-500">khoa-hoc-marketing</td>
+                        <td class="px-6 py-4">
+                            <a href="#" class="text-blue-600 hover:underline font-medium flex items-center gap-1">
+                                Hôm nay, 10:45 <i class="fa-regular fa-eye text-xs"></i>
+                            </a>
+                        </td>
+                        <td class="px-6 py-4">
+                            <div class="flex items-center gap-3">
+                                <div class="flex items-center gap-1 text-orange-600 font-medium" title="Click Ads">
+                                    <i class="fa-solid fa-bullseye"></i> 5
+                                </div>
+                                <div class="w-px h-4 bg-gray-300"></div>
+                                <div class="flex items-center gap-1 text-gray-500" title="Tổng lượt">
+                                    <i class="fa-solid fa-chart-simple"></i> 12
+                                </div>
+                            </div>
+                        </td>
+                        <td class="px-6 py-4 text-center">
+                            <div class="relative inline-block w-12 mr-2 align-middle select-none transition duration-200 ease-in">
+                                <input type="checkbox" name="toggle" id="toggle1" checked class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer transition-all duration-300 z-10 top-0 left-0"/>
+                                <label for="toggle1" class="toggle-label block overflow-hidden h-6 rounded-full bg-gray-300 cursor-pointer transition-all duration-300"></label>
+                            </div>
+                            <span class="text-xs font-semibold text-red-600">Bị chặn</span>
+                        </td>
+                    </tr>
+                    
+                    <!-- Row 2 (Active) -->
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-6 py-4 font-medium text-gray-900">14.162.145.221</td>
+                        <td class="px-6 py-4 text-gray-500">dich-vu-seo</td>
+                        <td class="px-6 py-4">
+                            <a href="#" class="text-blue-600 hover:underline font-medium flex items-center gap-1">
+                                Hôm qua, 15:20 <i class="fa-regular fa-eye text-xs"></i>
+                            </a>
+                        </td>
+                        <td class="px-6 py-4">
+                            <div class="flex items-center gap-3">
+                                <div class="flex items-center gap-1 text-orange-600 font-medium" title="Click Ads">
+                                    <i class="fa-solid fa-bullseye"></i> 1
+                                </div>
+                                <div class="w-px h-4 bg-gray-300"></div>
+                                <div class="flex items-center gap-1 text-gray-500" title="Tổng lượt">
+                                    <i class="fa-solid fa-chart-simple"></i> 2
+                                </div>
+                            </div>
+                        </td>
+                        <td class="px-6 py-4 text-center">
+                            <div class="relative inline-block w-12 mr-2 align-middle select-none transition duration-200 ease-in">
+                                <input type="checkbox" name="toggle" id="toggle2" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer transition-all duration-300 z-10 top-0 left-0"/>
+                                <label for="toggle2" class="toggle-label block overflow-hidden h-6 rounded-full bg-gray-300 cursor-pointer transition-all duration-300"></label>
+                            </div>
+                            <span class="text-xs font-semibold text-emerald-600">Hoạt động</span>
+                        </td>
+                    </tr>
+
+                    <!-- Row 3 (Active) -->
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-6 py-4 font-medium text-gray-900">2402:800:6310:c2ff...</td>
+                        <td class="px-6 py-4 text-gray-500">-</td>
+                        <td class="px-6 py-4">
+                            <a href="#" class="text-blue-600 hover:underline font-medium flex items-center gap-1">
+                                02/09/2026, 08:15 <i class="fa-regular fa-eye text-xs"></i>
+                            </a>
+                        </td>
+                        <td class="px-6 py-4">
+                            <div class="flex items-center gap-3">
+                                <div class="flex items-center gap-1 text-orange-600 font-medium" title="Click Ads">
+                                    <i class="fa-solid fa-bullseye"></i> 2
+                                </div>
+                                <div class="w-px h-4 bg-gray-300"></div>
+                                <div class="flex items-center gap-1 text-gray-500" title="Tổng lượt">
+                                    <i class="fa-solid fa-chart-simple"></i> 3
+                                </div>
+                            </div>
+                        </td>
+                        <td class="px-6 py-4 text-center">
+                            <div class="relative inline-block w-12 mr-2 align-middle select-none transition duration-200 ease-in">
+                                <input type="checkbox" name="toggle" id="toggle3" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer transition-all duration-300 z-10 top-0 left-0"/>
+                                <label for="toggle3" class="toggle-label block overflow-hidden h-6 rounded-full bg-gray-300 cursor-pointer transition-all duration-300"></label>
+                            </div>
+                            <span class="text-xs font-semibold text-emerald-600">Hoạt động</span>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Pagination -->
+        <div class="p-4 border-t border-gray-100 flex items-center justify-between text-sm text-gray-500">
+            <div>Hiển thị 1-10 của 1,245 IPs</div>
+            <div class="flex gap-1">
+                <button class="px-3 py-1 rounded border border-gray-200 hover:bg-gray-50 disabled:opacity-50">Trước</button>
+                <button class="px-3 py-1 rounded bg-blue-600 text-white font-medium">1</button>
+                <button class="px-3 py-1 rounded border border-gray-200 hover:bg-gray-50">2</button>
+                <button class="px-3 py-1 rounded border border-gray-200 hover:bg-gray-50">3</button>
+                <button class="px-3 py-1 rounded border border-gray-200 hover:bg-gray-50">Tiếp</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Init sample chart
+    const ctx = document.getElementById('mainChart').getContext('2d');
+    new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: ['01/09', '02/09', '03/09', '04/09', '05/09', '06/09', '07/09'],
+            datasets: [
+                {
+                    label: 'Ads Traffic',
+                    data: [120, 150, 180, 140, 210, 170, 200],
+                    borderColor: '#2563eb', // blue-600
+                    backgroundColor: 'rgba(37, 99, 235, 0.1)',
+                    borderWidth: 2,
+                    fill: true,
+                    tension: 0.4
+                },
+                {
+                    label: 'Organic Traffic',
+                    data: [300, 320, 280, 400, 380, 420, 390],
+                    borderColor: '#10b981', // emerald-500
+                    backgroundColor: 'transparent',
+                    borderWidth: 2,
+                    borderDash: [5, 5],
+                    tension: 0.4
+                },
+                {
+                    label: 'IP Bị chặn',
+                    data: [15, 20, 10, 25, 30, 18, 22],
+                    borderColor: '#ef4444', // red-500
+                    backgroundColor: 'transparent',
+                    borderWidth: 2,
+                    tension: 0.4
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: {
+                mode: 'index',
+                intersect: false,
+            },
+            plugins: {
+                legend: {
+                    position: 'top',
+                    labels: {
+                        usePointStyle: true,
+                        boxWidth: 8
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    grid: {
+                        color: '#f3f4f6'
+                    }
+                },
+                x: {
+                    grid: {
+                        display: false
+                    }
+                }
+            }
+        }
+    });
+
+    // Handle toggle UI state changes
+    document.querySelectorAll('.toggle-checkbox').forEach(toggle => {
+        toggle.addEventListener('change', function() {
+            const row = this.closest('tr');
+            const statusText = row.querySelector('td:last-child span');
+            
+            if (this.checked) {
+                row.classList.add('bg-red-50/30');
+                statusText.textContent = 'Bị chặn';
+                statusText.className = 'text-xs font-semibold text-red-600';
+            } else {
+                row.classList.remove('bg-red-50/30');
+                statusText.textContent = 'Hoạt động';
+                statusText.className = 'text-xs font-semibold text-emerald-600';
+            }
+        });
+    });
+</script>
+
+</body>
+</html>

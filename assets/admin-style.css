@@ -370,3 +370,317 @@ input:checked + .tkgadm-toggle-slider:after {
 .tkgadm-modal-lg {
   max-width: 1000px;
 }
+
+/* Prototype admin shell */
+body.toplevel_page_tkgad-moi,
+body.gads-toolkit_page_tkgad-maintenance,
+body.gads-toolkit_page_tkgad-settings {
+  background-color: #f3f4f6;
+}
+
+body.toplevel_page_tkgad-moi #wpcontent,
+body.gads-toolkit_page_tkgad-maintenance #wpcontent,
+body.gads-toolkit_page_tkgad-settings #wpcontent {
+  background-color: #f3f4f6;
+}
+
+.wp-wrap {
+  max-width: 1200px;
+  margin: 0 auto;
+  font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+.wp-wrap h1,
+.wp-wrap h2,
+.wp-wrap h3,
+.wp-wrap p {
+  letter-spacing: 0;
+}
+
+.wp-wrap table {
+  border-spacing: 0;
+}
+
+.wp-wrap th,
+.wp-wrap td {
+  box-sizing: border-box;
+}
+
+.wp-wrap input[type="text"],
+.wp-wrap input[type="password"],
+.wp-wrap input[type="number"],
+.wp-wrap input[type="date"],
+.wp-wrap input[type="time"],
+.wp-wrap select,
+.wp-wrap textarea {
+  box-sizing: border-box;
+  min-height: 0;
+  max-width: none;
+}
+
+/* Settings controls match the sizing and radii in settings-redesign.html. */
+.tkgadm-settings-page input[type="text"],
+.tkgadm-settings-page input[type="password"],
+.tkgadm-settings-page input[type="number"],
+.tkgadm-settings-page input[type="time"] {
+  min-height: 0;
+  padding: 8px !important;
+  line-height: normal;
+}
+
+.tkgadm-settings-page select {
+  min-height: 0;
+  padding: 6px !important;
+  line-height: normal;
+}
+
+.tkgadm-settings-page .tkgadm-rule-control {
+  min-height: 28px;
+  height: 28px;
+  padding: 4px !important;
+  border-radius: 4px !important;
+}
+
+.tkgadm-settings-page .tkgadm-alert-threshold {
+  min-height: 24px;
+  height: 24px;
+  padding: 2px 4px !important;
+  border-radius: 4px !important;
+}
+
+.tkgadm-settings-page .tkgadm-alert-frequency {
+  min-height: 32px;
+  height: 32px;
+  padding: 6px !important;
+  border-radius: 4px !important;
+}
+
+/* The time control belongs inside a compact status chip. */
+.wp-wrap .tkgadm-inline-time {
+  min-height: 0;
+  padding: 0 !important;
+  border-radius: 0 !important;
+}
+
+/* Isolated report schedule controls prevent admin styles from resizing them. */
+.tkgadm-settings-page .tkgadm-report-card {
+  padding: 24px !important;
+}
+
+.tkgadm-settings-page .tkgadm-report-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 16px !important;
+  padding: 0 0 8px !important;
+  color: #1f2937;
+  font-size: 18px !important;
+  font-weight: 700;
+  line-height: 28px !important;
+}
+
+.tkgadm-settings-page .tkgadm-report-content {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.tkgadm-settings-page .tkgadm-report-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.tkgadm-settings-page .tkgadm-report-alert-row {
+  padding-bottom: 16px;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.tkgadm-settings-page .tkgadm-report-label {
+  margin: 0 !important;
+  color: #1f2937;
+  font-size: 14px !important;
+  font-weight: 500;
+  line-height: 20px !important;
+}
+
+.tkgadm-settings-page .tkgadm-report-description {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin: 4px 0 0 !important;
+  color: #6b7280;
+  font-size: 12px !important;
+  line-height: 16px !important;
+}
+
+.tkgadm-settings-page .tkgadm-report-card .tkgadm-alert-threshold {
+  width: 48px;
+  min-height: 24px;
+  height: 24px;
+  padding: 2px 4px !important;
+  border: 1px solid #d1d5db;
+  border-radius: 4px !important;
+  color: #1f2937;
+  font-size: 12px !important;
+  line-height: 16px !important;
+}
+
+.tkgadm-settings-page .tkgadm-report-card .tkgadm-alert-frequency {
+  width: auto;
+  min-width: 0;
+  min-height: 32px;
+  height: 32px;
+  padding: 6px !important;
+  border: 1px solid #d1d5db;
+  border-radius: 4px !important;
+  color: #374151;
+  font-size: 14px !important;
+  line-height: 20px !important;
+}
+
+.tkgadm-settings-page .tkgadm-report-actions {
+  display: flex;
+  flex: 0 0 auto;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  padding-top: 4px;
+}
+
+.tkgadm-settings-page .tkgadm-report-toggle {
+  position: relative;
+  width: 40px;
+  height: 20px;
+}
+
+.tkgadm-settings-page .tkgadm-report-toggle__input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.tkgadm-settings-page .tkgadm-report-toggle__track {
+  display: block;
+  width: 40px;
+  height: 20px;
+  cursor: pointer;
+  border-radius: 999px;
+  background: #d1d5db;
+  transition: background-color 160ms ease;
+}
+
+.tkgadm-settings-page .tkgadm-report-toggle__track::after {
+  display: block;
+  width: 16px;
+  height: 16px;
+  margin: 2px;
+  content: "";
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.24);
+  transition: transform 160ms ease;
+}
+
+.tkgadm-settings-page .tkgadm-report-toggle__input:checked + .tkgadm-report-toggle__track {
+  background: #3b82f6;
+}
+
+.tkgadm-settings-page .tkgadm-report-toggle__input:checked + .tkgadm-report-toggle__track::after {
+  transform: translateX(20px);
+}
+
+.tkgadm-settings-page .tkgadm-report-toggle__input:focus-visible + .tkgadm-report-toggle__track {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+}
+
+.tkgadm-settings-page .tkgadm-report-time {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  background: #f3f4f6;
+  color: #4b5563;
+  font-size: 12px;
+  line-height: 16px;
+}
+
+.tkgadm-settings-page .tkgadm-report-time .tkgadm-inline-time {
+  width: 56px;
+  height: 16px;
+  min-height: 0;
+  padding: 0 !important;
+  border-radius: 0 !important;
+  color: #374151;
+  font-size: 12px;
+  line-height: 16px;
+}
+
+/* Unified toggle used across the plugin. */
+.tkgadm-switch {
+  position: relative;
+  display: inline-flex;
+  width: 40px;
+  height: 20px;
+  flex: 0 0 40px;
+  vertical-align: middle;
+}
+
+.tkgadm-switch__input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.tkgadm-switch__track {
+  width: 100%;
+  height: 100%;
+  cursor: pointer;
+  border-radius: 999px;
+  background: #d1d5db;
+  box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.12);
+  transition: background-color 160ms ease;
+}
+
+.tkgadm-switch__track::after {
+  display: block;
+  width: 16px;
+  height: 16px;
+  margin: 2px;
+  content: "";
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.24);
+  transition: transform 160ms ease;
+}
+
+.tkgadm-switch__input:checked + .tkgadm-switch__track {
+  background: #3b82f6;
+}
+
+.tkgadm-switch__input:checked + .tkgadm-switch__track::after {
+  transform: translateX(20px);
+}
+
+.tkgadm-switch__input:focus-visible + .tkgadm-switch__track {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+}
+
+.tkgadm-switch__input:disabled + .tkgadm-switch__track {
+  cursor: wait;
+  opacity: 0.6;
+}

@@ -2,6 +2,30 @@
 
 All notable changes to **GAds Toolkit - Phần mềm chống click ảo Google Ads** will be documented in this file.
 
+## [4.1.3] - 2026-09-04
+
+### 🚀 UI/UX Redesign
+- **Hiện đại hóa toàn diện giao diện quản trị**:
+  - Tích hợp Tailwind CSS (cô lập phạm vi với preflight disabled bên trong `.wp-wrap`), bộ font Inter và hệ thống icon FontAwesome đồng bộ.
+  - **Dashboard mới**: Thiết kế lại toàn bộ giao diện bảng điều khiển với thẻ tóm tắt số liệu (Tổng người Ads, Tổng người Organic, Lượt chặn, TB người/ngày, Tỷ lệ chặn), biểu đồ phân tích trực quan và bộ chọn thời gian linh hoạt (Hôm nay, 7, 15, 30, 60, 180 ngày hoặc Tùy chỉnh).
+  - **Bảng IP Dashboard thông minh**: Bổ sung phân trang phía client (client-side pagination), tìm kiếm nhanh theo địa chỉ IP, và công tắc Toggle Switch (`tkgadm-switch`) chặn/bỏ chặn IP trực tiếp mượt mà.
+  - **Quản lý Dữ liệu trực quan**: Bố cục 2 cột hiện đại hiển thị dung lượng bảng/dọn dẹp database và danh sách IP bị chặn có bộ lọc theo số phiên, khoảng ngày cùng nút sao chép IP nhanh.
+  - **Hợp nhất menu Cấu hình & Tích hợp**: Gộp menu "Cấu hình Google Ads" và "Cấu hình Thông báo" thành trang duy nhất "Cấu hình & Tích hợp" (`tkgad-settings`) với giao diện Tab chuyên nghiệp (Google Ads API, Quy tắc Chặn tự động, Cảnh báo Telegram & Email).
+  - **Tinh chỉnh giao diện form & controls**: Chuẩn hóa kích thước input, dropdown, toggle switch và card báo cáo định kỳ (`tkgadm-report-card`, `tkgadm-inline-time`) khớp chính xác với bản prototype, chống xung đột CSS từ theme/admin WordPress.
+  - **Đồng bộ Toggle Switch**: Chuyển đổi toàn bộ checkbox truyền thống sang công tắc gạt `.tkgadm-switch` trên trang Thông báo và Cấu hình.
+
+### ⚡ Performance & Database
+- **Tự động tối ưu Index cơ sở dữ liệu**: Bổ sung hàm `tkgadm_ensure_stats_indexes()` tự động kiểm tra và thêm các chỉ mục quan trọng (`ip_address`, `visit_time`, `gclid`, `time_on_page`) cho bảng `wp_gads_toolkit_stats` khi nâng cấp, tăng tốc độ truy vấn đáng kể cho dữ liệu lớn.
+
+### 🔔 Notifications & Integrations
+- **Tối ưu gửi Telegram**: Bổ sung timeout 15 giây và kiểm tra chặt chẽ response HTTP 200 kèm cờ `ok` từ Telegram Bot API.
+- **Kiểm tra kết nối trực tiếp (AJAX Connection Test)**: Bổ sung 2 endpoint AJAX (`tkgadm_test_telegram_connection`, `tkgadm_test_email_connection`) hỗ trợ kiểm tra kết nối tức thì tới bot Telegram và hòm thư nhận thông báo.
+
+### 🐛 Fixed & Improvements
+- **Khắc phục lệch ngày khi lọc**: Chuyển sang định dạng ngày địa phương (`formatLocalDate`) thay cho UTC ISO string trong bộ lọc thời gian.
+- **Tương thích ngược API Key**: Bổ sung hàm `tkgadm_get_central_service_api_key()` tự động nhận diện cả key lưu trữ cũ và mới.
+- **Giữ nguyên tham số URL**: Cải thiện cơ chế chuyển hướng bộ lọc trên Dashboard, giữ nguyên các tham số query hiện có.
+
 ## [4.0.2] - 2026-09-03
 
 ### Changed

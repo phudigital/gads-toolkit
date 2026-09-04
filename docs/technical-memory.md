@@ -21,6 +21,7 @@ Dự án được chia làm 2 phần độc lập trong cùng repo:
 * `includes/module-google-ads.php`: Tương tác với Central Service qua API.
 * `includes/module-notifications.php`: Cảnh báo Telegram, Email (dùng wp_mail).
 * `includes/module-dashboard.php`: Giao diện backend WP (Thống kê, biểu đồ).
+* `includes/module-settings.php`: Giao diện Cấu hình & Tích hợp (Google Ads, Quy tắc chặn, Thông báo).
 * `assets/`: File tĩnh (CSS, JS, images).
 
 ### B. Cloudflare Worker Central Service (`cloudflare-worker/`)

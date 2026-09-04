@@ -31,10 +31,16 @@ function tkgadm_send_telegram_message($message) {
             'chat_id' => $chat_id,
             'text' => $message,
             'parse_mode' => 'Markdown'
-        )
+        ),
+        'timeout' => 15
     ));
     
-    return !is_wp_error($response);
+    if (is_wp_error($response)) {
+        return false;
+    }
+
+    $data = json_decode(wp_remote_retrieve_body($response), true);
+    return wp_remote_retrieve_response_code($response) === 200 && !empty($data['ok']);
 }
 
 /**
@@ -77,7 +83,7 @@ function tkgadm_check_suspicious_ips() {
     
     // Lấy IP có nhiều clicks Ads nhưng chưa bị chặn
     // phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-    $suspicious_ips = $wpdb->get_results($wpdb->prepare("\
+    $suspicious_ips = $wpdb->get_results($wpdb->prepare("
         SELECT 
             s.ip_address,
             COUNT(DISTINCT s.gclid) as ad_clicks,
@@ -359,11 +365,17 @@ function tkgadm_render_notifications_page() {
                                 <label style="display: block; font-weight: 500; margin-bottom: 5px; font-size: 13px;">Nền tảng nhận cảnh báo</label>
                                 <div style="display: flex; gap: 15px;">
                                     <label style="display: flex; align-items: center; gap: 5px; font-size: 13px; cursor: pointer;">
-                                        <input type="checkbox" name="alert_platform_email" value="1" <?php checked($alert_platform_email, '1'); ?>>
+                                        <span class="tkgadm-switch">
+                                            <input type="checkbox" name="alert_platform_email" value="1" class="tkgadm-switch__input" aria-label="Bật nhận cảnh báo qua email" <?php checked($alert_platform_email, '1'); ?>>
+                                            <span class="tkgadm-switch__track" aria-hidden="true"></span>
+                                        </span>
                                         <span>📧 Email</span>
                                     </label>
                                     <label style="display: flex; align-items: center; gap: 5px; font-size: 13px; cursor: pointer;">
-                                        <input type="checkbox" name="alert_platform_telegram" value="1" <?php checked($alert_platform_telegram, '1'); ?>>
+                                        <span class="tkgadm-switch">
+                                            <input type="checkbox" name="alert_platform_telegram" value="1" class="tkgadm-switch__input" aria-label="Bật nhận cảnh báo qua Telegram" <?php checked($alert_platform_telegram, '1'); ?>>
+                                            <span class="tkgadm-switch__track" aria-hidden="true"></span>
+                                        </span>
                                         <span>📱 Telegram</span>
                                     </label>
                                 </div>
@@ -372,7 +384,10 @@ function tkgadm_render_notifications_page() {
                             <div style="margin-bottom: 15px;">
                                 <label style="display: block; font-weight: 500; margin-bottom: 5px; font-size: 13px;">Tần suất kiểm tra IP nghi ngờ</label>
                                 <label style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px; font-size: 13px; cursor: pointer;">
-                                    <input type="checkbox" name="enable_hourly_alerts" value="1" <?php checked($hourly_enabled, '1'); ?>>
+                                    <span class="tkgadm-switch">
+                                        <input type="checkbox" name="enable_hourly_alerts" value="1" class="tkgadm-switch__input" aria-label="Bật cảnh báo IP nghi ngờ" <?php checked($hourly_enabled, '1'); ?>>
+                                        <span class="tkgadm-switch__track" aria-hidden="true"></span>
+                                    </span>
                                     <span>Bật cảnh báo IP nghi ngờ</span>
                                 </label>
                                 <select name="alert_frequency" style="width: 200px; padding: 6px; font-size: 13px;">
@@ -385,7 +400,10 @@ function tkgadm_render_notifications_page() {
                             <div style="margin-bottom: 15px;">
                                 <label style="display: block; font-weight: 500; margin-bottom: 5px; font-size: 13px;">Báo cáo hàng ngày</label>
                                 <label style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px; font-size: 13px; cursor: pointer;">
-                                    <input type="checkbox" name="enable_daily_reports" value="1" <?php checked($daily_enabled, '1'); ?>>
+                                    <span class="tkgadm-switch">
+                                        <input type="checkbox" name="enable_daily_reports" value="1" class="tkgadm-switch__input" aria-label="Bật báo cáo traffic tổng hợp" <?php checked($daily_enabled, '1'); ?>>
+                                        <span class="tkgadm-switch__track" aria-hidden="true"></span>
+                                    </span>
                                     <span>Bật báo cáo tổng hợp traffic</span>
                                 </label>
                                 <div style="display: flex; align-items: center; gap: 8px;">
@@ -834,4 +852,47 @@ function tkgadm_ajax_run_deep_test() {
     }
 
     wp_send_json_success($output);
+}
+
+/**
+ * Lightweight connection tests used by the redesigned Settings screen.
+ */
+add_action('wp_ajax_tkgadm_test_telegram_connection', 'tkgadm_ajax_test_telegram_connection');
+function tkgadm_ajax_test_telegram_connection() {
+    if (!current_user_can('manage_options')) {
+        wp_send_json_error('Không có quyền truy cập.');
+    }
+
+    check_ajax_referer('tkgadm_nonce', 'nonce');
+
+    $token = get_option('tkgadm_telegram_bot_token', '');
+    $chat_id = get_option('tkgadm_telegram_chat_id', '');
+    $result = TKGADM_Notification_Tester::run_telegram_test($token, $chat_id);
+
+    if (!empty($result['success'])) {
+        wp_send_json_success('Đã gửi tin nhắn test tới Telegram.');
+    }
+
+    $details = !empty($result['log']) ? implode(' ', $result['log']) : 'Không thể kết nối Telegram.';
+    wp_send_json_error($details);
+}
+
+add_action('wp_ajax_tkgadm_test_email_connection', 'tkgadm_ajax_test_email_connection');
+function tkgadm_ajax_test_email_connection() {
+    if (!current_user_can('manage_options')) {
+        wp_send_json_error('Không có quyền truy cập.');
+    }
+
+    check_ajax_referer('tkgadm_nonce', 'nonce');
+
+    $emails = get_option('tkgadm_notification_emails', '');
+    if (empty($emails)) {
+        wp_send_json_error('Chưa cấu hình email nhận thông báo.');
+    }
+
+    if (tkgadm_send_email_notification('[GAds Toolkit] Test Email', 'Kết nối email của GAds Toolkit đang hoạt động.')) {
+        wp_send_json_success('Đã gửi email test.');
+    }
+
+    wp_send_json_error('WordPress không thể gửi email test.');
 }

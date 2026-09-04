@@ -52,6 +52,72 @@ function tkgadm_create_tables() {
     require_once ABSPATH . 'wp-admin/includes/upgrade.php';
     dbDelta($sql_stats);
     dbDelta($sql_blocked);
+
+    tkgadm_ensure_stats_indexes($table_stats);
+}
+
+/**
+ * Ensure query-critical indexes exist on older installs.
+ */
+function tkgadm_ensure_stats_indexes($table_stats) {
+    global $wpdb;
+
+    $table_name = str_replace('`', '``', $table_stats);
+    $existing_indexes = tkgadm_get_table_index_names($table_name);
+
+    $required_indexes = [
+        'ip_address'   => 'ip_address',
+        'visit_time'   => 'visit_time',
+        'gclid'        => 'gclid',
+        'time_on_page' => 'time_on_page',
+    ];
+
+    foreach ($required_indexes as $index_name => $column_name) {
+        if (in_array($index_name, $existing_indexes, true)) {
+            continue;
+        }
+
+        $safe_index = str_replace('`', '``', $index_name);
+        $safe_column = str_replace('`', '``', $column_name);
+        $wpdb->query("ALTER TABLE `$table_name` ADD KEY `$safe_index` (`$safe_column`)");
+    }
+}
+
+function tkgadm_stats_indexes_exist() {
+    global $wpdb;
+
+    $table_stats = $wpdb->prefix . 'gads_toolkit_stats';
+    $table_name = str_replace('`', '``', $table_stats);
+    $existing_indexes = tkgadm_get_table_index_names($table_name);
+    if (empty($existing_indexes)) {
+        return false;
+    }
+
+    foreach (['ip_address', 'visit_time', 'gclid', 'time_on_page'] as $index_name) {
+        if (!in_array($index_name, $existing_indexes, true)) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+function tkgadm_get_table_index_names($table_name) {
+    global $wpdb;
+
+    $indexes = $wpdb->get_results("SHOW INDEX FROM `$table_name`");
+    if (!is_array($indexes)) {
+        return [];
+    }
+
+    $index_names = [];
+    foreach ($indexes as $index) {
+        if (isset($index->Key_name)) {
+            $index_names[] = $index->Key_name;
+        }
+    }
+
+    return array_unique($index_names);
 }
 
 /**
@@ -59,7 +125,7 @@ function tkgadm_create_tables() {
  */
 add_action('admin_init', 'tkgadm_check_upgrade');
 function tkgadm_check_upgrade() {
-    if (get_option('tkgadm_version') !== GADS_TOOLKIT_VERSION) {
+    if (get_option('tkgadm_version') !== GADS_TOOLKIT_VERSION || !tkgadm_stats_indexes_exist()) {
         // 1. Cập nhật cấu trúc bảng
         tkgadm_create_tables();
         update_option('tkgadm_version', GADS_TOOLKIT_VERSION);
@@ -455,20 +521,11 @@ function tkgadm_add_admin_menu() {
     
     add_submenu_page(
         'tkgad-moi',
-        'Cấu hình Thông báo',
-        'Cấu hình Thông báo',
+        'Cấu hình & Tích hợp',
+        'Cấu hình & Tích hợp',
         'manage_options',
-        'tkgad-notifications',
-        'tkgadm_render_notifications_page'
-    );
-
-    add_submenu_page(
-        'tkgad-moi',
-        'Cấu hình Google Ads',
-        'Cấu hình Google Ads',
-        'manage_options',
-        'tkgad-google-ads',
-        'tkgadm_render_google_ads_page'
+        'tkgad-settings',
+        'tkgadm_render_settings_page'
     );
 }
 
@@ -481,6 +538,25 @@ function tkgadm_enqueue_admin_assets($hook) {
     if (strpos($hook, 'tkgad') === false) {
         return;
     }
+
+    // Inject Tailwind with preflight disabled before the CDN runtime loads.
+    wp_register_script('tailwindcss', 'https://cdn.tailwindcss.com', array(), '3.4.1', false);
+    wp_add_inline_script('tailwindcss', 'tailwind.config = { corePlugins: { preflight: false }, important: ".wp-wrap" }', 'before');
+    wp_enqueue_script('tailwindcss');
+
+    wp_enqueue_style(
+        'tkgadm-inter-font',
+        'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap',
+        array(),
+        null
+    );
+
+    wp_enqueue_style(
+        'tkgadm-font-awesome',
+        'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css',
+        array(),
+        '6.0.0'
+    );
 
     wp_enqueue_style(
         'tkgadm-admin-style',
