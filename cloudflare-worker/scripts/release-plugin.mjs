@@ -35,6 +35,7 @@ async function remoteJson(url) {
   return data;
 }
 try {
+  run(process.execPath, ['scripts/sync-version.mjs']);
   run(process.execPath, ['scripts/check-version.mjs']);
   const main = readFileSync(resolve(root, 'gads-toolkit.php'), 'utf8');
   const header = name => main.match(new RegExp(`\\* ${name}:\\s*([^\\r\\n]+)`))?.[1].trim();
@@ -77,7 +78,13 @@ try {
     writeFileSync(receipt, JSON.stringify(manifest));
     if (!existing) wrangler(['kv', 'key', 'put', `release:gads-toolkit:version:${version}`, '--binding', 'GADS_KV', '--path', manifestFile, '--remote']);
     wrangler(['kv', 'key', 'put', RELEASE_KEY, '--binding', 'GADS_KV', '--path', manifestFile, '--remote']);
-    console.log(`Published ${version}. KV propagation and WordPress caches can delay visibility. Verify ${UPDATE_BASE}/latest.json`);
+    console.log(`Published ${version} to R2 and KV.`);
+
+    // Automatically deploy the Cloudflare Worker and its static assets so gads.pdl.vn is in 100% sync
+    console.log(`\n🚀 Deploying Worker & Landing Page Assets to Cloudflare (gads.pdl.vn)...`);
+    wrangler(['deploy']);
+    console.log(`✓ gads.pdl.vn successfully deployed with v${version} assets.`);
+    console.log(`\n✨ Successfully published and deployed ${version}! Verify: ${UPDATE_BASE}/latest.json and https://gads.pdl.vn/\n`);
   } else {
     console.log('Build only. Publish with: npm run release:plugin -- --publish');
   }

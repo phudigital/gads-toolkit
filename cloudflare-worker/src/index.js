@@ -14,7 +14,7 @@
  *   GADS_DEVELOPER_TOKEN → Google Ads Developer Token (secret)
  *   ADMIN_TOKEN        → Admin Dashboard login token (secret)
  *
- * @version 4.2.0
+ * @version 4.2.4
  */
 
 import { handleApiRequest } from './api.js';

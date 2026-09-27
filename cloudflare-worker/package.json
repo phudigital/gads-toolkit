@@ -1,13 +1,14 @@
 {
   "name": "gads-central-service",
-  "version": "4.2.0",
+  "version": "4.2.4",
   "type": "module",
-  "description": "GAds Toolkit Central Service \u2014 Cloudflare Worker",
+  "description": "GAds Toolkit Central Service — Cloudflare Worker",
   "private": true,
   "scripts": {
+    "sync:version": "node scripts/sync-version.mjs",
     "build:landing": "node scripts/build-landing.mjs",
     "dev": "npm run build:landing && wrangler dev",
-    "deploy": "npm run check && npm run build:landing && wrangler deploy",
+    "deploy": "npm run sync:version && npm run check && wrangler deploy",
     "tail": "wrangler tail",
     "check:version": "node scripts/check-version.mjs",
     "check": "npm run check:version && node --check src/index.js && node --check src/api.js && node --check src/admin.js && node --check src/updates.js && node --check scripts/release-plugin.mjs",
