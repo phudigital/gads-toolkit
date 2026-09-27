@@ -326,20 +326,31 @@ function tkgadm_smart_rotate_google_ads_ips($slots_needed = 50, $gads_limit = 50
         ARRAY_A
     );
     $db_map = [];
+    $subnet_map = [];
     foreach ((array) $db_ips as $row) {
         $db_map[$row['ip_address']] = $row['blocked_time'];
+        if (preg_match('/^(\d+\.\d+\.\d+)/', $row['ip_address'], $m)) {
+            $subnet_map[$m[1]] = $row['blocked_time'];
+        }
     }
 
     // Gán timestamp cho từng IP trên Google Ads
     $scored = [];
     foreach ($gads_ips as $entry) {
         $ip = $entry['ip_address'];
-        // Normalize CIDR -> plugin format (x.x.x.0/24 -> x.x.x.*)
-        $ip_key = $ip;
-        if (preg_match('/^(\d+\.\d+\.\d+)\.0\/24$/', $ip, $m)) {
-            $ip_key = $m[1] . '.*';
+        
+        $db_time = $db_map[$ip] ?? null;
+        
+        if (!$db_time && preg_match('/^(\d+\.\d+\.\d+)\.0\/24$/', $ip, $m)) {
+            $subnet = $m[1];
+            if (isset($subnet_map[$subnet])) {
+                $db_time = $subnet_map[$subnet];
+            } elseif (isset($db_map[$subnet . '.*'])) {
+                $db_time = $db_map[$subnet . '.*'];
+            }
         }
-        $entry['db_time'] = $db_map[$ip] ?? ($db_map[$ip_key] ?? null);
+        
+        $entry['db_time'] = $db_time;
         $scored[] = $entry;
     }
 
@@ -365,18 +376,28 @@ function tkgadm_smart_rotate_google_ads_ips($slots_needed = 50, $gads_limit = 50
     }
 
     $freed = count($rn_to_remove);
+    $freed_ips = array_column($to_remove, 'ip_address');
+
+    // Xóa khỏi local DB để đồng bộ danh sách
+    global $wpdb;
+    $blocked_table = $wpdb->prefix . 'gads_toolkit_blocked';
+    foreach ($freed_ips as $ip) {
+        $ip_key = preg_replace('/^(\d+\.\d+\.\d+)\.0\/24$/', '$1.*', $ip);
+        $wpdb->delete($blocked_table, ['ip_address' => $ip]);
+        $wpdb->delete($blocked_table, ['ip_address' => $ip_key]);
+    }
 
     // Ghi log
     update_option('tkgadm_last_rotation', [
         'time'    => time(),
         'freed'   => $freed,
         'was'     => $current_count,
-        'ips'     => array_column($to_remove, 'ip_address'),
+        'ips'     => $freed_ips,
     ]);
 
     return [
         'freed'   => $freed,
-        'message' => "Đã xóa $freed IP cũ nhất khỏi Google Ads (trước đó: $current_count/$gads_limit). Còn lại: " . ($current_count - $freed) . " IP.",
+        'message' => "Đã xóa $freed IP cũ nhất khỏi Google Ads và Danh sách Bị chặn (trước đó: $current_count/$gads_limit). Còn lại: " . ($current_count - $freed) . " IP.",
     ];
 }
 
@@ -679,8 +700,22 @@ function tkgadm_ajax_whitelist_remove() {
     $id = intval($_POST['id'] ?? 0);
     if (!$id) wp_send_json_error('ID không hợp lệ.');
 
+    global $wpdb;
+    $wl_table = $wpdb->prefix . 'gads_toolkit_whitelist';
+    $ip_to_remove = $wpdb->get_var($wpdb->prepare("SELECT ip_address FROM $wl_table WHERE id = %d", $id));
+
     if (tkgadm_remove_from_whitelist($id)) {
-        wp_send_json_success(['message' => 'Đã xóa khỏi whitelist.']);
+        $msg = 'Đã xóa khỏi whitelist.';
+        // Kiểm tra xem IP này có đang nằm trong danh sách đen không, nếu có thì chặn lại trên GAds
+        if ($ip_to_remove) {
+            $blocked_table = $wpdb->prefix . 'gads_toolkit_blocked';
+            $is_in_blacklist = $wpdb->get_var($wpdb->prepare("SELECT COUNT(*) FROM $blocked_table WHERE ip_address = %s", $ip_to_remove));
+            if ($is_in_blacklist && function_exists('tkgadm_sync_ip_to_google_ads')) {
+                tkgadm_sync_ip_to_google_ads([$ip_to_remove]);
+                $msg .= ' Hệ thống đã tự động đưa IP này vào danh sách chặn trên Google Ads trở lại.';
+            }
+        }
+        wp_send_json_success(['message' => $msg]);
     } else {
         wp_send_json_error('Không thể xóa.');
     }

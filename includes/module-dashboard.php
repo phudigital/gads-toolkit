@@ -478,7 +478,7 @@ function tkgadm_ajax_toggle_block_ip() {
     $sync_status = 'not_synced';
         
     // Try to sync if option is enabled
-    if (get_option('tkgadm_auto_sync_on_block')) {
+    if (get_option('tkgadm_gads_auto_sync', '1') === '1') {
         if (function_exists('tkgadm_sync_ip_to_google_ads')) {
             $sync_result = tkgadm_sync_ip_to_google_ads([$ip]);
                 

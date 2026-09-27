@@ -140,15 +140,13 @@ function tkgadm_render_settings_page() {
         update_option('tkgadm_gads_customer_id', $raw_cid);
         update_option('tkgadm_gads_manager_id', $raw_mid);
         
-        $auto_sync = isset($_POST['auto_sync']) ? 1 : 0;
-        update_option('tkgadm_auto_sync_hourly', $auto_sync);
-        update_option('tkgadm_auto_sync', (string) $auto_sync);
+        // Save gads_auto_sync toggle
+        $gads_auto_sync = isset($_POST['tkgadm_gads_auto_sync']) ? '1' : '0';
+        update_option('tkgadm_gads_auto_sync', $gads_auto_sync);
         
-        $sync_on_block = isset($_POST['sync_on_block']) ? 1 : 0;
-        update_option('tkgadm_auto_sync_on_block', $sync_on_block);
-        update_option('tkgadm_sync_on_block', (string) $sync_on_block);
-
+        // Cronjob hourly sync event logic
         $sync_timestamp = wp_next_scheduled('tkgadm_hourly_sync_event');
+        $auto_sync = $gads_auto_sync === '1';
         if ($auto_sync && !$sync_timestamp) {
             wp_schedule_event(time(), 'hourly', 'tkgadm_hourly_sync_event');
         } elseif (!$auto_sync && $sync_timestamp) {
@@ -303,31 +301,20 @@ function tkgadm_render_settings_page() {
                         <!-- Section: Auto Block & Sync -->
                         <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 border-t-4 border-t-indigo-500">
                             <h3 class="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2 m-0 pb-2">
-                                <i class="fa-solid fa-shield-virus text-indigo-500"></i> Chặn & Đồng Bộ
+                                <i class="fa-solid fa-shield-virus text-indigo-500"></i> Chặn tự động
                             </h3>
 
                             <div class="space-y-4">
-                                <!-- Auto Sync -->
+                                <!-- Chặn tự động Toggle -->
+                                <?php $gads_auto_sync = get_option('tkgadm_gads_auto_sync', '1'); ?>
                                 <div class="flex items-start justify-between border-b border-gray-100 pb-4">
                                     <div>
-                                        <p class="text-sm font-medium text-gray-800 m-0">Đồng bộ tự động</p>
-                                        <p class="text-xs text-gray-500 mt-0.5 mb-0">Tự động đồng bộ IP lên GAds mỗi giờ</p>
+                                        <p class="text-sm font-medium text-gray-800 m-0">Chặn tự động</p>
+                                        <p class="text-xs text-gray-500 mt-0.5 mb-0">Tự động đẩy IP xấu lên tài khoản Google Ads ngay khi phát hiện</p>
                                     </div>
                                     <div class="tkgadm-switch mt-1 mr-2">
-                                        <input type="checkbox" name="auto_sync" id="toggle1" <?php checked($auto_sync, '1'); ?> class="tkgadm-switch__input" aria-label="Bật đồng bộ tự động" />
-                                        <label for="toggle1" class="tkgadm-switch__track"></label>
-                                    </div>
-                                </div>
-
-                                <!-- Sync on block -->
-                                <div class="flex items-start justify-between border-b border-gray-100 pb-4">
-                                    <div>
-                                        <p class="text-sm font-medium text-gray-800 m-0">Đồng bộ ngay khi chặn</p>
-                                        <p class="text-xs text-gray-500 mt-0.5 mb-0">Gửi IP lên Google Ads ngay khi IP bị chặn thủ công/tự động</p>
-                                    </div>
-                                    <div class="tkgadm-switch mt-1 mr-2">
-                                        <input type="checkbox" name="sync_on_block" id="toggle2" <?php checked($sync_on_block, '1'); ?> class="tkgadm-switch__input" aria-label="Bật đồng bộ ngay khi chặn" />
-                                        <label for="toggle2" class="tkgadm-switch__track"></label>
+                                        <input type="checkbox" name="tkgadm_gads_auto_sync" id="toggle_gads_auto_sync" <?php checked($gads_auto_sync, '1'); ?> class="tkgadm-switch__input" aria-label="Bật chặn tự động" />
+                                        <label for="toggle_gads_auto_sync" class="tkgadm-switch__track"></label>
                                     </div>
                                 </div>
 

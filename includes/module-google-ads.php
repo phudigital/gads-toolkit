@@ -318,13 +318,50 @@ function tkgadm_normalize_google_ads_ip($ip) {
 /**
  * Sync IPs to Google Ads (Account Level)
  */
-function tkgadm_sync_ip_to_google_ads($ips_to_block) {
+function tkgadm_sync_ip_to_google_ads($ips_to_block, $skip_auto_rotate = false) {
     if (empty($ips_to_block)) {
         return ['success' => true, 'message' => 'Không có IP nào cần đồng bộ.'];
     }
 
-    // Check if using central service
-    if (tkgadm_is_using_central_service()) {
+    // ── PRE-EMPTIVE AUTO CLEANUP (Dọn dẹp DB local nếu vượt ngưỡng) ──
+    $ar_enabled = get_option('tkgadm_ar_enabled', '0');
+    if (!$skip_auto_rotate && $ar_enabled === '1') {
+        $ar_threshold = (int) get_option('tkgadm_ar_threshold', 450);
+        $ar_amount    = (int) get_option('tkgadm_ar_amount', 50);
+
+        global $wpdb;
+        $blocked_table = $wpdb->prefix . 'gads_toolkit_blocked';
+        $local_count = (int) $wpdb->get_var("SELECT COUNT(*) FROM $blocked_table");
+
+        if ($local_count >= $ar_threshold) {
+            // 1. Tìm và xóa IP cũ nhất trong DB local
+            $oldest_ips = $wpdb->get_col($wpdb->prepare("SELECT ip_address FROM $blocked_table ORDER BY blocked_time ASC LIMIT %d", $ar_amount));
+            if (!empty($oldest_ips)) {
+                foreach ($oldest_ips as $ip) {
+                    $ip_key = preg_replace('/^(\d+\.\d+\.\d+)\.0\/24$/', '$1.*', $ip);
+                    $wpdb->delete($blocked_table, ['ip_address' => $ip]);
+                    $wpdb->delete($blocked_table, ['ip_address' => $ip_key]);
+                }
+            }
+            
+            // 2. Thực hiện Full Sync nếu Auto-Sync đang bật
+            if (get_option('tkgadm_gads_auto_sync', '1') === '1') {
+                tkgadm_do_full_sync_google_ads();
+                return ['success' => true, 'message' => "Đã kích hoạt Full Sync do danh sách vượt ngưỡng {$ar_threshold}."];
+            }
+        }
+    }
+
+    // Nếu không phải là gọi thủ công từ Full Sync ($skip_auto_rotate) và Đồng bộ tự động đang tắt -> Bỏ qua
+    if (!$skip_auto_rotate && get_option('tkgadm_gads_auto_sync', '1') !== '1') {
+        return ['success' => true, 'message' => 'Đồng bộ tự động đang tắt.'];
+    }
+
+    // Check if using central service (chỉ dùng nếu chưa cấu hình Direct API)
+    $ids = tkgadm_get_gads_ids();
+    $has_direct = !empty($ids['customer_id']) && !empty($ids['developer_token']) && !empty($ids['refresh_token']);
+    
+    if (!$has_direct && tkgadm_is_using_central_service()) {
         return tkgadm_sync_via_central_service($ips_to_block);
     }
 
@@ -341,6 +378,7 @@ function tkgadm_sync_ip_to_google_ads($ips_to_block) {
     if (!$customer_id || !$developer_token) {
         return ['success' => false, 'message' => 'Thiếu Customer ID hoặc Developer Token.'];
     }
+    // ───────────────────────────────────────────────────────────────────────────────
 
     // 1. Prepare operations & Validate IPs
     $operations = [];
@@ -406,6 +444,53 @@ function tkgadm_sync_ip_to_google_ads($ips_to_block) {
     $response_code = wp_remote_retrieve_response_code($response);
     $body = json_decode(wp_remote_retrieve_body($response), true);
 
+    // Helper kiểm tra lỗi đầy IP
+    $is_quota_error = false;
+    $error_str = '';
+
+    if ($response_code !== 200) {
+        $error_str = isset($body['error']['message']) ? $body['error']['message'] : '';
+        if (isset($body['error']['details'])) {
+            $error_str .= json_encode($body['error']['details'], JSON_UNESCAPED_UNICODE);
+        }
+    } elseif (isset($body['partialFailureError'])) {
+        $error_str = json_encode($body['partialFailureError'], JSON_UNESCAPED_UNICODE);
+    }
+
+    if ($error_str !== '' && (stripos($error_str, 'LIMIT_EXCEEDED') !== false || stripos($error_str, 'TOO_MANY') !== false || stripos($error_str, 'RESOURCE_EXHAUSTED') !== false)) {
+        $is_quota_error = true;
+    }
+
+    // Nếu bị lỗi đầy quota -> Tự động xóa bớt IP cũ và thử lại
+    if ($is_quota_error && function_exists('tkgadm_smart_rotate_google_ads_ips')) {
+        // Cần giải phóng: số IP đang định thêm + 50 slot dư phòng hờ
+        $slots_to_free = count($ips_to_block) + 50;
+        $rotate_res = tkgadm_smart_rotate_google_ads_ips($slots_to_free);
+        
+        if (!empty($rotate_res['freed']) && $rotate_res['freed'] > 0) {
+            // Thử đồng bộ lại lần 2
+            $retry = wp_remote_post($url, array(
+                'headers' => $headers,
+                'body' => json_encode($payload),
+                'timeout' => 60
+            ));
+            
+            if (!is_wp_error($retry)) {
+                $retry_code = wp_remote_retrieve_response_code($retry);
+                $retry_body = json_decode(wp_remote_retrieve_body($retry), true);
+                
+                if ($retry_code === 200 && !isset($retry_body['partialFailureError'])) {
+                    $success_count = isset($retry_body['results']) ? count($retry_body['results']) : 0;
+                    return [
+                        'success' => true,
+                        'message' => "Đã tự động xóa {$rotate_res['freed']} IP cũ (do đầy 500 IP) và đồng bộ thành công $success_count IP mới."
+                    ];
+                }
+            }
+        }
+    }
+
+    // Xử lý lỗi bình thường nếu không phải quota error hoặc rotate thất bại
     if ($response_code !== 200) {
         $error_msg = isset($body['error']['message']) ? $body['error']['message'] : 'Lỗi không xác định.';
         if (isset($body['error']['details'])) {
@@ -416,11 +501,20 @@ function tkgadm_sync_ip_to_google_ads($ips_to_block) {
     }
 
     // 200 OK - Check results
-    $success_count = isset($body['results']) ? count($body['results']) : 0;
+    $success_count = 0;
+    if (isset($body['results'])) {
+        // partialFailureError có thể làm kết quả rỗng
+        foreach ($body['results'] as $res) {
+            if (!empty($res)) $success_count++;
+        }
+    }
 
     $msg = "Đã đồng bộ thành công $success_count IP";
     if ($skipped_count > 0) {
         $msg .= " (Bỏ qua $skipped_count IP sai định dạng)";
+    }
+    if (isset($body['partialFailureError'])) {
+        $msg .= " (Kèm một số lỗi: " . $body['partialFailureError']['message'] . ")";
     }
     $msg .= ".";
 
@@ -1173,4 +1267,70 @@ function tkgadm_register_site_heartbeat($api_key = null) {
         'timeout' => 5,
         'blocking' => false // Fire and forget
     ));
+}
+
+/**
+ * Xóa sạch IP trên Google Ads và đồng bộ lại toàn bộ danh sách từ local DB
+ */
+function tkgadm_do_full_sync_google_ads() {
+    $ids = tkgadm_get_gads_ids();
+    $has_direct = !empty($ids['customer_id']) && !empty($ids['developer_token']) && !empty($ids['refresh_token']);
+
+    // 1. Chỉ hỗ trợ Direct API hiện tại
+    if (!$has_direct) {
+        if (tkgadm_is_using_central_service()) {
+            return ['success' => false, 'message' => 'Full Sync hiện chỉ hỗ trợ chế độ Direct API.'];
+        }
+        return ['success' => false, 'message' => 'Thiếu cấu hình Customer ID hoặc Developer Token.'];
+    }
+
+    $access_token = tkgadm_get_google_access_token();
+    if (is_wp_error($access_token)) {
+        return ['success' => false, 'message' => 'Lỗi token: ' . $access_token->get_error_message()];
+    }
+
+    $ids = tkgadm_get_gads_ids();
+    if (!$ids['customer_id'] || !$ids['developer_token']) {
+        return ['success' => false, 'message' => 'Thiếu Customer ID hoặc Developer Token.'];
+    }
+
+    // 2. Lấy toàn bộ IP đang có trên Google Ads và xóa hết
+    $gads_ips = tkgadm_get_google_ads_blocked_ips($access_token, $ids['customer_id'], $ids['developer_token'], $ids['manager_id']);
+    if (is_wp_error($gads_ips)) {
+        return ['success' => false, 'message' => 'Lỗi lấy danh sách từ Google Ads: ' . $gads_ips->get_error_message()];
+    }
+
+    $resource_names = array_column($gads_ips, 'resource_name');
+    if (!empty($resource_names)) {
+        $remove_result = tkgadm_remove_google_ads_ips($access_token, $ids['customer_id'], $ids['developer_token'], $resource_names, $ids['manager_id']);
+        if (is_wp_error($remove_result)) {
+            return ['success' => false, 'message' => 'Lỗi khi xóa IP trên Google Ads: ' . $remove_result->get_error_message()];
+        }
+    }
+
+    // 3. Lấy toàn bộ IP từ DB local
+    global $wpdb;
+    $blocked_table = $wpdb->prefix . 'gads_toolkit_blocked';
+    $local_ips = $wpdb->get_col("SELECT ip_address FROM $blocked_table");
+
+    // Lọc bỏ IP trong whitelist
+    if (function_exists('tkgadm_is_ip_whitelisted')) {
+        $local_ips = array_filter($local_ips, function($ip) {
+            return !tkgadm_is_ip_whitelisted($ip);
+        });
+    }
+
+    if (empty($local_ips)) {
+        return ['success' => true, 'message' => 'Đã xóa toàn bộ IP trên GAds. Danh sách local rỗng nên không thêm mới.'];
+    }
+
+    // 4. Đồng bộ (thêm mới) lại toàn bộ danh sách local lên GAds
+    // Gọi hàm sync (chú ý: phải tắt tính năng auto-rotate khi gọi để tránh loop)
+    $sync_result = tkgadm_sync_ip_to_google_ads($local_ips, true); 
+    
+    if ($sync_result['success']) {
+        $sync_result['message'] = 'Đã làm sạch Google Ads và ' . lcfirst($sync_result['message']);
+    }
+
+    return $sync_result;
 }

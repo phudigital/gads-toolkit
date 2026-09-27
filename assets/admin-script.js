@@ -126,8 +126,13 @@ jQuery(document).ready(function ($) {
     let html = "";
     html += `<button type="button" class="dashboard-page-btn px-3 py-1 rounded border border-gray-200 hover:bg-gray-50 disabled:opacity-50 h-8 border-solid cursor-pointer" data-page="${dashboardCurrentPage - 1}" ${dashboardCurrentPage === 1 ? "disabled" : ""}>Trước</button>`;
 
-    const visiblePages = Math.min(totalPages, 3);
-    for (let page = 1; page <= visiblePages; page++) {
+    let startPage = Math.max(1, dashboardCurrentPage - 2);
+    let endPage = Math.min(totalPages, startPage + 4);
+    if (endPage - startPage < 4) {
+      startPage = Math.max(1, endPage - 4);
+    }
+
+    for (let page = startPage; page <= endPage; page++) {
       const activeClass =
         page === dashboardCurrentPage
           ? "bg-blue-600 text-white font-medium border-none"

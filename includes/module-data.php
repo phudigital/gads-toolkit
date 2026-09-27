@@ -62,6 +62,17 @@ function tkgadm_render_maintenance_page() {
     
     ?>
         <div class="wp-wrap space-y-6" style="padding: 20px 20px 40px 0;">
+        <style>
+            /* Ẩn mũi tên lên/xuống của thẻ input number */
+            input[type="number"]::-webkit-inner-spin-button,
+            input[type="number"]::-webkit-outer-spin-button {
+                -webkit-appearance: none;
+                margin: 0;
+            }
+            input[type="number"] {
+                -moz-appearance: textfield;
+            }
+        </style>
         <div class="space-y-6">
             <!-- Header -->
             <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5 flex justify-between items-center">
@@ -144,21 +155,30 @@ function tkgadm_render_maintenance_page() {
                 <!-- Right Column: IP Management -->
                 <div class="lg:col-span-2">
                     <div class="bg-white rounded-xl shadow-sm border border-gray-100 h-full flex flex-col">
-                        <div class="p-5 border-b border-gray-100 flex justify-between items-center">
+                        <div class="p-5 border-b border-gray-100 flex justify-between items-center flex-wrap gap-3">
                             <h3 class="text-base font-bold text-gray-800 flex items-center gap-2 m-0">
                                 <i class="fa-solid fa-shield-halved text-red-500"></i> Quản Lý IP Bị Chặn
                                 <span id="blocked-count-badge" class="text-xs font-medium bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">0 IP</span>
                             </h3>
-                            <button type="button" id="btn-copy-blocked" class="bg-white hover:bg-gray-50 text-gray-700 text-sm font-medium py-1.5 px-3 rounded border border-gray-200 transition shadow-sm flex items-center gap-2 cursor-pointer" disabled>
-                                <i class="fa-regular fa-copy text-blue-500"></i> Copy Danh Sách
-                            </button>
+                            <div class="flex items-center gap-2 flex-wrap">
+                                <div class="flex items-center gap-1 border border-orange-200 rounded p-1 bg-orange-50/30">
+                                    <button id="btn-gads-del-oldest" class="bg-orange-500 hover:bg-orange-600 text-white text-xs font-medium py-1 px-2 rounded border-none cursor-pointer flex items-center gap-1.5 transition shadow-sm !m-0 mr-1">
+                                        <i class="fa-solid fa-trash"></i> Xóa local
+                                    </button>
+                                    <input type="text" inputmode="numeric" oninput="this.value = this.value.replace(/[^0-9]/g, '')" pattern="[0-9]*" id="gads-oldest-n" value="50" min="1" max="1000" class="w-16 text-center text-xs border border-gray-300 rounded py-1 px-1 focus:outline-none focus:ring-1 focus:ring-orange-400 !m-0" style="margin: 0 !important;">
+                                    <span class="text-xs text-orange-700 font-medium">IP cũ nhất</span>
+                                </div>
+                                <button type="button" id="btn-copy-blocked" class="bg-white hover:bg-gray-50 text-gray-700 text-xs font-medium py-1.5 px-3 rounded border border-gray-200 transition shadow-sm flex items-center gap-2 cursor-pointer !m-0" disabled>
+                                    <i class="fa-regular fa-copy text-blue-500"></i> Copy
+                                </button>
+                            </div>
                         </div>
                         
                         <!-- Filters -->
                         <div class="p-4 bg-gray-50 border-b border-gray-100 flex flex-wrap gap-4 items-end">
                             <div>
                                 <label class="block text-xs font-medium text-gray-600 mb-1">Số phiên tối thiểu</label>
-                                <input type="number" id="filter-visit-count" value="0" min="0" class="w-24 text-sm border border-gray-300 rounded p-1.5 focus:outline-none focus:ring-1 focus:ring-blue-500 h-8">
+                                <input type="text" inputmode="numeric" oninput="this.value = this.value.replace(/[^0-9]/g, '')" pattern="[0-9]*" id="filter-visit-count" value="0" min="0" class="w-24 text-sm border border-gray-300 rounded p-1.5 focus:outline-none focus:ring-1 focus:ring-blue-500 h-8">
                             </div>
                             <div>
                                 <label class="block text-xs font-medium text-gray-600 mb-1">Từ ngày</label>
@@ -171,6 +191,44 @@ function tkgadm_render_maintenance_page() {
                             <button type="button" id="btn-filter-blocked" class="bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium py-1.5 px-4 rounded transition border-none cursor-pointer h-8">
                                 Lọc
                             </button>
+                        </div>
+                        
+                        <!-- Auto-Cleanup Settings Bar -->
+                        <?php
+                            $ar_enabled   = get_option('tkgadm_ar_enabled', '0');
+                            $ar_threshold = get_option('tkgadm_ar_threshold', 450);
+                            $ar_amount    = get_option('tkgadm_ar_amount', 50);
+                        ?>
+                        <div class="p-4 bg-orange-50/30 border-b border-gray-100 flex flex-wrap items-center justify-between gap-4 text-sm">
+                            <div class="flex items-center gap-4 flex-wrap">
+                                <div class="flex items-center gap-2">
+                                    <i class="fa-solid fa-broom text-orange-500"></i>
+                                    <span class="font-medium text-gray-700">Tự động dọn dẹp IP cũ</span>
+                                </div>
+                                <label class="flex items-center gap-1.5 cursor-pointer !m-0">
+                                    <div class="tkgadm-switch">
+                                        <input type="checkbox" id="ar-toggle" class="tkgadm-switch__input !m-0" <?php checked($ar_enabled, '1'); ?> aria-label="Bật Auto-Cleanup" style="margin: 0 !important;">
+                                        <label for="ar-toggle" class="tkgadm-switch__track !m-0"></label>
+                                    </div>
+                                    <span class="text-xs text-gray-500 font-medium select-none" id="ar-toggle-text"><?php echo $ar_enabled === '1' ? 'Đang bật' : 'Đang tắt'; ?></span>
+                                </label>
+                            </div>
+                            <div class="flex items-center gap-3 flex-wrap text-gray-600">
+                                <div class="flex items-center gap-2">
+                                    <span>Khi số IP chặn vượt:</span>
+                                    <input type="text" inputmode="numeric" oninput="this.value = this.value.replace(/[^0-9]/g, '')" pattern="[0-9]*" id="ar-threshold" value="<?php echo esc_attr($ar_threshold); ?>" class="w-16 text-center text-sm border border-gray-300 rounded py-1 px-1 focus:outline-none focus:ring-1 focus:ring-orange-400 !m-0 h-8" style="margin: 0 !important;">
+                                </div>
+                                <i class="fa-solid fa-arrow-right text-gray-400"></i>
+                                <div class="flex items-center gap-2">
+                                    <span>Xóa:</span>
+                                    <input type="text" inputmode="numeric" oninput="this.value = this.value.replace(/[^0-9]/g, '')" pattern="[0-9]*" id="ar-amount" value="<?php echo esc_attr($ar_amount); ?>" class="w-16 text-center text-sm border border-gray-300 rounded py-1 px-1 focus:outline-none focus:ring-1 focus:ring-orange-400 !m-0 h-8" style="margin: 0 !important;">
+                                    <span>IP cũ nhất</span>
+                                </div>
+                                <button type="button" id="btn-ar-save" class="bg-white hover:bg-gray-50 text-gray-700 text-xs font-medium py-1.5 px-3 rounded border border-gray-200 transition shadow-sm flex items-center gap-1 cursor-pointer !m-0 h-8">
+                                    <i class="fa-solid fa-floppy-disk text-gray-400"></i> Lưu
+                                </button>
+                                <span id="ar-status" class="text-xs font-medium hidden"></span>
+                            </div>
                         </div>
 
                         <!-- Table -->
@@ -280,7 +338,7 @@ function tkgadm_render_maintenance_page() {
                         <div class="flex items-center justify-between text-sm text-gray-600 bg-white p-3 rounded-lg border border-gray-100">
                             <label class="text-xs font-medium text-gray-600 whitespace-nowrap m-0">Ngưỡng auto-whitelist:</label>
                             <div class="flex items-center gap-2">
-                                <input type="number" id="swl-threshold" value="<?php echo esc_attr($swl_threshold); ?>"
+                                <input type="text" inputmode="numeric" oninput="this.value = this.value.replace(/[^0-9]/g, '')" pattern="[0-9]*" id="swl-threshold" value="<?php echo esc_attr($swl_threshold); ?>"
                                        min="1" max="9999"
                                        class="w-16 text-center border border-gray-200 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-purple-300">
                                 <span class="text-xs text-gray-500">click / IP</span>
@@ -391,17 +449,26 @@ function tkgadm_render_maintenance_page() {
                        && !empty(get_option('tkgadm_gads_customer_id'))
                        && !empty(get_option('tkgadm_gads_refresh_token'));
             $gads_nonce = wp_create_nonce('tkgadm_gads_manager_nonce');
+            
+            // Cài đặt Auto-Rotate
+            $ar_enabled   = get_option('tkgadm_ar_enabled', '0');
+            $ar_threshold = (int) get_option('tkgadm_ar_threshold', 450);
+            $ar_amount    = (int) get_option('tkgadm_ar_amount', 50);
             ?>
-            <div class="bg-white rounded-xl shadow-sm border border-gray-100 border-t-4 border-t-blue-500">
-                <div class="p-5 border-b border-gray-100 flex items-center justify-between gap-3 flex-wrap">
+            <div class="bg-white rounded-xl shadow-sm border border-gray-100 border-t-4 border-t-blue-500 mt-6">
+                <!-- Header / Manual Controls -->
+                <div class="p-5 border-b border-gray-100 flex items-center justify-between gap-3 flex-wrap bg-blue-50/30 rounded-t-xl">
                     <div class="flex items-center gap-3 flex-wrap">
                         <h3 class="text-base font-bold text-gray-800 flex items-center gap-2 m-0">
                             <i class="fa-brands fa-google text-blue-500"></i> IP trên Google Ads
-                            <span id="gads-slot-badge" class="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-normal">—/500</span>
+                            <span id="gads-slot-badge" class="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-normal shadow-sm">—/500</span>
                         </h3>
                         <?php if ($has_direct): ?>
-                            <button id="btn-gads-load" class="text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1.5 rounded border-none cursor-pointer flex items-center gap-1 transition">
-                                <i class="fa-solid fa-rotate"></i> Tải danh sách
+                            <button id="btn-gads-load" class="text-xs bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 px-3 py-1.5 rounded cursor-pointer flex items-center gap-1 transition shadow-sm">
+                                <i class="fa-solid fa-list-check text-blue-500"></i> Tải danh sách
+                            </button>
+                            <button id="btn-gads-full-sync" class="text-xs bg-blue-500 hover:bg-blue-600 text-white px-3 py-1.5 rounded cursor-pointer flex items-center gap-1 transition shadow-sm border-none">
+                                <i class="fa-solid fa-rotate text-white"></i> Đồng bộ IP chặn
                             </button>
                         <?php else: ?>
                             <span class="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded px-2 py-1">
@@ -409,25 +476,9 @@ function tkgadm_render_maintenance_page() {
                             </span>
                         <?php endif; ?>
                     </div>
-                    <?php if ($has_direct): ?>
-                    <div class="flex gap-2 items-center flex-wrap">
-                        <button id="btn-gads-del-selected" disabled
-                                class="bg-red-500 hover:bg-red-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white text-xs font-medium py-2 px-3 rounded-lg border-none cursor-pointer flex items-center gap-1.5 transition">
-                            <i class="fa-solid fa-trash-can"></i> Xóa đã chọn (<span id="gads-sel-count">0</span>)
-                        </button>
-                        <div class="flex items-center gap-1">
-                            <button id="btn-gads-del-oldest" class="bg-orange-500 hover:bg-orange-600 text-white text-xs font-medium py-2 px-3 rounded-lg border-none cursor-pointer flex items-center gap-1.5 transition">
-                                <i class="fa-solid fa-clock-rotate-left"></i> Xóa
-                            </button>
-                            <div class="flex items-center border border-orange-300 rounded-lg bg-white overflow-hidden focus-within:ring-1 focus-within:ring-orange-400">
-                                <input type="number" id="gads-oldest-n" value="50" min="1" max="500"
-                                       class="w-16 text-center text-sm border-none py-1.5 px-1 focus:outline-none focus:ring-0 m-0 h-full" style="box-shadow: none;">
-                                <span class="text-xs text-gray-500 pr-3 whitespace-nowrap bg-gray-50 border-l border-orange-300 h-full py-2 pl-2">IP cũ nhất</span>
-                            </div>
-                        </div>
-                    </div>
-                    <?php endif; ?>
                 </div>
+
+
 
                 <div id="gads-action-msg" class="hidden px-5 py-2 text-sm border-b border-gray-100 font-medium"></div>
 
@@ -448,15 +499,26 @@ function tkgadm_render_maintenance_page() {
                     </div>
 
                     <!-- Table controls -->
-                    <div id="gads-table-controls" class="hidden px-4 py-2 bg-gray-50 border-b border-gray-100 flex items-center gap-3 flex-wrap">
-                        <label class="flex items-center gap-2 text-xs text-gray-600 cursor-pointer">
-                            <input type="checkbox" id="gads-select-all" class="w-3.5 h-3.5 accent-blue-600"> Chọn tất cả
-                        </label>
-                        <label class="flex items-center gap-2 text-xs text-orange-600 cursor-pointer">
-                            <input type="checkbox" id="gads-select-no-db" class="w-3.5 h-3.5 accent-orange-500"> Chọn IP không có trong DB
-                        </label>
-                        <input type="text" id="gads-search" placeholder="🔍 Tìm IP..."
-                               class="ml-auto text-xs border border-gray-300 rounded p-1.5 w-36 focus:outline-none focus:ring-1 focus:ring-blue-400">
+                    <div id="gads-table-controls" class="hidden px-5 py-3 bg-gray-50 border-b border-gray-100 flex flex-wrap items-center justify-between gap-4">
+                        <div class="flex items-center gap-5 flex-wrap">
+                            <label class="inline-flex items-center gap-2 text-xs text-gray-600 cursor-pointer !m-0">
+                                <input type="checkbox" id="gads-select-all" class="!m-0 w-4 h-4 accent-blue-600" style="margin: 0 !important;"> 
+                                <span class="font-medium">Chọn tất cả</span>
+                            </label>
+                            <label class="inline-flex items-center gap-2 text-xs text-orange-600 cursor-pointer !m-0">
+                                <input type="checkbox" id="gads-select-no-db" class="!m-0 w-4 h-4 accent-orange-500" style="margin: 0 !important;"> 
+                                <span class="font-medium">Chọn IP không có trong DB</span>
+                            </label>
+                            <button id="btn-gads-del-selected" disabled
+                                    class="bg-red-500 hover:bg-red-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white text-xs font-medium py-1.5 px-3 rounded border-none cursor-pointer flex items-center gap-1.5 transition shadow-sm !m-0">
+                                <i class="fa-solid fa-trash-can"></i> Xóa đã chọn (<span id="gads-sel-count">0</span>)
+                            </button>
+                        </div>
+                        <div class="relative">
+                            <input type="text" id="gads-search" placeholder="Tìm IP..."
+                                   class="pl-8 text-xs border border-gray-300 rounded p-1.5 w-48 focus:outline-none focus:ring-1 focus:ring-blue-400 m-0">
+                            <i class="fa-solid fa-magnifying-glass absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs"></i>
+                        </div>
                     </div>
 
                     <!-- Not loaded -->
@@ -798,6 +860,65 @@ function tkgadm_render_maintenance_page() {
         var gNonce = '<?php echo esc_js($gads_nonce); ?>';
         var allIps = [];
 
+        // --- Bắt đầu: JS Auto-Rotate Cài đặt ---
+        $('#ar-toggle').on('change', function() {
+            $('#ar-toggle-text').text($(this).is(':checked') ? 'Đang bật' : 'Đang tắt');
+        });
+
+        $('#btn-ar-save').on('click', function() {
+            var enabled = $('#ar-toggle').is(':checked') ? 1 : 0;
+            var threshold = parseInt($('#ar-threshold').val()) || 450;
+            var amount = parseInt($('#ar-amount').val()) || 50;
+            $('#ar-toggle-text').text(enabled ? 'Đang bật' : 'Đang tắt');
+            
+            var btn = $(this).prop('disabled', true).html('<i class="fa-solid fa-spinner fa-spin"></i>...');
+            $.post(ajaxurl, {
+                action: 'tkgadm_ar_save_config',
+                nonce: gNonce,
+                enabled: enabled,
+                threshold: threshold,
+                amount: amount
+            }, function(res) {
+                btn.prop('disabled', false).html('<i class="fa-solid fa-floppy-disk text-gray-400"></i> Lưu');
+                var s = $('#ar-status').removeClass('hidden text-green-700 text-red-700');
+                if (res.success) {
+                    s.addClass('text-green-700').text('✅ Đã lưu cấu hình. Quá trình kiểm tra sẽ chạy khi có truy cập mới.');
+                    setTimeout(function(){ s.addClass('hidden'); }, 4000);
+                } else {
+                    s.addClass('text-red-700').text('❌ Lỗi: ' + res.data);
+                }
+            }).fail(function() {
+                btn.prop('disabled', false).html('<i class="fa-solid fa-floppy-disk text-gray-400"></i> Lưu');
+                $('#ar-status').removeClass('hidden').addClass('text-red-700').text('❌ Lỗi kết nối.');
+            });
+        });
+        
+
+        // --- Kết thúc: JS Auto-Rotate Cài đặt ---
+
+        // Nút Đồng bộ IP chặn (Full Sync)
+        $('#btn-gads-full-sync').on('click', function() {
+            if (!confirm('Hành động này sẽ XÓA TOÀN BỘ IP trên tài khoản Google Ads và TẢI LÊN lại toàn bộ danh sách IP hiện tại trong database của bạn. Thời gian xử lý có thể mất đến vài chục giây.\n\nBạn có chắc chắn muốn tiếp tục?')) return;
+            var btn = $(this);
+            var originalHtml = btn.html();
+            btn.prop('disabled', true).html('<i class="fa-solid fa-spinner fa-spin text-white"></i> Đang đồng bộ...');
+            showMsg('info', 'Đang thực hiện đồng bộ toàn diện, vui lòng chờ...');
+            
+            $.post(ajaxurl, { action: 'tkgadm_gads_full_sync', nonce: gNonce }, function(res) {
+                btn.prop('disabled', false).html(originalHtml);
+                if (res.success) {
+                    showMsg('ok', '✅ ' + (res.data.message || 'Đồng bộ thành công!'));
+                    // Tự động tải lại danh sách sau khi đồng bộ
+                    $('#btn-gads-load').click();
+                } else {
+                    showMsg('err', '❌ Lỗi: ' + res.data);
+                }
+            }).fail(function() {
+                btn.prop('disabled', false).html(originalHtml);
+                showMsg('err', '❌ Lỗi kết nối khi đồng bộ.');
+            });
+        });
+
         // Hàm escape HTML
         function esc(s) { return $('<div>').text(s || '').html(); }
 
@@ -918,20 +1039,24 @@ function tkgadm_render_maintenance_page() {
             doDelete(rns);
         });
 
-        // Xóa N cũ nhất
+        // Xóa N cũ nhất (từ Local DB)
         $('#btn-gads-del-oldest').on('click', function() {
             var n = parseInt($('#gads-oldest-n').val()) || 50;
-            if (!confirm('Xóa ' + n + ' IP cũ nhất khỏi Google Ads?\nHành động không thể hoàn tác!')) return;
-            showMsg('info', '<i class="fa-solid fa-spinner fa-spin"></i> Đang xóa ' + n + ' IP cũ nhất...');
-            setGadsBtns(true);
+            if (!confirm('Hành động này sẽ XÓA (bỏ chặn) vĩnh viễn ' + n + ' IP cũ nhất khỏi cơ sở dữ liệu Website.\n\nSau khi xóa xong, bạn hãy chạy "Đồng bộ IP chặn" ở mục dưới để làm sạch Google Ads nhé.\n\nTiếp tục?')) return;
+            var btn = $(this).prop('disabled', true).html('<i class="fa-solid fa-spinner fa-spin"></i> Xóa...');
+            
             $.post(ajaxurl, { action: 'tkgadm_gads_delete_oldest', nonce: gNonce, count: n }, function(res) {
-                setGadsBtns(false);
+                btn.prop('disabled', false).html('<i class="fa-solid fa-trash"></i> Xóa local');
                 if (res.success) {
-                    var freed = res.data.freed || 0;
-                    showMsg(freed > 0 ? 'ok' : 'info', (freed > 0 ? '✅ ' : 'ℹ️ ') + res.data.message);
-                    if (freed > 0) $('#btn-gads-load').trigger('click');
-                } else { showMsg('err', '❌ ' + res.data); }
-            }).fail(function() { setGadsBtns(false); showMsg('err', '❌ Lỗi kết nối.'); });
+                    alert(res.data.message || 'Đã xóa thành công!');
+                    location.reload(); // Reload page to reflect new DB state
+                } else { 
+                    alert('Lỗi: ' + res.data); 
+                }
+            }).fail(function() { 
+                btn.prop('disabled', false).html('<i class="fa-solid fa-trash"></i> Xóa local'); 
+                alert('Lỗi kết nối.'); 
+            });
         });
 
         function doDelete(rns) {

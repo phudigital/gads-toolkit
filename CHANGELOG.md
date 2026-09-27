@@ -2,6 +2,18 @@
 
 All notable changes to **GAds Toolkit - Phần mềm chống click ảo Google Ads** will be documented in this file.
 
+## [4.2.7] - 2026-09-28
+
+### Tính năng mới & Cơ chế Tự phục hồi
+- **Đồng bộ IP chặn toàn diện (Full Sync)**: Thêm chức năng làm sạch toàn bộ IP trên Google Ads và đồng bộ lại danh sách từ cơ sở dữ liệu local một cách an toàn và tự động.
+- **Tự động xử lý khi đầy hạn mức Google Ads (Quota Recovery)**: Khi đồng bộ gặp lỗi đầy giới hạn 500 IP (`LIMIT_EXCEEDED` / `RESOURCE_EXHAUSTED`), hệ thống sẽ tự động kích hoạt Smart Rotation để giải phóng slot và tự động thử lại ngay lập tức.
+- **Đồng bộ hai chiều danh sách đen**: Tự động dọn dẹp các IP được xoay vòng ra khỏi bảng chặn nội bộ (`gads_toolkit_blocked`); khi gỡ IP khỏi Whitelist, tự động kích hoạt đẩy lại lên Google Ads nếu IP đó thuộc danh sách vi phạm.
+
+### Cải thiện & Tinh chỉnh
+- **Tinh gọn Cài đặt Chặn tự động**: Tối ưu nút gạt "Chặn tự động", đồng bộ trạng thái lưu cấu hình ngưỡng Auto-Rotate và chế độ đồng bộ.
+- **Nâng cấp phân trang Dashboard**: Cải thiện thanh phân trang động trượt theo trang hiện tại trên màn hình Thống kê IP Ads.
+- **Nhận diện dải IP /24 thông minh**: Tối ưu khả năng ánh xạ và hiển thị chi tiết cho các dải IP CIDR được Google Ads trả về.
+
 ## [4.2.6] - 2026-09-28
 
 ### Tính năng mới & Mở rộng

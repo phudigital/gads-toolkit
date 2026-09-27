@@ -15,6 +15,33 @@ if (!defined('ABSPATH')) exit;
  * AJAX: Lấy danh sách IP từ Google Ads
  * ============================================================================
  */
+
+add_action("wp_ajax_tkgadm_ar_save_config", "tkgadm_ajax_ar_save_config");
+function tkgadm_ajax_ar_save_config() {
+    check_ajax_referer("tkgadm_gads_manager_nonce", "nonce");
+    if (!current_user_can("manage_options")) wp_send_json_error("Không có quyền.");
+
+    $enabled = isset($_POST["enabled"]) ? sanitize_text_field($_POST["enabled"]) : "0";
+    $threshold = isset($_POST["threshold"]) ? intval($_POST["threshold"]) : 450;
+    $amount = isset($_POST["amount"]) ? intval($_POST["amount"]) : 50;
+
+    update_option("tkgadm_ar_enabled", $enabled);
+    update_option("tkgadm_ar_threshold", $threshold);
+    update_option("tkgadm_ar_amount", $amount);
+
+    wp_send_json_success(["message" => "Đã lưu thành công."]);
+}
+
+add_action("wp_ajax_tkgadm_gads_save_auto_sync", "tkgadm_ajax_gads_save_auto_sync");
+function tkgadm_ajax_gads_save_auto_sync() {
+    check_ajax_referer("tkgadm_gads_manager_nonce", "nonce");
+    if (!current_user_can("manage_options")) wp_send_json_error("Không có quyền.");
+
+    $auto_sync = isset($_POST["auto_sync"]) ? sanitize_text_field($_POST["auto_sync"]) : "1";
+    update_option("tkgadm_gads_auto_sync", $auto_sync);
+
+    wp_send_json_success(["message" => "Đã lưu thành công."]);
+}
 add_action('wp_ajax_tkgadm_gads_list_ips', 'tkgadm_ajax_gads_list_ips');
 function tkgadm_ajax_gads_list_ips() {
     check_ajax_referer('tkgadm_gads_manager_nonce', 'nonce');
@@ -48,23 +75,29 @@ function tkgadm_ajax_gads_list_ips() {
         ARRAY_A
     );
     $db_map = [];
+    $subnet_map = []; // Map 3 octet đầu tiên sang DB row
     foreach ((array) $db_rows as $row) {
         $db_map[$row['ip_address']] = $row;
+        if (preg_match('/^(\d+\.\d+\.\d+)/', $row['ip_address'], $m)) {
+            $subnet_map[$m[1]] = $row; // Lưu IP đầu tiên tìm thấy trong dải /24
+        }
     }
 
     // Normalize và enrich
     $enriched = [];
     foreach ($gads_ips as $entry) {
         $ip_raw = $entry['ip_address']; // Có thể là CIDR: 1.2.3.0/24
-        // Tìm trong db_map theo IP gốc hoặc format wildcard
-        $db_key = $ip_raw;
-        if (!isset($db_map[$ip_raw])) {
-            // Thử CIDR -> wildcard
-            if (preg_match('/^(\d+\.\d+\.\d+)\.0\/24$/', $ip_raw, $m)) {
-                $db_key = $m[1] . '.*';
+        
+        $db_info = $db_map[$ip_raw] ?? null;
+        
+        if (!$db_info && preg_match('/^(\d+\.\d+\.\d+)\.0\/24$/', $ip_raw, $m)) {
+            $subnet = $m[1];
+            if (isset($subnet_map[$subnet])) {
+                $db_info = $subnet_map[$subnet];
+            } elseif (isset($db_map[$subnet . '.*'])) {
+                $db_info = $db_map[$subnet . '.*'];
             }
         }
-        $db_info = $db_map[$db_key] ?? null;
 
         $enriched[] = [
             'resource_name' => $entry['resource_name'],
@@ -153,8 +186,34 @@ function tkgadm_ajax_gads_delete_oldest() {
 
     $count = max(1, intval($_POST['count'] ?? 50));
 
-    $result = tkgadm_smart_rotate_google_ads_ips($count, 999999); // force rotation bất kể số lượng
-    wp_send_json_success($result);
+    global $wpdb;
+    $blocked_table = $wpdb->prefix . 'gads_toolkit_blocked';
+    
+    // Tìm IP cũ nhất
+    $oldest_ips = $wpdb->get_col($wpdb->prepare("SELECT ip_address FROM $blocked_table ORDER BY blocked_time ASC LIMIT %d", $count));
+    
+    if (empty($oldest_ips)) {
+        error_log("GADS-TOOLKIT: No IPs found to delete.");
+        wp_send_json_success(['message' => 'Danh sách IP chặn đang trống.', 'freed' => 0]);
+    }
+
+    $deleted = 0;
+    foreach ($oldest_ips as $ip) {
+        $ip_key = preg_replace('/^(\d+\.\d+\.\d+)\.0\/24$/', '$1.*', $ip);
+        $res1 = $wpdb->delete($blocked_table, ['ip_address' => $ip]);
+        $res2 = $wpdb->delete($blocked_table, ['ip_address' => $ip_key]);
+        if ($res1 || $res2) {
+            $deleted++;
+        } else {
+            error_log("GADS-TOOLKIT: Failed to delete IP $ip (res1=" . var_export($res1, true) . ", res2=" . var_export($res2, true) . ")");
+        }
+    }
+
+    error_log("GADS-TOOLKIT: Deleted $deleted out of " . count($oldest_ips) . " oldest IPs.");
+    wp_send_json_success([
+        'message' => "Đã xóa (bỏ chặn) thành công {$deleted} IP cũ nhất khỏi website.",
+        'freed' => $deleted
+    ]);
 }
 
 /**
@@ -585,4 +644,29 @@ function tkgadm_render_gads_manager_page() {
     })(jQuery);
     </script>
     <?php
+}
+
+add_action('wp_ajax_tkgadm_gads_full_sync', 'tkgadm_ajax_gads_full_sync');
+function tkgadm_ajax_gads_full_sync() {
+    check_ajax_referer('tkgadm_gads_manager_nonce', 'nonce');
+    if (!current_user_can('manage_options')) wp_send_json_error('Không có quyền.');
+
+    if (!function_exists('tkgadm_do_full_sync_google_ads')) {
+        require_once plugin_dir_path(__FILE__) . 'module-google-ads.php';
+    }
+
+    $ids = tkgadm_get_gads_ids();
+    $has_direct = !empty($ids['customer_id']) && !empty($ids['developer_token']) && !empty($ids['refresh_token']);
+    
+    if (!$has_direct && tkgadm_is_using_central_service()) {
+        wp_send_json_error('Full Sync hiện chỉ hỗ trợ chế độ Direct API.');
+    }
+
+    $result = tkgadm_do_full_sync_google_ads();
+
+    if ($result['success']) {
+        wp_send_json_success(['message' => $result['message']]);
+    } else {
+        wp_send_json_error($result['message']);
+    }
 }
