@@ -8,6 +8,7 @@ import {
   formatGoogleAdsError,
 } from './utils.js';
 import { APP_VERSION } from './version.js';
+import { handleIpManager } from './ip-manager.js';
 
 export async function handleApiRequest(request, env) {
   const url = new URL(request.url);
@@ -50,6 +51,10 @@ export async function handleApiRequest(request, env) {
       body = await request.json();
     } catch (e) {
       return errorResponse('Invalid JSON body', 400);
+    }
+
+    if (action === 'list_ips' || action === 'remove_ips') {
+      return handleIpManager(action, body, env);
     }
 
     if (action === 'exchange_code') {
@@ -173,6 +178,10 @@ export async function handleApiRequest(request, env) {
         return errorResponse(errorMessage, adsResponse.status);
       }
 
+      if (adsResult.partialFailureError) {
+        return errorResponse(formatGoogleAdsError({ error: adsResult.partialFailureError }), 502);
+      }
+
       await logActivity(env, 'sync_ips_success', customerId, 'success', `${validIps.length} IPs synced`);
 
       // g. Return success/error result
@@ -212,5 +221,5 @@ export async function handleApiRequest(request, env) {
     }
   }
 
-  return errorResponse('Invalid action. Available actions: health, get_credentials, exchange_code, sync_ips, register_site', 400);
+  return errorResponse('Invalid action. Available actions: health, get_credentials, exchange_code, sync_ips, list_ips, remove_ips, register_site', 400);
 }

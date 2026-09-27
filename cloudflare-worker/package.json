@@ -1,6 +1,6 @@
 {
   "name": "gads-central-service",
-  "version": "4.2.7",
+  "version": "4.2.8",
   "type": "module",
   "description": "GAds Toolkit Central Service — Cloudflare Worker",
   "private": true,
@@ -11,9 +11,10 @@
     "deploy": "npm run sync:version && npm run check && wrangler deploy",
     "tail": "wrangler tail",
     "check:version": "node scripts/check-version.mjs",
-    "check": "npm run check:version && node --check src/index.js && node --check src/api.js && node --check src/admin.js && node --check src/updates.js && node --check scripts/release-plugin.mjs",
+    "check": "npm run check:version && node --check src/index.js && node --check src/api.js && node --check src/ip-manager.js && node --check src/admin.js && node --check src/updates.js && node --check scripts/release-plugin.mjs",
     "release:plugin": "node scripts/release-plugin.mjs",
-    "test:updates": "node --test tests/updates.test.mjs"
+    "test:updates": "node --test tests/updates.test.mjs",
+    "test:ip-manager": "node --test tests/ip-manager.test.mjs"
   },
   "devDependencies": {
     "wrangler": "^4.0.0"

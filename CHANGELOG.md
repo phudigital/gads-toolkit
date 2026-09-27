@@ -2,6 +2,13 @@
 
 All notable changes to **GAds Toolkit - Phần mềm chống click ảo Google Ads** will be documented in this file.
 
+## [4.2.8] - 2026-09-28
+
+### Sửa lỗi quản lý IP Google Ads
+- Cho phép tải danh sách, xóa IP đã chọn và đồng bộ lại toàn bộ bằng kết nối Central Service/OAuth hiện có; không yêu cầu Developer Token tại website.
+- Bổ sung API `list_ips` và `remove_ips` trên Worker, giữ kiểm tra giấy phép và chỉ cho xóa IP thuộc đúng tài khoản.
+- Dùng chung điều kiện kết nối cho upload và quản lý IP; kiểm tra dữ liệu local trước khi đồng bộ lại toàn bộ và trả đúng lỗi đồng bộ một phần.
+
 ## [4.2.7] - 2026-09-28
 
 ### Tính năng mới & Cơ chế Tự phục hồi

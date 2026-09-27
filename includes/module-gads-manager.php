@@ -5,7 +5,7 @@
  * Quản lý trực tiếp danh sách IP đang bị chặn trên tài khoản Google Ads.
  * - Xem danh sách IP hiện tại (kèm thông tin trong DB plugin nếu có)
  * - Xóa IP chọn lọc hoặc xóa IP cũ nhất
- * - Chỉ hoạt động với chế độ Direct API (Customer ID + Developer Token)
+ * - Hỗ trợ Central Service (OAuth) và Direct API
  */
 
 if (!defined('ABSPATH')) exit;
@@ -47,21 +47,7 @@ function tkgadm_ajax_gads_list_ips() {
     check_ajax_referer('tkgadm_gads_manager_nonce', 'nonce');
     if (!current_user_can('manage_options')) wp_send_json_error('Không có quyền.');
 
-    $access_token = tkgadm_get_google_access_token();
-    if (is_wp_error($access_token)) {
-        wp_send_json_error('Không thể lấy access token: ' . $access_token->get_error_message());
-    }
-
-    $ids = tkgadm_get_gads_ids();
-    $customer_id     = $ids['customer_id'];
-    $developer_token = $ids['developer_token'];
-    $manager_id      = $ids['manager_id'];
-
-    if (!$customer_id || !$developer_token) {
-        wp_send_json_error('Thiếu Customer ID hoặc Developer Token. Tính năng này yêu cầu chế độ Direct API.');
-    }
-
-    $gads_ips = tkgadm_get_google_ads_blocked_ips($access_token, $customer_id, $developer_token, $manager_id);
+    $gads_ips = tkgadm_list_connected_google_ads_ips();
     if (is_wp_error($gads_ips)) {
         wp_send_json_error($gads_ips->get_error_message());
     }
@@ -145,23 +131,7 @@ function tkgadm_ajax_gads_delete_ips() {
         wp_send_json_error('Danh sách resource_name không hợp lệ.');
     }
 
-    $access_token = tkgadm_get_google_access_token();
-    if (is_wp_error($access_token)) {
-        wp_send_json_error('Không thể lấy access token: ' . $access_token->get_error_message());
-    }
-
-    $ids = tkgadm_get_gads_ids();
-    $customer_id     = $ids['customer_id'];
-    $developer_token = $ids['developer_token'];
-    $manager_id      = $ids['manager_id'];
-
-    $result = tkgadm_remove_google_ads_ips(
-        $access_token,
-        $customer_id,
-        $developer_token,
-        array_values($resource_names),
-        $manager_id
-    );
+    $result = tkgadm_remove_connected_google_ads_ips(array_values($resource_names));
 
     if (is_wp_error($result)) {
         wp_send_json_error($result->get_error_message());
@@ -224,9 +194,7 @@ function tkgadm_ajax_gads_delete_oldest() {
 function tkgadm_render_gads_manager_page() {
     if (!current_user_can('manage_options')) return;
 
-    $has_direct_api = !empty(get_option('tkgadm_gads_developer_token'))
-                   && !empty(get_option('tkgadm_gads_customer_id'))
-                   && !empty(get_option('tkgadm_gads_refresh_token'));
+    $can_manage_ips = (bool) tkgadm_get_gads_connection_mode();
 
     $nonce = wp_create_nonce('tkgadm_gads_manager_nonce');
     ?>
@@ -240,10 +208,10 @@ function tkgadm_render_gads_manager_page() {
                 </h1>
                 <p class="text-sm text-gray-500 m-0">
                     Xem và xóa trực tiếp danh sách IP đang bị chặn trên tài khoản Google Ads.
-                    Chỉ khả dụng với chế độ <strong>Direct API</strong>.
+                    Sử dụng tài khoản Google Ads đã kết nối trong Cấu hình & Tích hợp.
                 </p>
             </div>
-            <?php if ($has_direct_api): ?>
+            <?php if ($can_manage_ips): ?>
                 <button id="btn-load-ips"
                         class="bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium py-2 px-5 rounded-lg transition shadow-sm flex items-center gap-2 border-none cursor-pointer">
                     <i class="fa-solid fa-rotate"></i> Tải danh sách IP
@@ -251,20 +219,16 @@ function tkgadm_render_gads_manager_page() {
             <?php endif; ?>
         </div>
 
-        <?php if (!$has_direct_api): ?>
+        <?php if (!$can_manage_ips): ?>
             <!-- No Direct API Warning -->
             <div class="bg-amber-50 border border-amber-200 rounded-xl p-6 flex gap-4">
                 <i class="fa-solid fa-triangle-exclamation text-amber-500 text-2xl mt-0.5 flex-shrink-0"></i>
                 <div>
-                    <h3 class="text-base font-bold text-amber-800 m-0 mb-1">Cần cấu hình Direct API</h3>
+                    <h3 class="text-base font-bold text-amber-800 m-0 mb-1">Cần kết nối Google Ads</h3>
                     <p class="text-sm text-amber-700 m-0">
-                        Tính năng này yêu cầu bạn nhập đầy đủ <strong>Developer Token</strong>, <strong>Customer ID</strong>
-                        và kết nối Google OAuth trong trang <a href="<?php echo esc_url(admin_url('admin.php?page=tkgad-google-ads')); ?>"
-                        class="underline">Cấu hình Google Ads (cũ)</a> hoặc
+                        Kiểm tra API Key, Customer ID và kết nối Google Ads trong
                         <a href="<?php echo esc_url(admin_url('admin.php?page=tkgad-settings')); ?>" class="underline">Cấu hình & Tích hợp</a>.
-                    </p>
-                    <p class="text-sm text-amber-700 mt-2 mb-0">
-                        Nếu bạn đang dùng Central Service (pdl.vn), tính năng xem/xóa IP trực tiếp từ Google Ads hiện chưa được hỗ trợ qua Central Service.
+                        Khi dùng Central Service, không cần nhập Developer Token tại website.
                     </p>
                 </div>
             </div>

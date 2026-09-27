@@ -445,9 +445,7 @@ function tkgadm_render_maintenance_page() {
             /* ----------------------------------------------------------------
              * SECTION: Quản lý IP trên Google Ads
              * ---------------------------------------------------------------- */
-            $has_direct = !empty(get_option('tkgadm_gads_developer_token'))
-                       && !empty(get_option('tkgadm_gads_customer_id'))
-                       && !empty(get_option('tkgadm_gads_refresh_token'));
+            $can_manage_ips = (bool) tkgadm_get_gads_connection_mode();
             $gads_nonce = wp_create_nonce('tkgadm_gads_manager_nonce');
             
             // Cài đặt Auto-Rotate
@@ -463,7 +461,7 @@ function tkgadm_render_maintenance_page() {
                             <i class="fa-brands fa-google text-blue-500"></i> IP trên Google Ads
                             <span id="gads-slot-badge" class="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-normal shadow-sm">—/500</span>
                         </h3>
-                        <?php if ($has_direct): ?>
+                        <?php if ($can_manage_ips): ?>
                             <button id="btn-gads-load" class="text-xs bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 px-3 py-1.5 rounded cursor-pointer flex items-center gap-1 transition shadow-sm">
                                 <i class="fa-solid fa-list-check text-blue-500"></i> Tải danh sách
                             </button>
@@ -472,7 +470,7 @@ function tkgadm_render_maintenance_page() {
                             </button>
                         <?php else: ?>
                             <span class="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded px-2 py-1">
-                                ⚠️ Cần nhập Developer Token trong cài đặt để dùng tính năng này
+                                Cần kết nối Google Ads và nhập Customer ID để quản lý IP
                             </span>
                         <?php endif; ?>
                     </div>
@@ -482,10 +480,10 @@ function tkgadm_render_maintenance_page() {
 
                 <div id="gads-action-msg" class="hidden px-5 py-2 text-sm border-b border-gray-100 font-medium"></div>
 
-                <?php if (!$has_direct): ?>
+                <?php if (!$can_manage_ips): ?>
                     <p class="text-center text-gray-400 text-sm py-8 m-0">
                         Vào <a href="<?php echo esc_url(admin_url('admin.php?page=tkgad-settings')); ?>" class="text-blue-600 underline">Cấu hình & Tích hợp</a>
-                        → nhập <strong>Developer Token</strong> và kết nối Google Ads để sử dụng tính năng này.
+                        để kiểm tra API Key, Customer ID và kết nối Google Ads. Dùng Central Service không cần nhập Developer Token tại website.
                     </p>
                 <?php else: ?>
                     <!-- Progress bar -->
