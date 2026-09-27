@@ -2,6 +2,18 @@
 
 All notable changes to **GAds Toolkit - Phần mềm chống click ảo Google Ads** will be documented in this file.
 
+## [4.2.2] - 2026-09-27
+
+### Changed
+- Sắp xếp lại thẻ tài khoản Google Ads: trạng thái cùng hàng tiêu đề, nhóm thao tác riêng và hướng dẫn rõ ràng; hỗ trợ màn hình nhỏ.
+
+## [4.2.1] - 2026-09-27
+
+### Fixed
+- Bổ sung kết nối/kết nối lại Google Ads tại Cấu Hình & Tích Hợp; lưu thông tin tài khoản trước khi cấp quyền.
+- Xác định trạng thái kết nối theo token OAuth; chỉ hiển thị hủy kết nối khi có token.
+- Callback về đúng trang cấu hình, kiểm tra phiên một lần và xóa mã OAuth khỏi URL sau xử lý.
+
 ## [4.2.0] - 2026-09-27
 
 ### Added
@@ -113,7 +125,7 @@ All notable changes to **GAds Toolkit - Phần mềm chống click ảo Google A
 
 ### 📚 Documentation
 
-- **AI Technical Memory**: Tạo file `docs/technical-memory.md` tài liệu hóa kiến trúc Dual-Mode API, logic Central Service và các rule strict để AI Coding dễ dàng nâng cấp các phiên bản sau mà không làm vỡ cấu trúc gốc.
+- **Technical Architecture**: Tài liệu hóa kiến trúc Dual-Mode API, logic Central Service và các rule strict để nâng cấp các phiên bản sau mà không làm vỡ cấu trúc gốc.
 
 ## [3.7.0] - 2026-01-22
 

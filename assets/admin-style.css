@@ -684,3 +684,43 @@ body.gads-toolkit_page_tkgad-settings #wpcontent {
   cursor: wait;
   opacity: 0.6;
 }
+
+/* Google Ads account card: keep controls readable at any column width. */
+.tkgadm-account-card .tkgadm-account-header {
+  display: flex; align-items: center; justify-content: space-between;
+  flex-wrap: wrap; gap: 12px; margin-bottom: 24px;
+}
+.tkgadm-account-card .tkgadm-account-header h3 {
+  display: flex; align-items: center; gap: 10px;
+  margin: 0; padding: 0; font-size: 18px; font-weight: 700; color: #1f2937;
+}
+.tkgadm-account-status {
+  display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px;
+  border: 1px solid; border-radius: 999px; font-size: 12px;
+  font-weight: 600; line-height: 1.4; white-space: nowrap;
+}
+.tkgadm-account-status.is-connected { color: #047857; background: #ecfdf5; border-color: #a7f3d0; }
+.tkgadm-account-status.is-disconnected { color: #92400e; background: #fffbeb; border-color: #fde68a; }
+.tkgadm-account-card .tkgadm-account-ids {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr)); gap: 16px;
+}
+.tkgadm-account-card input[type="text"],
+.tkgadm-account-card input[type="password"] { width: 100%; min-height: 40px; margin: 0; box-sizing: border-box; border-radius: 6px; }
+.tkgadm-account-card #api-key-field { padding-right: 88px; }
+.tkgadm-account-footer { border-top: 1px solid #e5e7eb; padding-top: 20px; }
+.tkgadm-account-actions { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
+.tkgadm-account-actions button {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  min-height: 40px; padding: 9px 14px; border: 1px solid transparent;
+  border-radius: 6px; font-size: 13px; font-weight: 600; line-height: 1.5; cursor: pointer;
+}
+.tkgadm-account-actions .tkgadm-account-connect { background: #315eea; color: #fff; }
+.tkgadm-account-actions .tkgadm-account-connect:hover { background: #244ac2; }
+.tkgadm-account-actions .tkgadm-account-disconnect { color: #b91c1c; background: #fff; border-color: #fecaca; }
+.tkgadm-account-actions .tkgadm-account-disconnect:hover { background: #fef2f2; }
+.tkgadm-account-actions button:focus-visible { outline: 2px solid #315eea; outline-offset: 3px; }
+.tkgadm-account-card .tkgadm-account-help { margin: 14px 0 0; color: #4b5563; font-size: 13px; line-height: 1.6; }
+.tkgadm-account-card .tkgadm-account-note { margin: 6px 0 0; color: #6b7280; font-size: 12px; line-height: 1.6; }
+@media (max-width: 480px) {
+  .tkgadm-account-actions { align-items: stretch; flex-direction: column; }
+}

@@ -5,16 +5,97 @@
 
 if (!defined('ABSPATH')) exit;
 
+/** Handle OAuth before admin output so redirects also remove single-use codes. */
+add_action('admin_init', 'tkgadm_settings_oauth_actions');
+function tkgadm_settings_oauth_actions() {
+    if (($_GET['page'] ?? '') !== 'tkgad-settings' || !current_user_can('manage_options')) {
+        return;
+    }
+    $return_url = admin_url('admin.php?page=tkgad-settings');
+    $notice_key = 'tkgadm_oauth_notice_' . get_current_user_id();
+    $pending_key = 'tkgadm_oauth_pending_' . get_current_user_id();
+    $error = '';
+
+    if (isset($_POST['tkgadm_connect_oauth'])) {
+        check_admin_referer('tkgadm_settings_nonce');
+        $api_key = sanitize_text_field(wp_unslash($_POST['api_key'] ?? ''));
+        if ($api_key && $api_key !== '**********************') {
+            update_option('tkgadm_central_service_api_key', $api_key);
+            update_option('tkgadm_gads_api_key', $api_key);
+        }
+        update_option('tkgadm_gads_customer_id', sanitize_text_field(wp_unslash($_POST['customer_id'] ?? '')));
+        update_option('tkgadm_gads_manager_id', sanitize_text_field(wp_unslash($_POST['manager_id'] ?? '')));
+        $credentials = tkgadm_get_central_service_credentials();
+        if (is_wp_error($credentials)) {
+            $error = $credentials->get_error_message();
+        } elseif (empty($credentials['client_id']) || empty($credentials['oauth_redirect_uri'])) {
+            $error = 'Dịch vụ chưa cấu hình đầy đủ thông tin OAuth.';
+        } else {
+            $state_nonce = wp_generate_password(32, false);
+            set_transient($pending_key, $state_nonce, HOUR_IN_SECONDS);
+            // Central Service preserves return_url query parameters in its callback.
+            $state = base64_encode(wp_json_encode(array(
+                'return_url' => add_query_arg('tkgadm_oauth_state', $state_nonce, $return_url),
+                'nonce' => wp_create_nonce('tkgadm_oauth_state'),
+                'timestamp' => time(),
+            )));
+            $auth_url = 'https://accounts.google.com/o/oauth2/v2/auth?' . http_build_query(array(
+                'client_id' => $credentials['client_id'],
+                'redirect_uri' => $credentials['oauth_redirect_uri'],
+                'response_type' => 'code',
+                'scope' => 'https://www.googleapis.com/auth/adwords',
+                'access_type' => 'offline',
+                'prompt' => 'consent',
+                'state' => $state,
+            ));
+            wp_redirect($auth_url);
+            exit;
+        }
+    } elseif (isset($_GET['code']) || isset($_GET['oauth_error'])) {
+        $pending = get_transient($pending_key);
+        $state = sanitize_text_field(wp_unslash($_GET['tkgadm_oauth_state'] ?? ''));
+        if (!$pending || !hash_equals($pending, $state)) {
+            $error = 'Phiên kết nối không hợp lệ hoặc đã hết hạn. Vui lòng kết nối lại.';
+        } else {
+            delete_transient($pending_key);
+            if (isset($_GET['oauth_error'])) {
+                $error = 'Google chưa cấp quyền. Vui lòng thử kết nối lại.';
+            } else {
+                $tokens = tkgadm_exchange_code_via_service(sanitize_text_field(wp_unslash($_GET['code'])));
+                if (is_wp_error($tokens)) {
+                    $error = $tokens->get_error_message();
+                } elseif (empty($tokens['refresh_token'])) {
+                    $error = 'Không nhận được refresh token. Vui lòng kết nối lại và cấp quyền Google Ads.';
+                } else {
+                    update_option('tkgadm_gads_refresh_token', $tokens['refresh_token']);
+                }
+            }
+        }
+    } else {
+        return;
+    }
+    set_transient($notice_key, array('error' => $error), 60);
+    wp_safe_redirect($return_url);
+    exit;
+}
+
 function tkgadm_render_settings_page() {
     if (!current_user_can('manage_options')) {
         return;
     }
 
     $message = '';
+    $notice_key = 'tkgadm_oauth_notice_' . get_current_user_id();
+    $oauth_notice = get_transient($notice_key);
+    if (is_array($oauth_notice)) {
+        delete_transient($notice_key);
+        $message = '<div class="notice ' . ($oauth_notice['error'] ? 'notice-error' : 'notice-success') . '"><p>' . esc_html($oauth_notice['error'] ?: 'Đã kết nối tài khoản Google Ads.') . '</p></div>';
+    }
     
     // Xử lý ngắt kết nối Google Ads
     if (isset($_POST['tkgadm_disconnect_oauth']) && check_admin_referer('tkgadm_settings_nonce')) {
         delete_option('tkgadm_gads_refresh_token');
+        delete_transient('tkgadm_oauth_pending_' . get_current_user_id());
         $message = '<div class="bg-emerald-50 text-emerald-600 p-3 rounded-lg border border-emerald-200 mb-6 font-medium text-sm">Đã hủy kết nối tài khoản Google Ads.</div>';
     }
 
@@ -138,39 +219,42 @@ function tkgadm_render_settings_page() {
                     <!-- COL 1: GOOGLE ADS -->
                     <div class="space-y-6">
                         <!-- Section: Google Ads API -->
-                        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 border-t-4 border-t-blue-500 relative">
-                            <?php if ($customer_id && $saved_api_key): ?>
-                                <div class="absolute top-4 right-4 bg-emerald-50 text-emerald-600 text-xs font-bold px-2.5 py-1 rounded border border-emerald-200 flex items-center gap-1">
-                                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span> Đã kết nối
-                                </div>
-                            <?php endif; ?>
-                            
-                            <h3 class="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2 m-0 pb-2">
-                                <img src="https://upload.wikimedia.org/wikipedia/commons/c/c7/Google_Ads_logo.svg" alt="GAds" class="h-5">
-                                Tài khoản Google Ads
-                            </h3>
+                        <div class="tkgadm-account-card bg-white rounded-xl shadow-sm border border-gray-100 p-6 border-t-4 border-t-blue-500">
+                            <div class="tkgadm-account-header">
+                                <h3><img src="https://upload.wikimedia.org/wikipedia/commons/c/c7/Google_Ads_logo.svg" alt="" width="20" height="20"> Tài khoản Google Ads</h3>
+                                <span class="tkgadm-account-status <?php echo $refresh_token ? 'is-connected' : 'is-disconnected'; ?>">
+                                    <span aria-hidden="true">●</span> <?php echo $refresh_token ? 'Đã kết nối' : 'Chưa kết nối'; ?>
+                                </span>
+                            </div>
 
                             <div class="space-y-4">
                                 <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-1">Secure API Key</label>
+                                    <label for="api-key-field" class="block text-sm font-medium text-gray-700 mb-1">Secure API Key</label>
                                     <div class="relative">
                                         <input type="password" name="api_key" id="api-key-field" value="<?php echo esc_attr($api_key_hidden); ?>" <?php echo $saved_api_key ? 'readonly' : ''; ?> class="w-full text-sm bg-gray-50 border border-gray-300 rounded-lg p-2 text-gray-600 focus:outline-none" placeholder="Nhập API Key">
                                         <button type="button" id="edit-api-key" class="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-blue-600 hover:underline border-none bg-transparent cursor-pointer <?php echo $saved_api_key ? '' : 'hidden'; ?>">Chỉnh sửa</button>
                                     </div>
                                 </div>
-                                <div class="grid grid-cols-2 gap-4">
+                                <div class="tkgadm-account-ids">
                                     <div>
-                                        <label class="block text-sm font-medium text-gray-700 mb-1">Customer ID</label>
-                                        <input type="text" name="customer_id" value="<?php echo esc_attr($customer_id); ?>" class="w-full text-sm border border-gray-300 rounded-lg p-2 text-gray-800 focus:ring-2 focus:ring-blue-500 focus:outline-none placeholder:text-gray-400" placeholder="123-456-7890">
+                                        <label for="gads-customer-id" class="block text-sm font-medium text-gray-700 mb-1">Customer ID</label>
+                                        <input type="text" id="gads-customer-id" name="customer_id" value="<?php echo esc_attr($customer_id); ?>" class="w-full text-sm border border-gray-300 rounded-lg p-2 text-gray-800 focus:ring-2 focus:ring-blue-500 focus:outline-none placeholder:text-gray-400" placeholder="123-456-7890">
                                     </div>
                                     <div>
-                                        <label class="block text-sm font-medium text-gray-700 mb-1">Manager ID (MCC)</label>
-                                        <input type="text" name="manager_id" value="<?php echo esc_attr($manager_id); ?>" placeholder="Trống nếu không dùng" class="w-full text-sm border border-gray-300 rounded-lg p-2 text-gray-800 focus:ring-2 focus:ring-blue-500 focus:outline-none placeholder:text-gray-400">
+                                        <label for="gads-manager-id" class="block text-sm font-medium text-gray-700 mb-1">Manager ID (MCC)</label>
+                                        <input type="text" id="gads-manager-id" name="manager_id" value="<?php echo esc_attr($manager_id); ?>" placeholder="Trống nếu không dùng" class="w-full text-sm border border-gray-300 rounded-lg p-2 text-gray-800 focus:ring-2 focus:ring-blue-500 focus:outline-none placeholder:text-gray-400">
                                     </div>
                                 </div>
-                                    <div class="pt-2">
-                                        <button type="submit" name="tkgadm_disconnect_oauth" class="text-red-500 text-sm font-medium hover:underline border-none bg-transparent cursor-pointer"><i class="fa-solid fa-link-slash"></i> Hủy kết nối tài khoản</button>
+                                <div class="tkgadm-account-footer">
+                                    <div class="tkgadm-account-actions">
+                                        <button type="submit" name="tkgadm_connect_oauth" class="tkgadm-account-connect"><i class="fa-solid fa-link" aria-hidden="true"></i> <?php echo $refresh_token ? 'Kết nối lại tài khoản' : 'Kết nối tài khoản'; ?></button>
+                                        <?php if ($refresh_token): ?>
+                                            <button type="submit" name="tkgadm_disconnect_oauth" class="tkgadm-account-disconnect"><i class="fa-solid fa-link-slash" aria-hidden="true"></i> Hủy kết nối</button>
+                                        <?php endif; ?>
                                     </div>
+                                    <p class="tkgadm-account-help"><?php echo $refresh_token ? 'Kết nối lại để đổi tài khoản Google hoặc cấp lại quyền truy cập.' : 'Kết nối để cấp quyền truy cập Google Ads.'; ?> Thông tin tài khoản ở trên sẽ được lưu khi kết nối.</p>
+                                    <p class="tkgadm-account-note">Các thiết lập khác: bấm <strong>Lưu Cấu Hình</strong> ở đầu trang.</p>
+                                </div>
                             </div>
                         </div>
 

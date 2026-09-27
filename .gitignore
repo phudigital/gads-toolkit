@@ -17,6 +17,8 @@ error.log
 *.sublime-workspace
 TODO.md
 AGENTS.md
+docs/*.md
+cloudflare-worker/README.md
 
 # Dependency Directories
 node_modules/

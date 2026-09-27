@@ -227,4 +227,3 @@ GPL-2.0 License - Xem [LICENSE](LICENSE) để biết thêm chi tiết.
 
 Cài thủ công bản 4.2.0 một lần để có bộ cập nhật. Sau đó vào **Plugins → GAds Toolkit → Cập nhật ngay** khi có phiên bản mới. Trên WordPress hỗ trợ auto-update, khách có thể tự bật **Enable auto-updates**. Không cần nhập thêm khóa để tải cập nhật; license dịch vụ Google Ads giữ nguyên.
 
-Xem quy trình phát hành tại [docs/PLUGIN-UPDATES.md](docs/PLUGIN-UPDATES.md).
