@@ -24,6 +24,7 @@ vendor/
 help/
 central-service/
 cloudflare-worker/.wrangler/
+cloudflare-worker/public/
 
 
 # Backup files
@@ -36,8 +37,10 @@ cloudflare-worker/.wrangler/
 wp-config.php
 wp-content/uploads/
 *.zip
+!gads-toolkit.zip
 .DS_Store
 central-service/config.php
 .gemini
 
 
+cloudflare-worker/.release/

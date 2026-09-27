@@ -21,6 +21,9 @@ async function validateTurnstile(request, env, token) {
     });
     const result = await response.json();
     const expectedHostname = new URL(request.url).hostname;
+    if (!response.ok || !result.success || result.action !== 'admin_login' || result.hostname !== expectedHostname) {
+      console.warn('Admin Turnstile rejected', JSON.stringify({ codes: result['error-codes'] || [], hostname: result.hostname, action: result.action }));
+    }
     return response.ok && result.success === true
       && result.action === 'admin_login'
       && result.hostname === expectedHostname;
@@ -54,7 +57,12 @@ export async function handleAdminRequest(request, env, path) {
     try {
       const body = await request.json();
       const isVerified = await validateTurnstile(request, env, body.turnstile_token);
-      if (isVerified && await verifyAdminTokenValue(body.token, env)) {
+      if (!isVerified) {
+        return new Response(JSON.stringify({ success: false, code: 'TURNSTILE_FAILED', error: 'Xác minh bảo mật chưa hoàn tất hoặc đã hết hạn. Vui lòng xác minh lại.' }), {
+          status: 403, headers: { 'Content-Type': 'application/json' }
+        });
+      }
+      if (await verifyAdminTokenValue(body.token, env)) {
         return new Response(JSON.stringify({ success: true }), {
           headers: { 'Content-Type': 'application/json' }
         });
@@ -62,7 +70,7 @@ export async function handleAdminRequest(request, env, path) {
     } catch (e) {
       // Ignore JSON parse errors
     }
-    return new Response(JSON.stringify({ success: false, error: 'Unauthorized' }), {
+    return new Response(JSON.stringify({ success: false, error: 'Mật khẩu Admin không đúng.' }), {
       status: 401,
       headers: { 'Content-Type': 'application/json' }
     });
@@ -285,7 +293,7 @@ function getDashboardHTML({ turnstileSiteKey, turnstileEnabled }) {
     ? '<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>'
     : '';
   const turnstileWidget = turnstileEnabled && turnstileSiteKey
-    ? `<div id="turnstile-widget" class="cf-turnstile" data-sitekey="${turnstileSiteKey}" data-action="admin_login" data-size="flexible"></div>`
+    ? `<div id="turnstile-widget" class="cf-turnstile" data-sitekey="${turnstileSiteKey}" data-action="admin_login" data-size="flexible" data-callback="onTurnstileSuccess" data-expired-callback="onTurnstileExpired" data-error-callback="onTurnstileError" data-timeout-callback="onTurnstileExpired"></div>`
     : '';
 
   return `<!DOCTYPE html>
@@ -294,7 +302,9 @@ function getDashboardHTML({ turnstileSiteKey, turnstileEnabled }) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>GAds Toolkit - Admin Dashboard</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon-admin.svg">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     ${turnstileScript}
     <style>
         :root {
@@ -821,6 +831,160 @@ function getDashboardHTML({ turnstileSiteKey, turnstileEnabled }) {
         }
         .toast.error { background: var(--danger); }
         .toast.success { background: var(--success); }
+
+        /* Prototype contract: keep the Worker dashboard aligned with landing-page/admin.html. */
+        :root {
+            --primary: #4f46e5;
+            --primary-dark: #4338ca;
+            --bg-color: #f8fafc;
+            --text-main: #1e293b;
+            --text-muted: #64748b;
+            --border-color: #e2e8f0;
+            --success: #10b981;
+            --danger: #ef4444;
+            --sidebar-width: 256px;
+        }
+
+        body { background: #f8fafc; color: #1e293b; }
+        #dashboard-screen { display: flex; min-height: 100vh; height: 100vh; overflow: hidden; }
+        #dashboard-screen .sidebar {
+            width: 256px; background: #fff; color: #475569; padding: 0; position: fixed;
+            height: 100vh; left: 0; top: 0; border-right: 1px solid #e2e8f0;
+            z-index: 20; display: flex; flex-direction: column; transform: none;
+        }
+        #dashboard-screen .sidebar-header {
+            height: 64px; display: flex; align-items: center; padding: 0 24px;
+            border-bottom: 1px solid #f1f5f9; font-size: 20px; text-align: left;
+            margin: 0; letter-spacing: 0; color: #4f46e5;
+        }
+        #dashboard-screen .sidebar-header .brand-mark { margin-right: 8px; color: #6366f1; }
+        #dashboard-screen .sidebar-header .brand-name {
+            background: linear-gradient(to right, #4f46e5, #9333ea);
+            -webkit-background-clip: text; background-clip: text; color: transparent;
+        }
+        #dashboard-screen .sidebar-version { display: inline; margin: 0 0 0 8px; color: #94a3b8; font-size: 11px; }
+        #dashboard-screen .nav-list { flex: 1; overflow-y: auto; padding: 24px 16px; list-style: none; margin: 0; }
+        #dashboard-screen .nav-label {
+            color: #94a3b8; font-size: 11px; font-weight: 700; text-transform: uppercase;
+            letter-spacing: .08em; margin: 0 8px 12px;
+        }
+        #dashboard-screen .nav-item { margin: 0 0 4px; }
+        #dashboard-screen .nav-link {
+            display: flex; align-items: center; gap: 12px; padding: 10px 12px;
+            color: #475569; border-radius: 8px; font-size: 14px; font-weight: 500;
+            text-decoration: none; cursor: pointer; transition: background .2s, color .2s;
+        }
+        #dashboard-screen .nav-link:hover { color: #4f46e5; background: #f8fafc; }
+        #dashboard-screen .nav-link.active { color: #4f46e5; background: #eef2ff; }
+        #dashboard-screen .nav-icon { width: 20px; margin: 0; font-size: 14px; text-align: center; color: #94a3b8; }
+        #dashboard-screen .nav-link.active .nav-icon { color: #4f46e5; }
+        #dashboard-screen .sidebar-actions {
+            position: static; padding: 16px; border-top: 1px solid #f1f5f9; display: grid; gap: 4px;
+        }
+        #dashboard-screen .sidebar-action-btn {
+            background: transparent; color: #475569; border: 0; padding: 10px 12px; border-radius: 8px;
+            text-align: left; font-size: 14px; font-weight: 500;
+        }
+        #dashboard-screen .sidebar-action-btn:hover { background: #f8fafc; color: #4f46e5; }
+        #dashboard-screen .sidebar-action-btn:last-child { color: #dc2626; }
+        #dashboard-screen .sidebar-action-btn:last-child:hover { background: #fef2f2; color: #dc2626; }
+        #dashboard-screen .main-content { flex: 1; margin-left: 256px; padding: 0; min-width: 0; overflow: hidden; }
+        #dashboard-screen .topbar {
+            height: 64px; background: rgba(255,255,255,.85); backdrop-filter: blur(12px);
+            border-bottom: 1px solid #e2e8f0; display: flex; align-items: center;
+            justify-content: space-between; padding: 0 32px; position: sticky; top: 0; z-index: 10;
+        }
+        #dashboard-screen .topbar h1 { margin: 0; font-size: 20px; line-height: 1.2; color: #1e293b; }
+        #dashboard-screen .topbar-meta { display: flex; align-items: center; gap: 20px; color: #64748b; font-size: 13px; font-weight: 500; }
+        #dashboard-screen .system-status { display: inline-flex; align-items: center; gap: 8px; background: #f1f5f9; padding: 6px 12px; border-radius: 999px; }
+        #dashboard-screen .system-status .status-online { width: 8px; height: 8px; border-radius: 50%; background: #10b981; }
+        #dashboard-screen .user-avatar { width: 36px; height: 36px; border-radius: 50%; background: linear-gradient(to top right, #6366f1, #a855f7); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 700; border: 2px solid #fff; box-shadow: 0 0 0 2px #f1f5f9; }
+        #dashboard-screen .content-area { height: calc(100vh - 64px); overflow-y: auto; padding: 32px; }
+        #dashboard-screen .page-section { max-width: 1152px; margin: 0 auto; animation: fadeIn .4s cubic-bezier(.4,0,.2,1); }
+        #dashboard-screen .page-section.hidden { display: none !important; }
+        #dashboard-screen .page-section h1 { display: none; }
+        #dashboard-screen .stats-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 24px; margin-bottom: 32px; }
+        #dashboard-screen .card { background: #fff; border: 1px solid #f1f5f9; border-radius: 16px; padding: 24px; box-shadow: 0 1px 2px rgba(15,23,42,.04); margin-bottom: 24px; }
+        #dashboard-screen .stat-card { display: block; position: relative; overflow: hidden; min-height: 156px; }
+        #dashboard-screen .stat-card::after { content: ''; position: absolute; width: 96px; height: 96px; right: -16px; top: -16px; border-radius: 50%; background: #eef2ff; opacity: .7; }
+        #dashboard-screen .stat-card:nth-child(2)::after { background: #ecfdf5; }
+        #dashboard-screen .stat-card:nth-child(3)::after { background: #faf5ff; }
+        #dashboard-screen .stat-card:nth-child(4)::after { background: #fff7ed; }
+        #dashboard-screen .stat-icon { width: 48px; height: 48px; border-radius: 12px; background: #dbeafe; color: #2563eb; display: flex; align-items: center; justify-content: center; font-size: 20px; margin: 0 0 16px; position: relative; z-index: 1; }
+        #dashboard-screen .stat-card:nth-child(2) .stat-icon { background: #d1fae5; color: #059669; }
+        #dashboard-screen .stat-card:nth-child(3) .stat-icon { background: #ede9fe; color: #7c3aed; }
+        #dashboard-screen .stat-card:nth-child(4) .stat-icon { background: #ffedd5; color: #ea580c; }
+        #dashboard-screen .stat-info { position: relative; z-index: 1; }
+        #dashboard-screen .stat-info h3 { margin: 0 0 4px; font-size: 14px; color: #64748b; font-weight: 500; }
+        #dashboard-screen .stat-info p { margin: 0; font-size: 30px; line-height: 1.1; color: #1e293b; font-weight: 700; }
+        #dashboard-screen .card > h2 { margin: 0; font-size: 18px; color: #1e293b; }
+        #dashboard-screen .card > h2 + .table-container { margin-top: 20px; }
+        #dashboard-screen .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
+        #dashboard-screen .page-header h1 { display: block; margin: 0; font-size: 24px; }
+        #dashboard-screen .license-search { position: relative; width: min(100%, 384px); }
+        #dashboard-screen .license-search i { position: absolute; left: 13px; top: 50%; transform: translateY(-50%); color: #94a3b8; font-size: 13px; }
+        #dashboard-screen .license-search input { width: 100%; padding: 10px 16px 10px 38px; border: 1px solid #e2e8f0; border-radius: 12px; outline: none; font-size: 13px; box-shadow: 0 1px 2px rgba(15,23,42,.04); }
+        #dashboard-screen .license-search input:focus { border-color: #4f46e5; box-shadow: 0 0 0 3px rgba(79,70,229,.12); }
+        #dashboard-screen .table-container { overflow-x: auto; }
+        #dashboard-screen table { width: 100%; min-width: 700px; border-collapse: collapse; }
+        #dashboard-screen th, #dashboard-screen td { padding: 16px 24px; border-bottom: 1px solid #f1f5f9; text-align: left; font-size: 14px; }
+        #dashboard-screen th { background: #f8fafc; color: #64748b; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; }
+        #dashboard-screen td { color: #475569; font-weight: 500; }
+        #dashboard-screen tbody tr:hover { background: #f8fafc; }
+        #dashboard-screen .btn { width: auto; background: #4f46e5; color: #fff; border: 0; border-radius: 12px; padding: 10px 20px; font-size: 14px; font-weight: 600; box-shadow: 0 4px 10px rgba(79,70,229,.2); }
+        #dashboard-screen .btn:hover { background: #4338ca; box-shadow: 0 6px 14px rgba(79,70,229,.25); }
+        #dashboard-screen .btn-outline { background: #fff; color: #475569; border: 1px solid #e2e8f0; box-shadow: none; }
+        #dashboard-screen .btn-outline:hover { background: #f8fafc; color: #4f46e5; }
+        #dashboard-screen .input-group input, #dashboard-screen .input-group select { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 10px 16px; }
+        #dashboard-screen .badge { border-radius: 6px; padding: 4px 10px; }
+        #dashboard-screen .switch { width: 40px; height: 20px; }
+        #dashboard-screen .slider:before { width: 16px; height: 16px; left: 2px; bottom: 2px; }
+        #dashboard-screen input:checked + .slider:before { transform: translateX(20px); }
+        #dashboard-screen .action-btn { padding: 8px; margin-right: 4px; border-radius: 8px; font-size: 14px; }
+        #dashboard-screen .action-btn:hover { background: #eef2ff; }
+        #dashboard-screen .action-btn.delete:hover { background: #fef2f2; }
+        #dashboard-screen #licenses-tbody .action-btn { opacity: 0; transition: opacity .2s, background .2s, color .2s; }
+        #dashboard-screen #licenses-tbody tr:hover .action-btn, #dashboard-screen #licenses-tbody .action-btn:focus { opacity: 1; }
+        #dashboard-screen .license-key { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; color: #1e293b; background: #f1f5f9; border: 1px solid #e2e8f0; border-radius: 6px; padding: 4px 8px; }
+        #dashboard-screen .key-cell { display: inline-flex; align-items: center; gap: 6px; }
+        #dashboard-screen .expiry-note { display: block; margin-top: 4px; color: #94a3b8; font-size: 11px; font-weight: 400; }
+        #dashboard-screen .label-badge { display: inline-flex; align-items: center; padding: 3px 10px; border-radius: 6px; color: #1d4ed8; background: #eff6ff; border: 1px solid #dbeafe; font-size: 12px; font-weight: 600; }
+        #dashboard-screen .copy-key { color: #94a3b8; background: transparent; border: 0; cursor: pointer; padding: 4px; }
+        #dashboard-screen .copy-key:hover { color: #4f46e5; }
+        #dashboard-screen .config-card, #dashboard-screen .security-card { max-width: 768px; margin: 0 auto; padding: 0; overflow: hidden; }
+        #dashboard-screen .config-card .card-heading { padding: 24px 32px; border-bottom: 1px solid #f1f5f9; background: #f8fafc; }
+        #dashboard-screen .config-card .card-body { padding: 32px; }
+        #dashboard-screen .security-card .card-heading { padding: 24px 32px; border-bottom: 1px solid #f1f5f9; background: #f8fafc; }
+        #dashboard-screen .security-card .card-body { padding: 32px; }
+        #dashboard-screen .config-card .card-heading h2 { margin: 0; font-size: 20px; }
+        #dashboard-screen .config-card .card-heading p { margin: 4px 0 0; color: #64748b; font-size: 13px; }
+        #dashboard-screen .config-card form { display: grid; gap: 24px; }
+        #dashboard-screen .config-grid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 24px; }
+        #dashboard-screen .config-card .input-group { margin: 0; }
+        #dashboard-screen .config-card .input-group label { margin-bottom: 6px; font-weight: 600; color: #334155; }
+        #dashboard-screen .config-card .form-actions { padding-top: 24px; border-top: 1px solid #f1f5f9; display: flex; justify-content: flex-end; }
+        #dashboard-screen .menu-toggle { display: none; }
+        #license-modal { background: rgba(15,23,42,.6); backdrop-filter: blur(4px); }
+        #license-modal .modal-content { max-width: 448px; padding: 0; border-radius: 16px; overflow: hidden; transform: scale(.95); }
+        #license-modal.show .modal-content { transform: scale(1); }
+        #license-modal .modal-header { margin: 0; padding: 20px 24px; background: #f8fafc; border-bottom: 1px solid #f1f5f9; }
+        #license-modal .modal-header h2 { margin: 0; font-size: 18px; }
+        #license-modal #license-form { padding: 24px; }
+        #license-modal .input-group { margin-bottom: 20px; }
+        #license-modal .input-group input { padding: 10px 16px; border-radius: 12px; }
+        #license-modal .flex-input button { padding: 0 16px; white-space: nowrap; }
+        #license-modal .modal-actions { padding-top: 24px; border-top: 1px solid #f1f5f9; display: flex; justify-content: flex-end; gap: 12px; }
+        @media (max-width: 900px) { #dashboard-screen .stats-grid { grid-template-columns: repeat(2, minmax(0,1fr)); } }
+        @media (max-width: 768px) {
+            #dashboard-screen .sidebar { transform: translateX(-100%); }
+            #dashboard-screen .sidebar.open { transform: translateX(0); box-shadow: 8px 0 24px rgba(15,23,42,.12); }
+            #dashboard-screen .main-content { margin-left: 0; }
+            #dashboard-screen .topbar { padding: 0 16px; }
+            #dashboard-screen .topbar .menu-toggle { display: inline-flex; margin: 0 12px 0 0; background: #f1f5f9; border: 0; border-radius: 8px; padding: 8px; color: #475569; }
+            #dashboard-screen .content-area { padding: 20px 16px; }
+            #dashboard-screen .topbar-meta .system-status, #dashboard-screen .topbar-meta .version-label { display: none; }
+        }
+        @media (max-width: 560px) { #dashboard-screen .stats-grid { grid-template-columns: 1fr; gap: 16px; } #dashboard-screen .page-header { align-items: flex-start; flex-direction: column; gap: 12px; } }
     </style>
 </head>
 <body>
@@ -839,249 +1003,74 @@ function getDashboardHTML({ turnstileSiteKey, turnstileEnabled }) {
                     <input type="password" id="admin-token" required placeholder="Nhập mật khẩu...">
                 </div>
                 ${turnstileWidget}
-                <button type="submit" class="btn">Đăng nhập</button>
+                <p id="login-status" role="status" aria-live="polite">${turnstileEnabled ? 'Đang chờ xác minh bảo mật…' : ''}</p>
+                <button id="login-submit" type="submit" class="btn" ${turnstileEnabled ? 'disabled' : ''}>Đăng nhập</button>
             </form>
         </div>
     </div>
 
     <!-- Dashboard Layout -->
     <div id="dashboard-screen" class="hidden">
-
-        <!-- Sidebar -->
-        <div class="sidebar" id="sidebar">
-            <div class="sidebar-header">GAds Toolkit<span class="sidebar-version">v${APP_VERSION}</span></div>
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header"><i class="fas fa-rocket brand-mark"></i><span class="brand-name">GAds Toolkit</span><span class="sidebar-version">v${APP_VERSION}</span></div>
             <ul class="nav-list">
-                <li class="nav-item">
-                    <a class="nav-link active" data-page="overview">
-                        <span class="nav-icon">🏠</span> Tổng quan
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" data-page="licenses">
-                        <span class="nav-icon">🔑</span> License Keys
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" data-page="clients">
-                        <span class="nav-icon">🌐</span> Sites kết nối
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" data-page="config">
-                        <span class="nav-icon">⚙️</span> Cấu hình
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" data-page="logs">
-                        <span class="nav-icon">📋</span> Activity Log
-                    </a>
-                </li>
+                <li class="nav-label">Menu chính</li>
+                <li class="nav-item"><a class="nav-link active" data-page="overview"><i class="fas fa-chart-pie nav-icon"></i><span>Tổng quan</span></a></li>
+                <li class="nav-item"><a class="nav-link" data-page="licenses"><i class="fas fa-key nav-icon"></i><span>License Keys</span></a></li>
+                <li class="nav-item"><a class="nav-link" data-page="clients"><i class="fas fa-server nav-icon"></i><span>Sites kết nối</span></a></li>
+                <li class="nav-item"><a class="nav-link" data-page="config"><i class="fas fa-sliders-h nav-icon"></i><span>Cấu hình</span></a></li>
+                <li class="nav-item"><a class="nav-link" data-page="logs"><i class="fas fa-list-ul nav-icon"></i><span>Activity Log</span></a></li>
             </ul>
             <div class="sidebar-actions">
-                <button type="button" class="sidebar-action-btn" onclick="navigateToPage('security')">Đổi mật khẩu Admin</button>
-                <button type="button" class="sidebar-action-btn" onclick="logout()">Đăng xuất</button>
+                <button type="button" class="sidebar-action-btn" onclick="navigateToPage('security')"><i class="fas fa-shield-alt nav-icon"></i> Đổi mật khẩu</button>
+                <button type="button" class="sidebar-action-btn" onclick="logout()"><i class="fas fa-sign-out-alt nav-icon"></i> Đăng xuất</button>
             </div>
-        </div>
+        </aside>
 
-        <!-- Main Content -->
-        <div class="main-content">
-            <button class="menu-toggle" onclick="toggleSidebar()">☰</button>
+        <main class="main-content">
+            <header class="topbar">
+                <div class="flex items-center">
+                    <button class="menu-toggle" onclick="toggleSidebar()" aria-label="Mở menu"><i class="fas fa-bars"></i></button>
+                    <h1 id="page-title">Tổng quan</h1>
+                </div>
+                <div class="topbar-meta">
+                    <div class="system-status"><span class="status-online"></span> System Online</div>
+                    <span class="version-label">v${APP_VERSION}</span>
+                    <div class="user-avatar" aria-label="Admin">A</div>
+                </div>
+            </header>
 
-            <!-- Overview Page -->
-            <div id="page-overview" class="page-section">
-                <h1>Tổng quan</h1>
-
-                <div class="stats-grid">
-                    <div class="card stat-card">
-                        <div class="stat-icon">🌐</div>
-                        <div class="stat-info">
-                            <h3>Tổng số Sites</h3>
-                            <p id="stat-total-clients">...</p>
-                        </div>
+            <div class="content-area">
+                <div id="page-overview" class="page-section">
+                    <div class="stats-grid">
+                        <div class="card stat-card"><div class="stat-icon"><i class="fas fa-server"></i></div><div class="stat-info"><p id="stat-total-clients">...</p><h3>Tổng số Sites</h3></div></div>
+                        <div class="card stat-card"><div class="stat-icon"><i class="fas fa-key"></i></div><div class="stat-info"><p id="stat-active-licenses">...</p><h3>License Đang Active</h3></div></div>
+                        <div class="card stat-card"><div class="stat-icon"><i class="fas fa-code-branch"></i></div><div class="stat-info"><p id="stat-api-version">...</p><h3>API Version hiện tại</h3></div></div>
+                        <div class="card stat-card"><div class="stat-icon"><i class="fas fa-bolt"></i></div><div class="stat-info"><p id="stat-requests-today">...</p><h3>Requests API</h3></div></div>
                     </div>
-                    <div class="card stat-card">
-                        <div class="stat-icon">🔑</div>
-                        <div class="stat-info">
-                            <h3>License Active</h3>
-                            <p id="stat-active-licenses">...</p>
-                        </div>
-                    </div>
-                    <div class="card stat-card">
-                        <div class="stat-icon">⚡</div>
-                        <div class="stat-info">
-                            <h3>API Version</h3>
-                            <p id="stat-api-version">...</p>
-                        </div>
-                    </div>
-                    <div class="card stat-card">
-                        <div class="stat-icon">📈</div>
-                        <div class="stat-info">
-                            <h3>Requests (Hôm nay)</h3>
-                            <p id="stat-requests-today">...</p>
-                        </div>
+                    <div class="card">
+                        <h2>Hoạt động gần đây</h2>
+                        <div class="table-container"><table><thead><tr><th>Thời gian</th><th>Hành động</th><th>Client IP/URL</th><th>Kết quả</th></tr></thead><tbody id="overview-logs-tbody"></tbody></table></div>
                     </div>
                 </div>
 
-                <div class="card">
-                    <h2>Hoạt động gần đây</h2>
-                    <div class="table-container">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>Thời gian</th>
-                                    <th>Hành động</th>
-                                    <th>Client IP/URL</th>
-                                    <th>Kết quả</th>
-                                </tr>
-                            </thead>
-                            <tbody id="overview-logs-tbody">
-                                <!-- Populated via JS -->
-                            </tbody>
-                        </table>
+                <div id="page-licenses" class="page-section hidden">
+                    <div class="page-header">
+                        <div class="license-search"><i class="fas fa-search"></i><input id="license-search" type="search" placeholder="Tìm kiếm license..." aria-label="Tìm kiếm license"></div>
+                        <button class="btn" onclick="openLicenseModal()"><i class="fas fa-plus"></i> Thêm License</button>
                     </div>
+                    <div class="card"><div class="table-container"><table><thead><tr><th>Mã Key</th><th>Domain</th><th>Nhãn (Label)</th><th>Trạng thái</th><th style="text-align:right">Hành động</th></tr></thead><tbody id="licenses-tbody"></tbody></table></div></div>
                 </div>
+
+                <div id="page-clients" class="page-section hidden"><div class="page-header"><h1>Sites kết nối</h1></div><div class="card"><div class="table-container"><table><thead><tr><th>Site URL</th><th>IP</th><th>Ngày đăng ký</th><th>Lần đồng bộ cuối</th><th>Trạng thái</th><th>Hành động</th></tr></thead><tbody id="clients-tbody"></tbody></table></div></div></div>
+
+                <div id="page-config" class="page-section hidden"><div class="card config-card"><div class="card-heading"><h2>Cài đặt hệ thống</h2><p>Cấu hình các tham số môi trường và bảo mật cho API.</p></div><div class="card-body"><form id="config-form"><div class="config-grid"><div class="input-group"><label>API Version</label><input type="text" id="cfg-api-version" placeholder="v25"></div><div class="input-group"><label>Rate Limit</label><input type="number" id="cfg-rate-limit" placeholder="100"></div></div><div class="input-group"><label>OAuth Redirect URI</label><input type="url" id="cfg-oauth-redirect" placeholder="https://..."></div><div class="input-group"><label>Legacy API Key (Master fallback)</label><input type="text" id="cfg-legacy-key" placeholder="Nhập key..."></div><div class="input-group"><label>Allowed Origins</label><div class="tags-container" id="cfg-origins-container"><input type="text" class="tags-input" id="cfg-origins-input" placeholder="Thêm domain và nhấn Enter..."></div></div><div class="form-actions"><button type="submit" class="btn">Lưu thay đổi</button></div></form></div></div></div>
+
+                <div id="page-security" class="page-section hidden"><div class="card security-card"><div class="card-heading"><h2>Đổi mật khẩu Admin</h2><p>Cập nhật thông tin đăng nhập quản trị.</p></div><div class="card-body"><form id="admin-token-form"><div class="input-group"><label>Mật khẩu Admin hiện tại</label><input type="password" id="current-admin-token" required autocomplete="current-password"></div><div class="input-group"><label>Mật khẩu Admin mới</label><div class="flex-input"><input type="password" id="new-admin-token" required minlength="12" autocomplete="new-password"><button type="button" class="btn btn-outline" onclick="generateAdminToken()">Tạo mật khẩu mạnh</button></div></div><div class="input-group"><label>Xác nhận mật khẩu Admin mới</label><input type="password" id="confirm-admin-token" required minlength="12" autocomplete="new-password"></div><div class="form-actions"><button type="submit" class="btn">Cập nhật mật khẩu Admin</button></div></form></div></div></div>
+
+                <div id="page-logs" class="page-section hidden"><div class="page-header"><h1>Activity Log</h1><button class="btn btn-outline" onclick="loadLogs()">Làm mới</button></div><div class="card"><div class="table-container"><table><thead><tr><th>Thời gian</th><th>Hành động</th><th>Client</th><th>Kết quả</th><th>Chi tiết</th></tr></thead><tbody id="logs-tbody"></tbody></table></div></div></div>
             </div>
-
-            <!-- Licenses Page -->
-            <div id="page-licenses" class="page-section hidden">
-                <div class="page-header">
-                    <h1>License Keys</h1>
-                    <button class="btn" style="width:auto" onclick="openLicenseModal()">+ Thêm License</button>
-                </div>
-
-                <div class="card">
-                    <div class="table-container">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>Key</th>
-                                    <th>Domain</th>
-                                    <th>Label</th>
-                                    <th>Ngày hết hạn</th>
-                                    <th>Trạng thái</th>
-                                    <th>Hành động</th>
-                                </tr>
-                            </thead>
-                            <tbody id="licenses-tbody">
-                                <!-- Populated via JS -->
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Clients Page -->
-            <div id="page-clients" class="page-section hidden">
-                <h1>Sites kết nối</h1>
-
-                <div class="card">
-                    <div class="table-container">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>Site URL</th>
-                                    <th>IP</th>
-                                    <th>Ngày đăng ký</th>
-                                    <th>Lần đồng bộ cuối</th>
-                                    <th>Trạng thái</th>
-                                    <th>Hành động</th>
-                                </tr>
-                            </thead>
-                            <tbody id="clients-tbody">
-                                <!-- Populated via JS -->
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Config Page -->
-            <div id="page-config" class="page-section hidden">
-                <h1>Cấu hình hệ thống</h1>
-
-                <div class="card" style="max-width: 600px;">
-                    <form id="config-form">
-                        <div class="input-group">
-                            <label>API Version</label>
-                            <input type="text" id="cfg-api-version" placeholder="v25">
-                        </div>
-                        <div class="input-group">
-                            <label>OAuth Redirect URI</label>
-                            <input type="url" id="cfg-oauth-redirect" placeholder="https://...">
-                        </div>
-                        <div class="input-group">
-                            <label>Rate Limit (requests / hour / IP)</label>
-                            <input type="number" id="cfg-rate-limit" placeholder="100">
-                        </div>
-                        <div class="input-group">
-                            <label>Legacy API Key (Master fallback)</label>
-                            <input type="text" id="cfg-legacy-key" placeholder="Nhập key...">
-                        </div>
-                        <div class="input-group">
-                            <label>Allowed Origins</label>
-                            <div class="tags-container" id="cfg-origins-container">
-                                <input type="text" class="tags-input" id="cfg-origins-input" placeholder="Thêm domain và nhấn Enter...">
-                            </div>
-                        </div>
-                        <button type="submit" class="btn">Lưu cấu hình</button>
-                    </form>
-                </div>
-            </div>
-
-            <!-- Security Page -->
-            <div id="page-security" class="page-section hidden">
-                <h1>Đổi mật khẩu Admin</h1>
-
-                <div class="card" style="max-width: 600px;">
-                    <form id="admin-token-form">
-                        <div class="input-group">
-                            <label>Mật khẩu Admin hiện tại</label>
-                            <input type="password" id="current-admin-token" required autocomplete="current-password">
-                        </div>
-                        <div class="input-group">
-                            <label>Mật khẩu Admin mới</label>
-                            <div class="flex-input">
-                                <input type="password" id="new-admin-token" required minlength="12" autocomplete="new-password">
-                                <button type="button" class="btn btn-outline" onclick="generateAdminToken()">Tạo mật khẩu mạnh</button>
-                            </div>
-                        </div>
-                        <div class="input-group">
-                            <label>Xác nhận mật khẩu Admin mới</label>
-                            <input type="password" id="confirm-admin-token" required minlength="12" autocomplete="new-password">
-                        </div>
-                        <button type="submit" class="btn">Cập nhật mật khẩu Admin</button>
-                    </form>
-                </div>
-            </div>
-
-            <!-- Logs Page -->
-            <div id="page-logs" class="page-section hidden">
-                <div class="page-header">
-                    <h1>Activity Log</h1>
-                    <button class="btn btn-outline" style="width:auto" onclick="loadLogs()">Làm mới</button>
-                </div>
-
-                <div class="card">
-                    <div class="table-container">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>Thời gian</th>
-                                    <th>Hành động</th>
-                                    <th>Client</th>
-                                    <th>Kết quả</th>
-                                    <th>Chi tiết</th>
-                                </tr>
-                            </thead>
-                            <tbody id="logs-tbody">
-                                <!-- Populated via JS -->
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-
-        </div>
+        </main>
     </div>
 
     <!-- License Modal -->
@@ -1100,7 +1089,7 @@ function getDashboardHTML({ turnstileSiteKey, turnstileEnabled }) {
                     </div>
                 </div>
                 <div class="input-group">
-                    <label>Domain áp dụng (để trống nếu ko giới hạn)</label>
+                    <label>Domain áp dụng</label>
                     <input type="text" id="lic-domain" placeholder="example.com">
                 </div>
                 <div class="input-group">
@@ -1108,11 +1097,11 @@ function getDashboardHTML({ turnstileSiteKey, turnstileEnabled }) {
                     <input type="text" id="lic-label" placeholder="Khách hàng A...">
                 </div>
                 <div class="input-group">
-                    <label>Ngày hết hạn (để trống nếu vĩnh viễn)</label>
+                    <label>Ngày hết hạn <span style="font-weight:400;color:#64748b">(để trống nếu vĩnh viễn)</span></label>
                     <input type="date" id="lic-expiry">
                 </div>
                 <div class="input-group flex items-center" style="gap: 12px; margin-bottom: 24px;">
-                    <label style="margin:0;">Kích hoạt</label>
+                    <div><label style="margin:0;">Kích hoạt ngay</label><small style="display:block;color:#64748b;margin-top:4px">Cho phép sử dụng API ngay lập tức</small></div>
                     <label class="switch">
                         <input type="checkbox" id="lic-active" checked>
                         <span class="slider"></span>
@@ -1122,7 +1111,7 @@ function getDashboardHTML({ turnstileSiteKey, turnstileEnabled }) {
                 <!-- Hidden field to track if editing -->
                 <input type="hidden" id="lic-is-edit" value="false">
 
-                <div class="flex" style="gap: 12px;">
+                <div class="modal-actions">
                     <button type="button" class="btn btn-outline" onclick="closeLicenseModal()">Hủy</button>
                     <button type="submit" class="btn">Lưu</button>
                 </div>
@@ -1148,15 +1137,27 @@ function getDashboardHTML({ turnstileSiteKey, turnstileEnabled }) {
             document.getElementById('confirm-admin-token').value = token;
         }
 
+        const turnstileRequired = ${JSON.stringify(turnstileEnabled)};
+        let loginPending = false;
+        function setLoginVerification(ready, message) {
+            document.getElementById('login-submit').disabled = loginPending || (turnstileRequired && !ready);
+            document.getElementById('login-status').textContent = message;
+        }
+        function onTurnstileSuccess() { setLoginVerification(true, 'Xác minh thành công. Anh có thể đăng nhập.'); }
+        function onTurnstileExpired() { setLoginVerification(false, 'Xác minh đã hết hạn. Vui lòng xác minh lại.'); }
+        function onTurnstileError(code) {
+            setLoginVerification(false, 'Không thể xác minh bảo mật (mã ' + code + '). Vui lòng tải lại trang.');
+        }
         function getTurnstileToken() {
             const widget = document.getElementById('turnstile-widget');
             if (!widget || !window.turnstile) return '';
-            return window.turnstile.getResponse(widget) || '';
+            return window.turnstile.getResponse('#turnstile-widget') || '';
         }
 
         function resetTurnstile() {
             const widget = document.getElementById('turnstile-widget');
-            if (widget && window.turnstile) window.turnstile.reset(widget);
+            setLoginVerification(!turnstileRequired, turnstileRequired ? 'Đang chờ xác minh bảo mật…' : '');
+            if (widget && window.turnstile) window.turnstile.reset('#turnstile-widget');
         }
 
         function showToast(msg, type = 'success') {
@@ -1220,8 +1221,14 @@ function getDashboardHTML({ turnstileSiteKey, turnstileEnabled }) {
         document.getElementById('login-form').addEventListener('submit', async (e) => {
             e.preventDefault();
             const token = document.getElementById('admin-token').value;
+            if (loginPending) return;
             const turnstile_token = getTurnstileToken();
-
+            if (turnstileRequired && !turnstile_token) {
+                setLoginVerification(false, 'Vui lòng chờ xác minh bảo mật hoàn tất.');
+                return;
+            }
+            loginPending = true;
+            document.getElementById('login-submit').disabled = true;
             try {
                 const res = await fetch(API_BASE + '/login', {
                     method: 'POST',
@@ -1234,10 +1241,15 @@ function getDashboardHTML({ turnstileSiteKey, turnstileEnabled }) {
                     initDashboard();
                 } else {
                     resetTurnstile();
-                    showToast('Thông tin đăng nhập hoặc xác minh bảo mật không hợp lệ', 'error');
+                    const result = await res.json().catch(() => ({}));
+                    showToast(result.error || 'Đăng nhập thất bại. Vui lòng thử lại.', 'error');
                 }
             } catch (err) {
+                resetTurnstile();
                 showToast('Lỗi kết nối', 'error');
+            } finally {
+                loginPending = false;
+                document.getElementById('login-submit').disabled = turnstileRequired && !getTurnstileToken();
             }
         });
 
@@ -1263,6 +1275,15 @@ function getDashboardHTML({ turnstileSiteKey, turnstileEnabled }) {
         }
 
         // --- Navigation ---
+        const pageTitles = {
+            overview: 'Tổng quan',
+            licenses: 'Quản lý License Keys',
+            clients: 'Sites kết nối',
+            config: 'Cài đặt hệ thống',
+            security: 'Đổi mật khẩu',
+            logs: 'Activity Log'
+        };
+
         function navigateToPage(pageId) {
             document.querySelectorAll('.nav-link').forEach(link => {
                 link.classList.toggle('active', link.getAttribute('data-page') === pageId);
@@ -1270,6 +1291,7 @@ function getDashboardHTML({ turnstileSiteKey, turnstileEnabled }) {
 
             document.querySelectorAll('.page-section').forEach(page => page.classList.add('hidden'));
             document.getElementById('page-' + pageId).classList.remove('hidden');
+            document.getElementById('page-title').textContent = pageTitles[pageId] || pageId;
 
             if (window.innerWidth <= 768) {
                 document.getElementById('sidebar').classList.remove('open');
@@ -1362,32 +1384,44 @@ function getDashboardHTML({ turnstileSiteKey, turnstileEnabled }) {
 
                 licenses.forEach(lic => {
                     const tr = document.createElement('tr');
-
                     const expiry = lic.expires_at ? new Date(lic.expires_at).toLocaleDateString('vi-VN') : 'Vĩnh viễn';
-                    const statusClass = lic.active ? 'status-active' : 'status-inactive';
-
+                    const keyJson = JSON.stringify(lic).replace(/'/g, '&#39;');
                     tr.innerHTML = \`
-                        <td title="\${lic.key}">\${truncateStr(lic.key, 12)}</td>
-                        <td>\${lic.domain || '<span style="color:#a3aed1">Mọi domain</span>'}</td>
-                        <td>\${lic.label || '-'}</td>
-                        <td>\${expiry}</td>
-                        <td>
-                            <label class="switch">
-                                <input type="checkbox" \${lic.active ? 'checked' : ''} onchange="toggleLicenseStatus('\${lic.key}', this.checked)">
-                                <span class="slider"></span>
-                            </label>
-                        </td>
-                        <td>
-                            <button class="action-btn" onclick='editLicense(\${JSON.stringify(lic).replace(/'/g, "&#39;")})'>✏️</button>
-                            <button class="action-btn delete" onclick="deleteLicense('\${lic.key}')">🗑️</button>
-                        </td>
+                        <td title="\${lic.key}"><div class="key-cell"><span class="license-key">\${truncateStr(lic.key, 18)}</span><button class="copy-key" title="Sao chép key" aria-label="Sao chép key" onclick="copyKey('\${lic.key}')"><i class="far fa-copy"></i></button></div></td>
+                        <td class="font-medium">\${lic.domain || '<span style="color:#94a3b8">Mọi domain</span>'}<small class="expiry-note">\${expiry}</small></td>
+                        <td><span class="label-badge">\${lic.label || '-'}</span></td>
+                        <td><label class="switch"><input type="checkbox" \${lic.active ? 'checked' : ''} onchange="toggleLicenseStatus('\${lic.key}', this.checked)"><span class="slider"></span></label></td>
+                        <td style="text-align:right"><button class="action-btn" title="Sửa" aria-label="Sửa license" onclick='editLicense(\${keyJson})'><i class="fas fa-edit"></i></button><button class="action-btn delete" title="Xóa" aria-label="Xóa license" onclick="deleteLicense('\${lic.key}')"><i class="fas fa-trash-alt"></i></button></td>
                     \`;
                     tbody.appendChild(tr);
                 });
 
-                if (licenses.length === 0) tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;">Chưa có license nào</td></tr>';
+                if (licenses.length === 0) tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">Chưa có license nào</td></tr>';
+                window.gadsLicenses = licenses;
             } catch(e) {}
         }
+
+        async function copyKey(key) {
+            try {
+                if (navigator.clipboard && window.isSecureContext) await navigator.clipboard.writeText(key);
+                else {
+                    const textarea = document.createElement('textarea');
+                    textarea.value = key; textarea.style.position = 'fixed'; textarea.style.opacity = '0';
+                    document.body.appendChild(textarea); textarea.focus(); textarea.select();
+                    document.execCommand('copy'); textarea.remove();
+                }
+                showToast('Đã sao chép license key');
+            } catch (error) { showToast('Không thể sao chép license key', 'error'); }
+        }
+
+        function filterLicenses(value) {
+            const query = value.trim().toLowerCase();
+            document.querySelectorAll('#licenses-tbody tr').forEach(row => {
+                row.hidden = query && !row.textContent.toLowerCase().includes(query);
+            });
+        }
+
+        document.getElementById('license-search').addEventListener('input', event => filterLicenses(event.target.value));
 
         function openLicenseModal() {
             document.getElementById('license-modal').classList.add('show');

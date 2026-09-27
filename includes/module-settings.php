@@ -102,6 +102,7 @@ function tkgadm_render_settings_page() {
     $auto_sync = get_option('tkgadm_auto_sync_hourly', get_option('tkgadm_auto_sync', '0'));
     $sync_on_block = get_option('tkgadm_auto_sync_on_block', get_option('tkgadm_sync_on_block', '1'));
     $rules = get_option('tkgadm_auto_block_rules', []);
+    $can_upload_blocked_ips = !empty($refresh_token) && !empty($customer_id);
 
     $emails = get_option('tkgadm_notification_emails', get_option('admin_email'));
     $bot_token = get_option('tkgadm_telegram_bot_token', '');
@@ -171,6 +172,21 @@ function tkgadm_render_settings_page() {
                                         <button type="submit" name="tkgadm_disconnect_oauth" class="text-red-500 text-sm font-medium hover:underline border-none bg-transparent cursor-pointer"><i class="fa-solid fa-link-slash"></i> Hủy kết nối tài khoản</button>
                                     </div>
                             </div>
+                        </div>
+
+                        <!-- Section: Manual IP Upload -->
+                        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 border-t-4 border-t-sky-500">
+                            <h3 class="text-lg font-bold text-gray-800 mb-2 flex items-center gap-2 m-0 pb-1">
+                                <i class="fa-solid fa-cloud-arrow-up text-sky-500"></i> Upload IP lên Google Ads
+                            </h3>
+                            <p class="text-xs text-gray-500 mt-0 mb-4">Gửi toàn bộ IP đang có trong danh sách bị chặn lên tài khoản Google Ads đã kết nối.</p>
+                            <button type="button" id="btn-upload-blocked-ips" class="bg-sky-600 hover:bg-sky-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white text-sm font-medium py-2 px-4 rounded-lg transition border-none cursor-pointer flex items-center gap-2" <?php disabled(!$can_upload_blocked_ips); ?>>
+                                <i class="fa-solid fa-cloud-arrow-up"></i> Upload toàn bộ IP bị chặn
+                            </button>
+                            <?php if (!$can_upload_blocked_ips): ?>
+                                <p class="text-xs text-amber-600 mt-3 mb-0">Cần kết nối Google Ads và nhập Customer ID trước khi upload.</p>
+                            <?php endif; ?>
+                            <div id="blocked-ips-upload-status" class="hidden mt-3 p-3 rounded-lg text-xs" role="status" aria-live="polite"></div>
                         </div>
 
                         <!-- Section: Auto Block & Sync -->
@@ -408,6 +424,36 @@ function tkgadm_render_settings_page() {
             }).fail(function() {
                 btn.prop('disabled', false).html('<i class="fa-brands fa-telegram"></i> Test Telegram');
                 $('#test-result').addClass('bg-red-900 text-red-100').text('Không thể kết nối máy chủ.');
+            });
+        });
+
+        $('#btn-upload-blocked-ips').on('click', function() {
+            var btn = $(this);
+            var status = $('#blocked-ips-upload-status');
+            var originalHtml = '<i class="fa-solid fa-cloud-arrow-up"></i> Upload toàn bộ IP bị chặn';
+
+            if (!confirm('Bạn có chắc muốn upload toàn bộ IP đang bị chặn lên Google Ads không?')) {
+                return;
+            }
+
+            btn.prop('disabled', true).html('<i class="fa-solid fa-spinner fa-spin"></i> Đang upload...');
+            status.removeClass('hidden bg-emerald-50 text-emerald-700 border border-emerald-200 bg-red-50 text-red-700 border-red-200').addClass('bg-sky-50 text-sky-700 border border-sky-200').text('Đang lấy danh sách IP và gửi lên Google Ads...');
+
+            $.post(ajaxurl, {
+                action: 'tkgadm_manual_sync_gads',
+                nonce: '<?php echo esc_js(wp_create_nonce("tkgadm_sync_gads")); ?>'
+            }, function(res) {
+                btn.prop('disabled', false).html(originalHtml);
+                status.removeClass('bg-sky-50 text-sky-700 border-sky-200');
+
+                if (res.success) {
+                    status.addClass('bg-emerald-50 text-emerald-700 border border-emerald-200').text(res.data.message || 'Đã upload danh sách IP thành công.');
+                } else {
+                    status.addClass('bg-red-50 text-red-700 border border-red-200').text('Lỗi: ' + (res.data || 'Không thể upload danh sách IP.'));
+                }
+            }).fail(function() {
+                btn.prop('disabled', false).html(originalHtml);
+                status.removeClass('bg-sky-50 text-sky-700 border-sky-200').addClass('bg-red-50 text-red-700 border border-red-200').text('Lỗi kết nối máy chủ.');
             });
         });
     });

@@ -14,7 +14,7 @@
  *   GADS_DEVELOPER_TOKEN → Google Ads Developer Token (secret)
  *   ADMIN_TOKEN        → Admin Dashboard login token (secret)
  *
- * @version 4.1.3
+ * @version 4.2.0
  */
 
 import { handleApiRequest } from './api.js';
@@ -22,6 +22,7 @@ import { handleOAuthRedirect } from './oauth.js';
 import { handleAdminRequest } from './admin.js';
 import { handleCron } from './cron.js';
 import { corsResponse, errorResponse, jsonResponse } from './utils.js';
+import { handleUpdateRequest } from './updates.js';
 import { APP_VERSION } from './version.js';
 
 export default {
@@ -38,6 +39,10 @@ export default {
     const path = url.pathname;
 
     try {
+      if (path.startsWith('/updates/')) {
+        return await handleUpdateRequest(request, env);
+      }
+
       // ── Route: /api ──
       if (path === '/api' || path === '/api/') {
         return await handleApiRequest(request, env);

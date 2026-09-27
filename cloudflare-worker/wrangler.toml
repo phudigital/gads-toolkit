@@ -10,7 +10,8 @@ compatibility_date = "2026-09-03"
 # Custom Domain
 # -----------------------------------------------------------
 routes = [
-  { pattern = "gads.pdl.vn/*", zone_name = "pdl.vn" }
+  { pattern = "gads.pdl.vn/*", zone_name = "pdl.vn" },
+  { pattern = "gads.pdl.vn", custom_domain = true }
 ]
 
 # -----------------------------------------------------------
@@ -37,7 +38,16 @@ crons = ["*/10 * * * *"]   # Mỗi 10 phút
 # -----------------------------------------------------------
 [vars]
 ENVIRONMENT = "production"
-TURNSTILE_SITE_KEY = "0x4AAAAAAElwX3Sma_XFYZb4"
+TURNSTILE_SITE_KEY = "0x4AAAAAAANH17m2qkqk6zVn"
+
+# -----------------------------------------------------------
+# Public landing page
+# -----------------------------------------------------------
+# Static assets serve the prototype at /. Dynamic Central Service routes
+# continue to enter the Worker before any asset lookup.
+[assets]
+directory = "./public"
+run_worker_first = ["/api*", "/oauth*", "/admin*", "/updates/*"]
 
 # -----------------------------------------------------------
 # Secrets (Set via CLI, KHÔNG ghi vào file này!)
@@ -54,3 +64,8 @@ TURNSTILE_SITE_KEY = "0x4AAAAAAElwX3Sma_XFYZb4"
 # Tự chọn một chuỗi bảo mật, ví dụ: openssl rand -hex 32
 # TURNSTILE_SECRET_KEY là secret key của widget TURNSTILE_SITE_KEY.
 # -----------------------------------------------------------
+
+# Public plugin packages are served through Worker; bucket stays private.
+[[r2_buckets]]
+binding = "GADS_RELEASES"
+bucket_name = "gads-toolkit-releases"

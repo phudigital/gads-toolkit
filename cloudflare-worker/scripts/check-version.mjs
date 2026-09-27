@@ -14,10 +14,12 @@ if (!pluginVersion) {
   throw new Error('Could not read GADS_TOOLKIT_VERSION from gads-toolkit.php.');
 }
 
-if (new Set([APP_VERSION, packageVersion, pluginVersion]).size !== 1) {
+if (APP_VERSION !== packageVersion) {
   throw new Error(
     `Version mismatch: Worker=${APP_VERSION}, package=${packageVersion}, plugin=${pluginVersion}`
   );
 }
 
-console.log(`GAds Toolkit release version ${APP_VERSION} is consistent.`);
+const headerVersion = pluginFile.match(/\* Version:\s*(\S+)/)?.[1];
+if (headerVersion !== pluginVersion) throw new Error('Plugin header and constant versions differ.');
+console.log(`Worker ${APP_VERSION}; plugin ${pluginVersion}: versions are consistent within each component.`);

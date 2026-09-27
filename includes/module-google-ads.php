@@ -450,7 +450,11 @@ function tkgadm_do_sync_process() {
     $blocking_table = $wpdb->prefix . 'gads_toolkit_blocked';
 
     // phpcs:ignore WordPress.DB.DirectDatabaseQuery
-    $blocked_ips = $wpdb->get_col("SELECT ip_address FROM $blocking_table ORDER BY blocked_time DESC LIMIT 500");
+    $blocked_ips = $wpdb->get_col("SELECT ip_address FROM $blocking_table ORDER BY blocked_time DESC");
+
+    // The blocked table has a unique IP constraint, but de-duplicate defensively
+    // so a manual upload can never send the same address more than once.
+    $blocked_ips = array_values(array_unique(array_filter(array_map('trim', $blocked_ips))));
 
     if (empty($blocked_ips)) {
         return ['success' => true, 'message' => 'Danh sách chặn trống.'];

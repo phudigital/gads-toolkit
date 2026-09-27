@@ -1,6 +1,6 @@
 # 🛡️ Phần mềm chống click ảo Google Ads - GAds Toolkit
 
-![Version](https://img.shields.io/badge/version-4.1.5-blue.svg)
+![Version](https://img.shields.io/badge/version-4.2.0-blue.svg)
 ![WordPress](https://img.shields.io/badge/WordPress-5.0%2B-blue.svg)
 ![PHP](https://img.shields.io/badge/PHP-7.4%2B-purple.svg)
 ![License](https://img.shields.io/badge/license-GPL--2.0-green.svg)
@@ -221,3 +221,10 @@ GPL-2.0 License - Xem [LICENSE](LICENSE) để biết thêm chi tiết.
 ---
 
 **Made with ❤️ in Vietnam by [Phu Digital](https://phu.vn)**
+
+
+### Cập nhật từ phiên bản 4.2.0
+
+Cài thủ công bản 4.2.0 một lần để có bộ cập nhật. Sau đó vào **Plugins → GAds Toolkit → Cập nhật ngay** khi có phiên bản mới. Trên WordPress hỗ trợ auto-update, khách có thể tự bật **Enable auto-updates**. Không cần nhập thêm khóa để tải cập nhật; license dịch vụ Google Ads giữ nguyên.
+
+Xem quy trình phát hành tại [docs/PLUGIN-UPDATES.md](docs/PLUGIN-UPDATES.md).

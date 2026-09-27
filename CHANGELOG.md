@@ -2,6 +2,48 @@
 
 All notable changes to **GAds Toolkit - Phần mềm chống click ảo Google Ads** will be documented in this file.
 
+## [4.2.0] - 2026-09-27
+
+### Added
+- Cập nhật GAds Toolkit ngay trong dashboard WordPress, hỗ trợ lựa chọn cập nhật tự động của WordPress.
+- Nguồn cập nhật công khai qua Cloudflare Worker, KV và R2; tải ZIP không yêu cầu license.
+- Kiểm tra SHA-256 của gói cập nhật trước khi cài đặt.
+- Lệnh phát hành đóng gói riêng phần plugin, kiểm tra gói tải trước khi công bố phiên bản.
+
+## [4.1.9] - 2026-09-05
+
+### Fixed
+- Sửa lỗi chính tả `gian hạn` thành `gia hạn` trong thông báo lỗi giấy phép.
+
+## [4.1.8] - 2026-09-05
+
+### Fixed
+- Chuẩn hóa cả ba trường hợp thiếu/không hợp lệ, bị vô hiệu hóa và hết hạn giấy phép về cùng thông báo tiếng Việt khi upload IP.
+
+## [4.1.7] - 2026-09-05
+
+### Changed
+- Việt hóa thông báo lỗi API Key khi upload IP và hướng dẫn gia hạn/mua giấy phép tại `https://gads.pdl.vn`.
+
+## [4.1.6] - 2026-09-05
+
+### Added
+- Thêm chức năng **Upload toàn bộ IP bị chặn lên Google Ads** ngay trong trang **Cấu Hình & Tích hợp**, có trạng thái xử lý và thông báo lỗi/thành công.
+
+### Fixed
+- Đồng bộ thủ công và tự động không còn giới hạn ở 500 IP; danh sách được khử trùng lặp trước khi gửi.
+
+## [4.1.5] - 2026-09-05
+
+### Changed
+- Bổ sung favicon riêng cho landing page và Admin Dashboard.
+
+## [4.1.4] - 2026-09-05
+
+### Changed
+- Đồng bộ giao diện Admin Dashboard quản lý License Keys với prototype `landing-page/admin.html`: sidebar, header, thống kê, bảng key, tìm kiếm, copy key, toggle trạng thái và modal thêm/sửa.
+- Giữ nguyên các API quản lý license hiện có và hiển thị ngày hết hạn trong dòng domain để không mất thông tin vận hành.
+
 ## [4.1.3] - 2026-09-04
 
 ### 🚀 UI/UX Redesign

@@ -8,6 +8,8 @@
 
 import { errorResponse, kvListByPrefix } from './utils.js';
 
+const LICENSE_ERROR_MESSAGE = 'Khóa API không hợp lệ. Vui lòng gia hạn hoặc mua giấy phép mới tại https://gads.pdl.vn';
+
 /**
  * Verify API key from request headers or query params.
  * Checks against:
@@ -28,7 +30,7 @@ export async function verifyApiKey(request, env) {
   }
 
   if (!apiKey) {
-    return errorResponse('API key is required. Add X-API-Key header or ?api_key= parameter.', 401);
+    return errorResponse(LICENSE_ERROR_MESSAGE, 401);
   }
 
   // 1. Check legacy/master key
@@ -49,20 +51,14 @@ export async function verifyApiKey(request, env) {
 
     // Check active status
     if (!license.active) {
-      return errorResponse(
-        'License key is inactive. Please contact https://phu.vn to renew your license.',
-        403
-      );
+      return errorResponse(LICENSE_ERROR_MESSAGE, 403);
     }
 
     // Check expiration
     if (license.expires_at) {
       const expiry = new Date(license.expires_at);
       if (expiry < new Date()) {
-        return errorResponse(
-          `License key expired on ${license.expires_at}. Please visit https://phu.vn to extend your subscription.`,
-          403
-        );
+        return errorResponse(LICENSE_ERROR_MESSAGE, 403);
       }
     }
 
@@ -71,7 +67,7 @@ export async function verifyApiKey(request, env) {
 
   // 3. Invalid key
   console.warn(`Invalid API key attempt: ${apiKey.substring(0, 8)}... from IP: ${request.headers.get('CF-Connecting-IP')}`);
-  return errorResponse('Invalid API key. Please verify your key or buy a new license at https://phu.vn', 401);
+  return errorResponse(LICENSE_ERROR_MESSAGE, 401);
 }
 
 /**
