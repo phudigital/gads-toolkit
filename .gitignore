@@ -46,3 +46,7 @@ central-service/config.php
 
 
 cloudflare-worker/.release/
+
+# Repomix
+repomix-output.*
+
