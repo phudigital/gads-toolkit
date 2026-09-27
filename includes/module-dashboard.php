@@ -368,7 +368,7 @@ function tkgadm_render_dashboard_page() {
         </div>
 
         <div id="url-modal" class="tkgadm-modal">
-            <span class="tkgadm-modal-close text-white right-5 top-5 text-4xl cursor-pointer absolute">&times;</span>
+            <span class="tkgadm-modal-close right-5 top-5 text-4xl cursor-pointer absolute">&times;</span>
             <div class="tkgadm-modal-content rounded-xl">
                 <div class="tkgadm-modal-header border-b pb-3 mb-4">
                     <h2 id="modal-title" class="text-xl font-bold m-0">Chi tiết IP</h2>
@@ -379,7 +379,7 @@ function tkgadm_render_dashboard_page() {
         </div>
 
         <div id="daily-details-modal" class="tkgadm-modal">
-            <span class="tkgadm-modal-close text-white right-5 top-5 text-4xl cursor-pointer absolute">&times;</span>
+            <span class="tkgadm-modal-close right-5 top-5 text-4xl cursor-pointer absolute">&times;</span>
             <div class="tkgadm-modal-content tkgadm-modal-lg rounded-xl">
                 <div class="tkgadm-modal-header border-b pb-3 mb-4">
                     <h2 id="daily-modal-title" class="text-xl font-bold m-0">Chi tiết ngày</h2>

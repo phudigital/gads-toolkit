@@ -419,9 +419,11 @@ function tkgadm_render_maintenance_page() {
                             <button id="btn-gads-del-oldest" class="bg-orange-500 hover:bg-orange-600 text-white text-xs font-medium py-2 px-3 rounded-lg border-none cursor-pointer flex items-center gap-1.5 transition">
                                 <i class="fa-solid fa-clock-rotate-left"></i> Xóa
                             </button>
-                            <input type="number" id="gads-oldest-n" value="50" min="1" max="500"
-                                   class="w-14 text-center text-sm border border-orange-300 rounded-lg py-2 px-1 focus:outline-none focus:ring-1 focus:ring-orange-400">
-                            <span class="text-xs text-gray-500">IP cũ nhất</span>
+                            <div class="flex items-center border border-orange-300 rounded-lg bg-white overflow-hidden focus-within:ring-1 focus-within:ring-orange-400">
+                                <input type="number" id="gads-oldest-n" value="50" min="1" max="500"
+                                       class="w-16 text-center text-sm border-none py-1.5 px-1 focus:outline-none focus:ring-0 m-0 h-full" style="box-shadow: none;">
+                                <span class="text-xs text-gray-500 pr-3 whitespace-nowrap bg-gray-50 border-l border-orange-300 h-full py-2 pl-2">IP cũ nhất</span>
+                            </div>
                         </div>
                     </div>
                     <?php endif; ?>

@@ -7,6 +7,44 @@
 if (!defined('ABSPATH')) exit;
 
 /**
+ * Get sanitized Google Ads credentials from options.
+ *
+ * Returns customer_id, manager_id (digits only, whitespace/dashes stripped)
+ * plus refresh_token and developer_token when available.
+ *
+ * @return array{customer_id: string, manager_id: string, developer_token: string, refresh_token: string}
+ */
+function tkgadm_get_gads_ids() {
+    return [
+        'customer_id'   => preg_replace('/[\s-]+/', '', (string) get_option('tkgadm_gads_customer_id')),
+        'manager_id'    => preg_replace('/[\s-]+/', '', (string) get_option('tkgadm_gads_manager_id')),
+        'developer_token' => (string) get_option('tkgadm_gads_developer_token'),
+        'refresh_token' => (string) get_option('tkgadm_gads_refresh_token'),
+    ];
+}
+
+/**
+ * Validate Google Ads Account ID format (xxx-xxx-xxxx or 10 digits).
+ *
+ * @param string $id   Raw ID value
+ * @param string $label Human-readable label for error messages
+ * @return string|WP_Error Sanitized 10-digit ID or WP_Error
+ */
+function tkgadm_validate_gads_id_format($id, $label = 'ID') {
+    $clean = preg_replace('/[\s-]+/', '', trim((string) $id));
+    if ($clean === '') {
+        return ''; // empty is allowed (optional field)
+    }
+    if (!preg_match('/^\d{10}$/', $clean)) {
+        return new WP_Error(
+            'invalid_id_format',
+            sprintf('%s không hợp lệ — cần đúng 10 chữ số (VD: 123-456-7890).', $label)
+        );
+    }
+    return $clean;
+}
+
+/**
  * ============================================================================
  * 1. API & OAUTH FUNCTIONS
  * ============================================================================
@@ -296,8 +334,9 @@ function tkgadm_sync_ip_to_google_ads($ips_to_block) {
         return ['success' => false, 'message' => $access_token->get_error_message()];
     }
 
-    $customer_id = str_replace('-', '', get_option('tkgadm_gads_customer_id'));
-    $developer_token = get_option('tkgadm_gads_developer_token');
+    $ids = tkgadm_get_gads_ids();
+    $customer_id = $ids['customer_id'];
+    $developer_token = $ids['developer_token'];
 
     if (!$customer_id || !$developer_token) {
         return ['success' => false, 'message' => 'Thiếu Customer ID hoặc Developer Token.'];
@@ -336,7 +375,7 @@ function tkgadm_sync_ip_to_google_ads($ips_to_block) {
     $api_version = 'v25';
     $url = "https://googleads.googleapis.com/{$api_version}/customers/{$customer_id}/customerNegativeCriteria:mutate";
 
-    $manager_id = str_replace('-', '', get_option('tkgadm_gads_manager_id'));
+    $manager_id = $ids['manager_id'];
 
     $headers = array(
         'Authorization' => 'Bearer ' . $access_token,
@@ -397,12 +436,10 @@ function tkgadm_sync_ip_to_google_ads($ips_to_block) {
 function tkgadm_sync_via_central_service($ips_to_block) {
     $service_url = defined('GADS_SERVICE_URL') ? GADS_SERVICE_URL : get_option('tkgadm_central_service_url');
     $api_key = tkgadm_get_central_service_api_key();
-    $customer_id = preg_replace('/[\s-]+/', '', (string) get_option('tkgadm_gads_customer_id'));
-    $refresh_token = get_option('tkgadm_gads_refresh_token');
-
-    // Chỉ gửi manager_id nếu token này thuộc MCC (được lưu khi OAuth)
-    $is_mcc_token = get_option('tkgadm_gads_is_mcc_token');
-    $manager_id = $is_mcc_token ? preg_replace('/[\s-]+/', '', (string) get_option('tkgadm_gads_manager_id')) : '';
+    $ids = tkgadm_get_gads_ids();
+    $customer_id   = $ids['customer_id'];
+    $manager_id    = $ids['manager_id'];
+    $refresh_token = $ids['refresh_token'];
 
 
     if (!$customer_id || !preg_match('/^\d{10}$/', $customer_id) || !$refresh_token) {
@@ -444,6 +481,86 @@ function tkgadm_sync_via_central_service($ips_to_block) {
         'success' => true,
         'message' => $result['message']
     ];
+}
+
+/**
+ * List IPs currently blocked on Google Ads via Central Service.
+ *
+ * @return array|WP_Error Array of ['resource_name'=>string,'ip_address'=>string] or WP_Error
+ */
+function tkgadm_list_ips_via_central_service() {
+    $service_url = defined('GADS_SERVICE_URL') ? GADS_SERVICE_URL : get_option('tkgadm_central_service_url');
+    $api_key = tkgadm_get_central_service_api_key();
+    $ids = tkgadm_get_gads_ids();
+
+    if (!$ids['customer_id'] || !$ids['refresh_token']) {
+        return new WP_Error('missing_config', 'Thiếu Customer ID hoặc chưa kết nối Google Ads.');
+    }
+
+    $url = add_query_arg('api_key', $api_key, trailingslashit($service_url) . 'api/?action=list_ips');
+
+    $response = wp_remote_post($url, [
+        'headers' => ['Content-Type' => 'application/json'],
+        'body'    => json_encode([
+            'customer_id'   => $ids['customer_id'],
+            'manager_id'    => $ids['manager_id'],
+            'refresh_token' => $ids['refresh_token'],
+        ]),
+        'timeout' => 30,
+    ]);
+
+    if (is_wp_error($response)) {
+        return $response;
+    }
+
+    $data = json_decode(wp_remote_retrieve_body($response), true);
+
+    if (!isset($data['success']) || !$data['success']) {
+        $msg = isset($data['error']) ? $data['error'] : 'Central Service không hỗ trợ chức năng list_ips.';
+        return new WP_Error('service_error', $msg);
+    }
+
+    return isset($data['data']['ips']) ? $data['data']['ips'] : [];
+}
+
+/**
+ * Remove IPs from Google Ads via Central Service.
+ *
+ * @param string[] $resource_names Resource names to remove
+ * @return true|WP_Error
+ */
+function tkgadm_remove_ips_via_central_service($resource_names) {
+    if (empty($resource_names)) return true;
+
+    $service_url = defined('GADS_SERVICE_URL') ? GADS_SERVICE_URL : get_option('tkgadm_central_service_url');
+    $api_key = tkgadm_get_central_service_api_key();
+    $ids = tkgadm_get_gads_ids();
+
+    $url = add_query_arg('api_key', $api_key, trailingslashit($service_url) . 'api/?action=remove_ips');
+
+    $response = wp_remote_post($url, [
+        'headers' => ['Content-Type' => 'application/json'],
+        'body'    => json_encode([
+            'customer_id'    => $ids['customer_id'],
+            'manager_id'     => $ids['manager_id'],
+            'refresh_token'  => $ids['refresh_token'],
+            'resource_names' => array_values($resource_names),
+        ]),
+        'timeout' => 30,
+    ]);
+
+    if (is_wp_error($response)) {
+        return $response;
+    }
+
+    $data = json_decode(wp_remote_retrieve_body($response), true);
+
+    if (!isset($data['success']) || !$data['success']) {
+        $msg = isset($data['error']) ? $data['error'] : 'Central Service không hỗ trợ chức năng remove_ips.';
+        return new WP_Error('service_error', $msg);
+    }
+
+    return true;
 }
 
 /**
@@ -505,12 +622,6 @@ function tkgadm_render_google_ads_page() {
                 if (isset($tokens['refresh_token'])) {
                     update_option('tkgadm_gads_refresh_token', $tokens['refresh_token']);
 
-                    // Lưu flag: token này có thuộc MCC không?
-                    // Dựa vào Manager ID có được điền tại thời điểm kết nối OAuth.
-                    $current_manager_id = preg_replace('/[\s-]+/', '', (string) get_option('tkgadm_gads_manager_id'));
-                    $is_mcc = !empty($current_manager_id) && preg_match('/^\d{10}$/', $current_manager_id);
-                    update_option('tkgadm_gads_is_mcc_token', $is_mcc ? 1 : 0);
-
                     echo '<div class="notice notice-success is-dismissible"><p>✅ Đã kết nối thành công với tài khoản Google! (via Central Service)</p></div>';
 
                     // Clean URL to prevent re-submission of auth code
@@ -538,7 +649,6 @@ function tkgadm_render_google_ads_page() {
     // Handle Disconnect OAuth
     if (isset($_POST['tkgadm_disconnect_oauth']) && check_admin_referer('tkgadm_disconnect_oauth')) {
         delete_option('tkgadm_gads_refresh_token');
-        delete_option('tkgadm_gads_is_mcc_token');
         echo '<div class="notice notice-success is-dismissible"><p>✅ Đã hủy kết nối Google Ads.</p></div>';
     }
 
@@ -570,8 +680,28 @@ function tkgadm_render_google_ads_page() {
         // Only save other settings if API key validation passed (or wasn't changed)
         if (!$validation_error) {
 
-        update_option('tkgadm_gads_customer_id', sanitize_text_field($_POST['customer_id']));
-        update_option('tkgadm_gads_manager_id', sanitize_text_field($_POST['manager_id']));
+        $raw_cid = sanitize_text_field($_POST['customer_id']);
+        $raw_mid = sanitize_text_field($_POST['manager_id']);
+
+        if ($raw_cid !== '') {
+            $check_cid = tkgadm_validate_gads_id_format($raw_cid, 'Customer ID');
+            if (is_wp_error($check_cid)) {
+                $validation_error = $check_cid->get_error_message();
+                echo '<div class="notice notice-error is-dismissible"><p>❌ ' . esc_html($validation_error) . '</p></div>';
+            }
+        }
+        if (!$validation_error && $raw_mid !== '') {
+            $check_mid = tkgadm_validate_gads_id_format($raw_mid, 'Manager ID (MCC)');
+            if (is_wp_error($check_mid)) {
+                $validation_error = $check_mid->get_error_message();
+                echo '<div class="notice notice-error is-dismissible"><p>❌ ' . esc_html($validation_error) . '</p></div>';
+            }
+        }
+
+        if (!$validation_error) {
+            update_option('tkgadm_gads_customer_id', $raw_cid);
+            update_option('tkgadm_gads_manager_id', $raw_mid);
+        }
 
         $auto_sync = isset($_POST['auto_sync']) ? 1 : 0;
         update_option('tkgadm_auto_sync_hourly', $auto_sync);

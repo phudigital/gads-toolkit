@@ -25,9 +25,10 @@ function tkgadm_ajax_gads_list_ips() {
         wp_send_json_error('Không thể lấy access token: ' . $access_token->get_error_message());
     }
 
-    $customer_id     = str_replace('-', '', get_option('tkgadm_gads_customer_id'));
-    $developer_token = get_option('tkgadm_gads_developer_token');
-    $manager_id      = str_replace('-', '', get_option('tkgadm_gads_manager_id'));
+    $ids = tkgadm_get_gads_ids();
+    $customer_id     = $ids['customer_id'];
+    $developer_token = $ids['developer_token'];
+    $manager_id      = $ids['manager_id'];
 
     if (!$customer_id || !$developer_token) {
         wp_send_json_error('Thiếu Customer ID hoặc Developer Token. Tính năng này yêu cầu chế độ Direct API.');
@@ -116,9 +117,10 @@ function tkgadm_ajax_gads_delete_ips() {
         wp_send_json_error('Không thể lấy access token: ' . $access_token->get_error_message());
     }
 
-    $customer_id     = str_replace('-', '', get_option('tkgadm_gads_customer_id'));
-    $developer_token = get_option('tkgadm_gads_developer_token');
-    $manager_id      = str_replace('-', '', get_option('tkgadm_gads_manager_id'));
+    $ids = tkgadm_get_gads_ids();
+    $customer_id     = $ids['customer_id'];
+    $developer_token = $ids['developer_token'];
+    $manager_id      = $ids['manager_id'];
 
     $result = tkgadm_remove_google_ads_ips(
         $access_token,

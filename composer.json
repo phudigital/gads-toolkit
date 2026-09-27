@@ -1,0 +1,12 @@
+{
+    "name": "phudigital/gads-toolkit",
+    "description": "GAds Toolkit plugin",
+    "type": "wordpress-plugin",
+    "require-dev": {
+        "phpunit/phpunit": "^9.5",
+        "antecedent/patchwork": "^2.1",
+        "brain/monkey": "^2.6"
+    },
+    "autoload": {
+    }
+}

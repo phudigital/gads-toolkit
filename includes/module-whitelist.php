@@ -279,15 +279,23 @@ function tkgadm_remove_google_ads_ips($access_token, $customer_id, $developer_to
  * @return array               ['freed' => int, 'message' => string]
  */
 function tkgadm_smart_rotate_google_ads_ips($slots_needed = 50, $gads_limit = 500) {
-    // Chỉ hỗ trợ direct API (không qua central service) vì cần list + delete
+    $use_central = tkgadm_is_using_central_service();
+
+    // Central Service path: dùng list_ips / remove_ips qua proxy
+    if ($use_central) {
+        return tkgadm_smart_rotate_via_central_service($slots_needed, $gads_limit);
+    }
+
+    // Direct API path
     $access_token = tkgadm_get_google_access_token();
     if (is_wp_error($access_token)) {
         return ['freed' => 0, 'message' => 'Không thể lấy access token: ' . $access_token->get_error_message()];
     }
 
-    $customer_id     = str_replace('-', '', get_option('tkgadm_gads_customer_id'));
-    $developer_token = get_option('tkgadm_gads_developer_token');
-    $manager_id      = str_replace('-', '', get_option('tkgadm_gads_manager_id'));
+    $ids = tkgadm_get_gads_ids();
+    $customer_id     = $ids['customer_id'];
+    $developer_token = $ids['developer_token'];
+    $manager_id      = $ids['manager_id'];
 
     if (!$customer_id || !$developer_token) {
         return ['freed' => 0, 'message' => 'Thiếu Customer ID hoặc Developer Token.'];
@@ -364,6 +372,84 @@ function tkgadm_smart_rotate_google_ads_ips($slots_needed = 50, $gads_limit = 50
         'freed'   => $freed,
         'was'     => $current_count,
         'ips'     => array_column($to_remove, 'ip_address'),
+    ]);
+
+    return [
+        'freed'   => $freed,
+        'message' => "Đã xóa $freed IP cũ nhất khỏi Google Ads (trước đó: $current_count/$gads_limit). Còn lại: " . ($current_count - $freed) . " IP.",
+    ];
+}
+
+/**
+ * Smart Rotation via Central Service.
+ * Wraps list_ips + remove_ips central endpoints.
+ *
+ * @param int $slots_needed
+ * @param int $gads_limit
+ * @return array
+ */
+function tkgadm_smart_rotate_via_central_service($slots_needed = 50, $gads_limit = 500) {
+    $gads_ips = tkgadm_list_ips_via_central_service();
+    if (is_wp_error($gads_ips)) {
+        return ['freed' => 0, 'message' => 'Lỗi lấy danh sách IP: ' . $gads_ips->get_error_message()];
+    }
+
+    $current_count = count($gads_ips);
+    if ($current_count < $gads_limit) {
+        return ['freed' => 0, 'message' => "Google Ads hiện có $current_count/$gads_limit IP. Chưa cần xóa."];
+    }
+
+    $to_free = max($slots_needed, $current_count - $gads_limit + $slots_needed);
+
+    // Sắp xếp theo DB blocked_time (tái sử dụng logic hiện tại)
+    global $wpdb;
+    $table_blocked = $wpdb->prefix . 'gads_toolkit_blocked';
+    // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+    $db_ips = $wpdb->get_results(
+        "SELECT ip_address, blocked_time FROM $table_blocked ORDER BY blocked_time ASC",
+        ARRAY_A
+    );
+    $db_map = [];
+    foreach ((array) $db_ips as $row) {
+        $db_map[$row['ip_address']] = $row['blocked_time'];
+    }
+
+    $scored = [];
+    foreach ($gads_ips as $entry) {
+        $ip = $entry['ip_address'];
+        $ip_key = $ip;
+        if (preg_match('/^(\d+\.\d+\.\d+)\.0\/24$/', $ip, $m)) {
+            $ip_key = $m[1] . '.*';
+        }
+        $entry['db_time'] = $db_map[$ip] ?? ($db_map[$ip_key] ?? null);
+        $scored[] = $entry;
+    }
+
+    usort($scored, function($a, $b) {
+        if ($a['db_time'] === null && $b['db_time'] === null) return 0;
+        if ($a['db_time'] === null) return 1;
+        if ($b['db_time'] === null) return -1;
+        return strcmp($a['db_time'], $b['db_time']);
+    });
+
+    $to_remove = array_slice($scored, 0, $to_free);
+    $rn_to_remove = array_column($to_remove, 'resource_name');
+
+    if (empty($rn_to_remove)) {
+        return ['freed' => 0, 'message' => 'Không tìm thấy IP nào để xóa.'];
+    }
+
+    $remove_result = tkgadm_remove_ips_via_central_service($rn_to_remove);
+    if (is_wp_error($remove_result)) {
+        return ['freed' => 0, 'message' => 'Lỗi xóa IP: ' . $remove_result->get_error_message()];
+    }
+
+    $freed = count($rn_to_remove);
+    update_option('tkgadm_last_rotation', [
+        'time'  => time(),
+        'freed' => $freed,
+        'was'   => $current_count,
+        'ips'   => array_column($to_remove, 'ip_address'),
     ]);
 
     return [
@@ -450,32 +536,53 @@ function tkgadm_run_smart_whitelist_scan($threshold = null, $remove_from_gads = 
         }
     }
 
-    // Xóa khỏi Google Ads (Direct API) nếu có thể
+    // Xóa khỏi Google Ads nếu có thể (Central Service hoặc Direct API)
     $gads_msg = '';
-    if ($remove_from_gads && !empty($added_ips) && function_exists('tkgadm_get_google_access_token')) {
-        $access_token    = tkgadm_get_google_access_token();
-        $developer_token = get_option('tkgadm_gads_developer_token');
-        $customer_id     = str_replace('-', '', get_option('tkgadm_gads_customer_id'));
-        $manager_id      = str_replace('-', '', get_option('tkgadm_gads_manager_id'));
-
-        if (!is_wp_error($access_token) && $developer_token && $customer_id) {
-            // Lấy danh sách từ Google Ads rồi map sang resource_name
-            $gads_list = tkgadm_get_google_ads_blocked_ips($access_token, $customer_id, $developer_token, $manager_id);
+    if ($remove_from_gads && !empty($added_ips)) {
+        if (tkgadm_is_using_central_service() && function_exists('tkgadm_list_ips_via_central_service')) {
+            // Central Service path
+            $gads_list = tkgadm_list_ips_via_central_service();
             if (!is_wp_error($gads_list)) {
                 $rns_to_del = [];
                 foreach ($gads_list as $entry) {
                     $ip_raw = $entry['ip_address'];
-                    // Normalize CIDR -> wildcard
                     $ip_key = preg_replace('/^(\d+\.\d+\.\d+)\.0\/24$/', '$1.*', $ip_raw);
                     if (in_array($ip_raw, $added_ips, true) || in_array($ip_key, $added_ips, true)) {
                         $rns_to_del[] = $entry['resource_name'];
                     }
                 }
                 if (!empty($rns_to_del)) {
-                    $del = tkgadm_remove_google_ads_ips($access_token, $customer_id, $developer_token, $rns_to_del, $manager_id);
+                    $del = tkgadm_remove_ips_via_central_service($rns_to_del);
                     $gads_msg = is_wp_error($del)
                         ? ' (Lỗi xóa Google Ads: ' . $del->get_error_message() . ')'
                         : ' + đã xóa ' . count($rns_to_del) . ' IP khỏi Google Ads.';
+                }
+            }
+        } elseif (function_exists('tkgadm_get_google_access_token')) {
+            // Direct API path
+            $access_token    = tkgadm_get_google_access_token();
+            $wl_ids = tkgadm_get_gads_ids();
+            $developer_token = $wl_ids['developer_token'];
+            $customer_id     = $wl_ids['customer_id'];
+            $manager_id      = $wl_ids['manager_id'];
+
+            if (!is_wp_error($access_token) && $developer_token && $customer_id) {
+                $gads_list = tkgadm_get_google_ads_blocked_ips($access_token, $customer_id, $developer_token, $manager_id);
+                if (!is_wp_error($gads_list)) {
+                    $rns_to_del = [];
+                    foreach ($gads_list as $entry) {
+                        $ip_raw = $entry['ip_address'];
+                        $ip_key = preg_replace('/^(\d+\.\d+\.\d+)\.0\/24$/', '$1.*', $ip_raw);
+                        if (in_array($ip_raw, $added_ips, true) || in_array($ip_key, $added_ips, true)) {
+                            $rns_to_del[] = $entry['resource_name'];
+                        }
+                    }
+                    if (!empty($rns_to_del)) {
+                        $del = tkgadm_remove_google_ads_ips($access_token, $customer_id, $developer_token, $rns_to_del, $manager_id);
+                        $gads_msg = is_wp_error($del)
+                            ? ' (Lỗi xóa Google Ads: ' . $del->get_error_message() . ')'
+                            : ' + đã xóa ' . count($rns_to_del) . ' IP khỏi Google Ads.';
+                    }
                 }
             }
         }

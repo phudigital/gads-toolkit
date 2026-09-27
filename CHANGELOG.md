@@ -2,6 +2,17 @@
 
 All notable changes to **GAds Toolkit - Phần mềm chống click ảo Google Ads** will be documented in this file.
 
+## [4.2.6] - 2026-09-28
+
+### Tính năng mới & Mở rộng
+- **Hỗ trợ Central Service cho Smart Rotation & Gỡ IP Google Ads**: Cho phép Smart Rotation và Smart Auto-Whitelist gỡ bỏ IP khỏi tài khoản Google Ads thông qua Central Service (OAuth), không bắt buộc phải dùng Direct API với Developer Token.
+- **Chuẩn hóa & Xác thực Tài khoản Google Ads**: Tập trung hóa xử lý ID tài khoản (`tkgadm_get_gads_ids`) và tự động kiểm tra định dạng Customer ID / Manager ID (10 chữ số) trước khi lưu cấu hình, ngăn ngừa lỗi sai định dạng.
+
+### Cải thiện & Tối ưu
+- **Tối ưu giao diện Quản lý Dữ liệu**: Nâng cấp ô nhập số lượng IP cũ nhất cần xóa với thiết kế liền khối (input group) hiện đại và gọn gàng.
+- **Tinh chỉnh giao diện Dashboard**: Khắc phục màu nút đóng modal trên màn hình thống kê.
+- **Hệ thống Kiểm thử Tự động (Unit Test Suite)**: Bổ sung bộ kiểm thử tự động với PHPUnit & Brain Monkey cho toàn bộ các hàm xử lý logic và format quan trọng.
+
 ## [4.2.5] - 2026-09-28
 
 ### Tính năng mới

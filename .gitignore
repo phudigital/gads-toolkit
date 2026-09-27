@@ -50,3 +50,5 @@ cloudflare-worker/.release/
 # Repomix
 repomix-output.*
 
+# PHPUnit cache
+.phpunit.result.cache

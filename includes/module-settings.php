@@ -115,8 +115,30 @@ function tkgadm_render_settings_page() {
                 }
             }
         }
-        update_option('tkgadm_gads_customer_id', isset($_POST['customer_id']) ? sanitize_text_field(wp_unslash($_POST['customer_id'])) : '');
-        update_option('tkgadm_gads_manager_id', isset($_POST['manager_id']) ? sanitize_text_field(wp_unslash($_POST['manager_id'])) : '');
+        // Validate ID formats before saving
+        $raw_cid = isset($_POST['customer_id']) ? sanitize_text_field(wp_unslash($_POST['customer_id'])) : '';
+        $raw_mid = isset($_POST['manager_id']) ? sanitize_text_field(wp_unslash($_POST['manager_id'])) : '';
+        $id_error = false;
+
+        if ($raw_cid !== '') {
+            $check_cid = tkgadm_validate_gads_id_format($raw_cid, 'Customer ID');
+            if (is_wp_error($check_cid)) {
+                $message = '<div class="bg-red-50 text-red-600 p-3 rounded-lg border border-red-200 mb-6 font-medium text-sm">' . esc_html($check_cid->get_error_message()) . '</div>';
+                $id_error = true;
+            }
+        }
+        if (!$id_error && $raw_mid !== '') {
+            $check_mid = tkgadm_validate_gads_id_format($raw_mid, 'Manager ID (MCC)');
+            if (is_wp_error($check_mid)) {
+                $message = '<div class="bg-red-50 text-red-600 p-3 rounded-lg border border-red-200 mb-6 font-medium text-sm">' . esc_html($check_mid->get_error_message()) . '</div>';
+                $id_error = true;
+            }
+        }
+        if ($id_error) {
+            // Abort save — keep existing values
+        } else {
+        update_option('tkgadm_gads_customer_id', $raw_cid);
+        update_option('tkgadm_gads_manager_id', $raw_mid);
         
         $auto_sync = isset($_POST['auto_sync']) ? 1 : 0;
         update_option('tkgadm_auto_sync_hourly', $auto_sync);
@@ -169,6 +191,7 @@ function tkgadm_render_settings_page() {
         update_option('tkgadm_daily_report_time', isset($_POST['daily_report_time']) ? sanitize_text_field($_POST['daily_report_time']) : '08:00');
         
         $message = '<div class="bg-emerald-50 text-emerald-600 p-3 rounded-lg border border-emerald-200 mb-6 font-medium text-sm">Đã lưu cấu hình thành công!</div>';
+        } // end if (!$id_error)
     }
 
     // Lấy dữ liệu hiện tại
