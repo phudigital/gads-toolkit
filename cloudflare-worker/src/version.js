@@ -1,2 +1,2 @@
 // Update this value for every GAds Toolkit product release.
-export const APP_VERSION = '4.2.4';
+export const APP_VERSION = '4.2.5';

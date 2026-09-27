@@ -2,25 +2,47 @@
 
 All notable changes to **GAds Toolkit - Phần mềm chống click ảo Google Ads** will be documented in this file.
 
+## [4.2.5] - 2026-09-28
+
+### Tính năng mới
+- **Whitelist IP & Smart Auto-Whitelist**: Thêm danh sách IP tin cậy (hỗ trợ IP cụ thể và dải IP wildcard `x.x.x.*`). IP trong danh sách này sẽ không bao giờ bị chặn và không đẩy lên Google Ads.
+- **Tự động nhận diện Google Verification Bot**: Thuật toán Smart Auto-Whitelist tự động quét và nhận diện các IP đã bị chặn nhưng vẫn liên tục click Ads (bot xác minh của Google) để đưa vào Whitelist và gỡ bỏ khỏi tài khoản Google Ads.
+- **Smart IP Rotation (Tự động xoay vòng 500 IP)**: Tự động gỡ các IP bị chặn cũ nhất khi danh sách chặn trên Google Ads đạt tới giới hạn 500 IP để nhường chỗ cho IP gian lận mới phát sinh.
+- **Trình quản lý IP Google Ads trực tiếp**: Xem danh sách IP đang bị chặn từ Google Ads theo thời gian thực; cho phép xóa IP chọn lọc hoặc xóa IP cũ nhất ngay trên website WordPress (hỗ trợ Direct API).
+
+### Cải thiện & Tối ưu
+- **Hợp nhất giao diện Quản lý Dữ liệu**: Tích hợp Whitelist IP và Trình quản lý IP Google Ads vào tab Quản lý Dữ liệu, trực quan và dễ sử dụng.
+- **Cải tiến giao diện Cấu hình**: Làm mới phần thiết lập thông báo, cảnh báo IP nghi ngờ và báo cáo tổng hợp.
+- **Bộ nhận diện cập nhật WordPress**: Bổ sung bộ Icon và Banner chuyên nghiệp hiển thị trực tiếp trong trang quản lý và cửa sổ cập nhật plugin của WordPress.
+
+## [4.2.4] - 2026-09-27
+
+### Khắc phục & Cải thiện
+- Cập nhật bộ nhận diện giao diện: bổ sung Icon và Banner chuyên nghiệp cho plugin trong danh sách quản trị WordPress.
+- Cập nhật trang chủ chính thức của plugin về `https://gads.pdl.vn`.
+- Tối ưu mô tả cập nhật phiên bản thân thiện, ngắn gọn và dễ hiểu cho người dùng.
+
+## [4.2.3] - 2026-09-27
+
+### Khắc phục & Cải thiện
+- Khắc phục lỗi không chặn được IP trên Google Ads khi sử dụng tài khoản quảng cáo thông thường (không phải tài khoản đại lý MCC).
+- Cập nhật giao diện: thêm bộ Icon và Banner mới chuyên nghiệp hơn cho plugin.
+
 ## [4.2.2] - 2026-09-27
 
-### Changed
-- Sắp xếp lại thẻ tài khoản Google Ads: trạng thái cùng hàng tiêu đề, nhóm thao tác riêng và hướng dẫn rõ ràng; hỗ trợ màn hình nhỏ.
+### Cải thiện giao diện
+- Sắp xếp lại phần hiển thị tài khoản Google Ads trong mục Cấu Hình: gọn gàng, nút bấm dễ thao tác hơn và hiển thị tốt trên điện thoại.
 
 ## [4.2.1] - 2026-09-27
 
-### Fixed
-- Bổ sung kết nối/kết nối lại Google Ads tại Cấu Hình & Tích Hợp; lưu thông tin tài khoản trước khi cấp quyền.
-- Xác định trạng thái kết nối theo token OAuth; chỉ hiển thị hủy kết nối khi có token.
-- Callback về đúng trang cấu hình, kiểm tra phiên một lần và xóa mã OAuth khỏi URL sau xử lý.
+### Sửa lỗi
+- Khắc phục sự cố khi kết nối với Google Ads: hệ thống sẽ tự động đưa bạn về đúng trang cấu hình một cách mượt mà sau khi cấp quyền.
+- Chỉ hiển thị tùy chọn "Hủy kết nối" khi bạn thực sự đang kết nối với Google Ads.
 
 ## [4.2.0] - 2026-09-27
 
-### Added
-- Cập nhật GAds Toolkit ngay trong dashboard WordPress, hỗ trợ lựa chọn cập nhật tự động của WordPress.
-- Nguồn cập nhật công khai qua Cloudflare Worker, KV và R2; tải ZIP không yêu cầu license.
-- Kiểm tra SHA-256 của gói cập nhật trước khi cài đặt.
-- Lệnh phát hành đóng gói riêng phần plugin, kiểm tra gói tải trước khi công bố phiên bản.
+### Tính năng mới
+- Tính năng cập nhật tự động: Từ nay bạn có thể cập nhật plugin trực tiếp trong bảng quản trị WordPress một cách an toàn và nhanh chóng (giống như các plugin thông thường khác).
 
 ## [4.1.9] - 2026-09-05
 

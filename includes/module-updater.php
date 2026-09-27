@@ -39,7 +39,15 @@ function tkgadm_update_data($release) {
         'url' => 'https://gads.pdl.vn', 'package' => $release['package'],
         'requires' => $release['requires'], 'requires_php' => $release['requires_php'],
         'tested' => isset($release['tested']) ? $release['tested'] : '',
-        'icons' => array(), 'banners' => array(),
+        'icons' => array(
+            'svg' => GADS_TOOLKIT_URL . 'assets/icon.svg',
+            '1x' => GADS_TOOLKIT_URL . 'assets/icon-128x128.png',
+            '2x' => GADS_TOOLKIT_URL . 'assets/icon-256x256.png',
+        ),
+        'banners' => array(
+            'low' => GADS_TOOLKIT_URL . 'assets/banner-772x250.svg',
+            'high' => GADS_TOOLKIT_URL . 'assets/banner-772x250.svg',
+        ),
     );
 }
 

@@ -130,6 +130,16 @@ function tkgadm_check_upgrade() {
         tkgadm_create_tables();
         update_option('tkgadm_version', GADS_TOOLKIT_VERSION);
     }
+
+    // Tạo bảng whitelist nếu chưa có (cho cài đặt cũ)
+    if (function_exists('tkgadm_create_whitelist_table')) {
+        global $wpdb;
+        $wl_table = $wpdb->prefix . 'gads_toolkit_whitelist';
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+        if (!$wpdb->get_var("SHOW TABLES LIKE '$wl_table'")) {
+            tkgadm_create_whitelist_table();
+        }
+    }
 }
 
 /**
@@ -242,11 +252,16 @@ function tkgadm_block_ip_internal($ip, $reason = '') {
     global $wpdb;
     $table = $wpdb->prefix . 'gads_toolkit_blocked';
     $stats_table = $wpdb->prefix . 'gads_toolkit_stats';
-    
+
+    // === WHITELIST CHECK: Không chặn IP được tin cậy ===
+    if (function_exists('tkgadm_is_ip_whitelisted') && tkgadm_is_ip_whitelisted($ip)) {
+        return false; // IP trong whitelist -> bỏ qua, không chặn
+    }
+
     // Check exist
     // phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
     $exists = $wpdb->get_var($wpdb->prepare("SELECT id FROM $table WHERE ip_address = %s", $ip));
-    
+
     if ($exists) {
         return false;
     }
@@ -518,6 +533,8 @@ function tkgadm_add_admin_menu() {
         'tkgad-maintenance',
         'tkgadm_render_maintenance_page'
     );
+
+
     
     add_submenu_page(
         'tkgad-moi',
@@ -639,25 +656,27 @@ function tkgadm_run_auto_block_scan() {
             $duration *= 7;
             $unit = 'DAY';
         }
-        
+
         // Query IPs thỏa mãn điều kiện (Có gclid = Click Ad)
+        // Dùng COUNT(DISTINCT gclid) để đồng nhất với real-time check (tkgadm_check_ip_instant),
+        // tránh inflate do cùng gclid reload nhiều lần trong cùng phiên.
         // phpcs:ignore WordPress.DB.PreparedSQL.StartWithParens
-        $sql = "SELECT ip_address, COUNT(*) as click_count 
-                FROM $stats_table 
+        $sql = "SELECT ip_address, COUNT(DISTINCT gclid) as click_count
+                FROM $stats_table
                 WHERE visit_time >= DATE_SUB(NOW(), INTERVAL %d $unit)
                 AND gclid IS NOT NULL AND gclid != ''
-                GROUP BY ip_address 
+                GROUP BY ip_address
                 HAVING click_count >= %d";
-                
+
         // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.DirectDatabaseQuery
         $results = $wpdb->get_results($wpdb->prepare($sql, $duration, $limit));
-        
+
         foreach ($results as $row) {
             $ip = $row->ip_address;
-            
+
             // Translate Unit
             $unit_vn = $unit === 'HOUR' ? 'Giờ' : ($unit === 'DAY' ? 'Ngày' : 'Tuần');
-            $reason_msg = "Chặn Tự Động: {$row->click_count} click (Quy tắc: $limit click / $duration $unit_vn)";
+            $reason_msg = "Chặn Tự Động: {$row->click_count} GCLID unique (Quy tắc: $limit click / $duration $unit_vn)";
 
             // Block IP
             if (tkgadm_block_ip_internal($ip, $reason_msg)) {
@@ -671,16 +690,26 @@ function tkgadm_run_auto_block_scan() {
     if (!empty($new_blocked_ips)) {
         // Assume module-google-ads.php is present via main plugin loader
         if (function_exists('tkgadm_sync_ip_to_google_ads')) {
-            $sync_result = tkgadm_sync_ip_to_google_ads($new_blocked_ips);
-            
-            // Log result
-            update_option('tkgadm_last_auto_block_sync', [
-                'time' => time(), 
-                'count' => count($new_blocked_ips),
-                'result' => $sync_result
-            ]);
+            // Lọc thêm lần cuối: loại bỏ IP đã vào whitelist trong cùng cron run
+            // (tkgadm_block_ip_internal đã check, nhưng lọc lại để chắc chắn)
+            if (function_exists('tkgadm_is_ip_whitelisted')) {
+                $new_blocked_ips = array_values(array_filter($new_blocked_ips, function($ip) {
+                    return !tkgadm_is_ip_whitelisted($ip);
+                }));
+            }
+
+            if (!empty($new_blocked_ips)) {
+                $sync_result = tkgadm_sync_ip_to_google_ads($new_blocked_ips);
+
+                // Log result
+                update_option('tkgadm_last_auto_block_sync', [
+                    'time'   => time(),
+                    'count'  => count($new_blocked_ips),
+                    'result' => $sync_result,
+                ]);
+            }
         }
-        
+
         // Gửi thông báo
         tkgadm_send_auto_block_notification($new_blocked_ips_data);
     }

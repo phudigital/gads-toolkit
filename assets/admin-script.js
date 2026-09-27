@@ -859,9 +859,14 @@ jQuery(document).ready(function ($) {
     html += "</tr></thead><tbody>";
 
     ips.forEach((ip, index) => {
-      const blockedBadge = ip.is_blocked
-        ? '<span class="tkgadm-badge tkgadm-badge-danger">🚫 Đã chặn</span>'
-        : '<span class="tkgadm-badge tkgadm-badge-success">✅ Hoạt động</span>';
+      let blockedBadge = '';
+      if (ip.is_whitelist) {
+        blockedBadge = '<span class="tkgadm-badge tkgadm-badge-whitelist">🛡️ Whitelist</span>';
+      } else if (ip.is_blocked) {
+        blockedBadge = '<span class="tkgadm-badge tkgadm-badge-danger">🚫 Đã chặn</span>';
+      } else {
+        blockedBadge = '<span class="tkgadm-badge tkgadm-badge-success">✅ Hoạt động</span>';
+      }
 
       const detailId = `detail-${index}`;
 

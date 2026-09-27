@@ -1,9 +1,9 @@
 <?php
 /**
  * Plugin Name: Phần mềm chống click ảo Google Ads (GAds Toolkit)
- * Plugin URI:  https://github.com/phudigital/gads-toolkit
+ * Plugin URI:  https://gads.pdl.vn
  * Description: Giải pháp toàn diện giúp theo dõi và ngăn chặn click ảo (Fraud Click) từ Google Ads.
- * Version:     4.2.2
+ * Version:     4.2.5
  * Author:      Phú Digital
  * Author URI:  https://pdl.vn
  * License:     GPLv2 or later
@@ -19,7 +19,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Define plugin constants
-define('GADS_TOOLKIT_VERSION', '4.2.2');
+define('GADS_TOOLKIT_VERSION', '4.2.5');
 define('GADS_TOOLKIT_PATH', plugin_dir_path(__FILE__));
 define('GADS_TOOLKIT_URL', plugin_dir_url(__FILE__));
 
@@ -40,16 +40,22 @@ require_once GADS_TOOLKIT_PATH . 'includes/module-google-ads.php';
 require_once GADS_TOOLKIT_PATH . 'includes/module-notifications.php';
 
 // 3. Admin & Data Modules (Admin UI & AJAX)
+require_once GADS_TOOLKIT_PATH . 'includes/module-whitelist.php'; // Whitelist: cần cả frontend lẫn admin
+
 if (is_admin()) {
     require_once GADS_TOOLKIT_PATH . 'includes/module-dashboard.php';
     require_once GADS_TOOLKIT_PATH . 'includes/module-settings.php';
     require_once GADS_TOOLKIT_PATH . 'includes/module-data.php';
+    require_once GADS_TOOLKIT_PATH . 'includes/module-gads-manager.php';
 }
 
 // Activation hook
 register_activation_hook(__FILE__, 'tkgadm_activate_plugin');
 function tkgadm_activate_plugin() {
     tkgadm_create_tables();
+    if (function_exists('tkgadm_create_whitelist_table')) {
+        tkgadm_create_whitelist_table();
+    }
     tkgadm_schedule_notifications(); // Kích hoạt cron jobs
 }
 

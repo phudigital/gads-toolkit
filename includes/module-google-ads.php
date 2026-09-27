@@ -398,8 +398,12 @@ function tkgadm_sync_via_central_service($ips_to_block) {
     $service_url = defined('GADS_SERVICE_URL') ? GADS_SERVICE_URL : get_option('tkgadm_central_service_url');
     $api_key = tkgadm_get_central_service_api_key();
     $customer_id = preg_replace('/[\s-]+/', '', (string) get_option('tkgadm_gads_customer_id'));
-    $manager_id = preg_replace('/[\s-]+/', '', (string) get_option('tkgadm_gads_manager_id'));
     $refresh_token = get_option('tkgadm_gads_refresh_token');
+
+    // Chỉ gửi manager_id nếu token này thuộc MCC (được lưu khi OAuth)
+    $is_mcc_token = get_option('tkgadm_gads_is_mcc_token');
+    $manager_id = $is_mcc_token ? preg_replace('/[\s-]+/', '', (string) get_option('tkgadm_gads_manager_id')) : '';
+
 
     if (!$customer_id || !preg_match('/^\d{10}$/', $customer_id) || !$refresh_token) {
         return ['success' => false, 'message' => 'Thiếu Customer ID hoặc chưa kết nối Google Ads.'];
@@ -449,8 +453,11 @@ function tkgadm_do_sync_process() {
     global $wpdb;
     $blocking_table = $wpdb->prefix . 'gads_toolkit_blocked';
 
+    // Lấy giới hạn IP từ cài đặt Smart Rotation (mặc định 500)
+    $max_ips = (int) get_option('tkgadm_rotation_max_ips', 500);
+
     // phpcs:ignore WordPress.DB.DirectDatabaseQuery
-    $blocked_ips = $wpdb->get_col("SELECT ip_address FROM $blocking_table ORDER BY blocked_time DESC");
+    $blocked_ips = $wpdb->get_col("SELECT ip_address FROM $blocking_table ORDER BY blocked_time DESC LIMIT $max_ips");
 
     // The blocked table has a unique IP constraint, but de-duplicate defensively
     // so a manual upload can never send the same address more than once.
@@ -458,6 +465,18 @@ function tkgadm_do_sync_process() {
 
     if (empty($blocked_ips)) {
         return ['success' => true, 'message' => 'Danh sách chặn trống.'];
+    }
+
+    // === WHITELIST FILTER: Loại bỏ IP trong whitelist trước khi sync ===
+    if (function_exists('tkgadm_is_ip_whitelisted')) {
+        $before_count = count($blocked_ips);
+        $blocked_ips  = array_values(array_filter($blocked_ips, function($ip) {
+            return !tkgadm_is_ip_whitelisted($ip);
+        }));
+        $skipped_wl = $before_count - count($blocked_ips);
+        if ($skipped_wl > 0 && empty($blocked_ips)) {
+            return ['success' => true, 'message' => "Toàn bộ $skipped_wl IP đều nằm trong whitelist, không có IP nào cần đồng bộ."];
+        }
     }
 
     return tkgadm_sync_ip_to_google_ads($blocked_ips);
@@ -485,6 +504,13 @@ function tkgadm_render_google_ads_page() {
             } else {
                 if (isset($tokens['refresh_token'])) {
                     update_option('tkgadm_gads_refresh_token', $tokens['refresh_token']);
+
+                    // Lưu flag: token này có thuộc MCC không?
+                    // Dựa vào Manager ID có được điền tại thời điểm kết nối OAuth.
+                    $current_manager_id = preg_replace('/[\s-]+/', '', (string) get_option('tkgadm_gads_manager_id'));
+                    $is_mcc = !empty($current_manager_id) && preg_match('/^\d{10}$/', $current_manager_id);
+                    update_option('tkgadm_gads_is_mcc_token', $is_mcc ? 1 : 0);
+
                     echo '<div class="notice notice-success is-dismissible"><p>✅ Đã kết nối thành công với tài khoản Google! (via Central Service)</p></div>';
 
                     // Clean URL to prevent re-submission of auth code
@@ -512,6 +538,7 @@ function tkgadm_render_google_ads_page() {
     // Handle Disconnect OAuth
     if (isset($_POST['tkgadm_disconnect_oauth']) && check_admin_referer('tkgadm_disconnect_oauth')) {
         delete_option('tkgadm_gads_refresh_token');
+        delete_option('tkgadm_gads_is_mcc_token');
         echo '<div class="notice notice-success is-dismissible"><p>✅ Đã hủy kết nối Google Ads.</p></div>';
     }
 

@@ -194,7 +194,7 @@ function tkgadm_render_settings_page() {
     $report_time = get_option('tkgadm_daily_report_time', '08:00');
 
     ?>
-    <div class="wp-wrap tkgadm-settings-page space-y-6" style="padding: 20px 0;">
+    <div class="wp-wrap tkgadm-settings-page space-y-6" style="padding: 20px 20px 40px 0;">
         <form method="POST" action="">
             <?php wp_nonce_field('tkgadm_settings_nonce'); ?>
             <div class="space-y-6">
@@ -214,9 +214,10 @@ function tkgadm_render_settings_page() {
                     </button>
                 </div>
 
+                <!-- Nhóm Cấu hình Cốt lõi: Google Ads & Chặn / Đồng Bộ -->
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     
-                    <!-- COL 1: GOOGLE ADS -->
+                    <!-- CỘT 1: GOOGLE ADS & UPLOAD IP -->
                     <div class="space-y-6">
                         <!-- Section: Google Ads API -->
                         <div class="tkgadm-account-card bg-white rounded-xl shadow-sm border border-gray-100 p-6 border-t-4 border-t-blue-500">
@@ -272,9 +273,12 @@ function tkgadm_render_settings_page() {
                             <?php endif; ?>
                             <div id="blocked-ips-upload-status" class="hidden mt-3 p-3 rounded-lg text-xs" role="status" aria-live="polite"></div>
                         </div>
+                    </div>
 
+                    <!-- CỘT 2: CHẶN & ĐỒNG BỘ (ƯU TIÊN ĐƯA LÊN TRÊN) -->
+                    <div class="space-y-6">
                         <!-- Section: Auto Block & Sync -->
-                        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 border-t-4 border-t-indigo-500">
                             <h3 class="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2 m-0 pb-2">
                                 <i class="fa-solid fa-shield-virus text-indigo-500"></i> Chặn & Đồng Bộ
                             </h3>
@@ -333,105 +337,82 @@ function tkgadm_render_settings_page() {
                                 </div>
                             </div>
                         </div>
-                    </div>
 
-                    <!-- COL 2: NOTIFICATIONS -->
-                    <div class="space-y-6">
-                        <!-- Section: Notification Configs -->
-                        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 border-t-4 border-t-emerald-500 relative">
-                            <h3 class="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2 m-0 pb-2">
-                                <i class="fa-solid fa-bell text-emerald-500"></i> Kênh Thông Báo
-                            </h3>
-                            
-                            <div class="space-y-5">
-                                <!-- Email Config -->
-                                <div>
-                                    <div class="flex items-center gap-2 mb-2">
-                                        <i class="fa-regular fa-envelope text-gray-400"></i>
-                                        <label class="text-sm font-medium text-gray-700">Gửi qua Email</label>
-                                    </div>
-                                    <input type="text" name="notification_emails" value="<?php echo esc_attr($emails); ?>" class="w-full text-sm border border-gray-300 rounded-lg p-2 text-gray-800 focus:ring-2 focus:ring-blue-500 focus:outline-none" placeholder="Nhập các email cách nhau dấu phẩy">
-                                </div>
-
-                                <!-- Telegram Config -->
-                                <div class="bg-blue-50/30 p-4 rounded-lg border border-blue-50">
-                                    <div class="flex items-center gap-2 mb-3">
-                                        <i class="fa-brands fa-telegram text-blue-500"></i>
-                                        <label class="text-sm font-medium text-blue-800">Gửi qua Telegram Bot</label>
-                                    </div>
-                                    <div class="space-y-3">
-                                        <div>
-                                            <label class="block text-xs font-medium text-gray-600 mb-1">Bot Token</label>
-                                            <input type="text" name="telegram_bot_token" value="<?php echo esc_attr($bot_token); ?>" class="w-full text-sm border border-gray-300 rounded p-2 text-gray-800 focus:ring-2 focus:ring-blue-500 focus:outline-none font-mono placeholder:text-gray-400" placeholder="123456:ABC-DEF...">
-                                        </div>
-                                        <div>
-                                            <label class="block text-xs font-medium text-gray-600 mb-1">Chat ID</label>
-                                            <input type="text" name="telegram_chat_id" value="<?php echo esc_attr($chat_id); ?>" class="w-full text-sm border border-gray-300 rounded p-2 text-gray-800 focus:ring-2 focus:ring-blue-500 focus:outline-none font-mono placeholder:text-gray-400" placeholder="-10012345678">
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Section: Alert Rules -->
+                        <!-- Section: Kênh Thông Báo & Lịch Báo Cáo (Dạng bảng dọc, đơn giản nằm dưới Chặn & Đồng Bộ) -->
                         <div class="tkgadm-report-card bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-                            <h3 class="tkgadm-report-title text-lg font-bold text-gray-800 mb-4 flex items-center gap-2 m-0 pb-2">
-                                <i class="fa-solid fa-tower-broadcast text-orange-500"></i> Lịch Gửi & Báo Cáo
-                            </h3>
-                            
-                            <div class="tkgadm-report-content space-y-4">
-                                <!-- Alert Threshold -->
-                                <div class="tkgadm-report-row tkgadm-report-alert-row flex items-start justify-between border-b border-gray-100 pb-4">
+                            <div class="flex items-center justify-between border-b border-gray-100 pb-3 mb-2">
+                                <h3 class="text-base font-bold text-gray-800 flex items-center gap-2 m-0">
+                                    <i class="fa-solid fa-bell text-gray-500"></i> Kênh Thông Báo & Báo Cáo
+                                </h3>
+                                <div id="test-result" class="hidden py-1 px-2.5 rounded text-xs font-medium" role="status"></div>
+                            </div>
+
+                            <div class="divide-y divide-gray-100 text-sm">
+                                <!-- Hàng 1: Email -->
+                                <div class="py-3">
+                                    <div class="flex items-center justify-between mb-1.5">
+                                        <label class="text-xs font-medium text-gray-700 flex items-center gap-1.5 m-0">
+                                            <i class="fa-regular fa-envelope text-gray-400"></i> Email nhận tin
+                                        </label>
+                                        <button type="button" id="btn-test-email" class="text-xs text-blue-600 hover:text-blue-700 hover:underline border-none bg-transparent cursor-pointer p-0 flex items-center gap-1">
+                                            <i class="fa-regular fa-paper-plane"></i> Test Email
+                                        </button>
+                                    </div>
+                                    <input type="text" name="notification_emails" value="<?php echo esc_attr($emails); ?>" class="w-full text-xs border border-gray-300 rounded-lg p-2 text-gray-800 focus:ring-1 focus:ring-blue-500 focus:outline-none" placeholder="Nhập các email cách nhau dấu phẩy">
+                                </div>
+
+                                <!-- Hàng 2: Telegram Bot -->
+                                <div class="py-3 space-y-2">
+                                    <div class="flex items-center justify-between">
+                                        <label class="text-xs font-medium text-gray-700 flex items-center gap-1.5 m-0">
+                                            <i class="fa-brands fa-telegram text-blue-500 text-sm"></i> Telegram Bot
+                                        </label>
+                                        <button type="button" id="btn-test-telegram" class="text-xs text-blue-600 hover:text-blue-700 hover:underline border-none bg-transparent cursor-pointer p-0 flex items-center gap-1">
+                                            <i class="fa-brands fa-telegram"></i> Test Telegram
+                                        </button>
+                                    </div>
+                                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                        <input type="text" name="telegram_bot_token" value="<?php echo esc_attr($bot_token); ?>" class="w-full text-xs font-mono border border-gray-300 rounded-lg p-2 text-gray-800 focus:ring-1 focus:ring-blue-500 focus:outline-none placeholder:text-gray-400" placeholder="Bot Token">
+                                        <input type="text" name="telegram_chat_id" value="<?php echo esc_attr($chat_id); ?>" class="w-full text-xs font-mono border border-gray-300 rounded-lg p-2 text-gray-800 focus:ring-1 focus:ring-blue-500 focus:outline-none placeholder:text-gray-400" placeholder="Chat ID">
+                                    </div>
+                                </div>
+
+                                <!-- Hàng 3: Cảnh báo IP nghi ngờ -->
+                                <div class="py-3 flex items-center justify-between gap-3">
                                     <div>
-                                        <p class="tkgadm-report-label text-sm font-medium text-gray-800 m-0">Cảnh báo IP nghi ngờ</p>
-                                        <p class="tkgadm-report-description text-xs text-gray-500 mt-1 mb-0 flex items-center gap-1">
-                                            Khi có IP đạt 
-                                            <input type="number" name="alert_threshold" value="<?php echo esc_attr($threshold); ?>" class="tkgadm-alert-threshold w-12 border border-gray-300 rounded text-center text-xs py-0.5 focus:outline-none">
-                                            click ads nhưng chưa bị chặn
+                                        <p class="text-xs font-medium text-gray-800 m-0">Cảnh báo IP nghi ngờ</p>
+                                        <p class="text-[11px] text-gray-500 mt-0.5 mb-0 flex items-center gap-1">
+                                            Khi đạt 
+                                            <input type="number" name="alert_threshold" value="<?php echo esc_attr($threshold); ?>" class="tkgadm-alert-threshold w-10 border border-gray-300 rounded text-center text-xs py-0.5 focus:outline-none">
+                                            click ads chưa bị chặn
                                         </p>
                                     </div>
-                                    <select name="alert_frequency" class="tkgadm-alert-frequency text-sm border border-gray-300 rounded p-1.5 focus:outline-none text-gray-700 bg-white shadow-sm mt-1">
-                                        <option value="hourly" <?php selected($frequency, 'hourly'); ?>>Kiểm tra mỗi giờ</option>
+                                    <select name="alert_frequency" class="tkgadm-alert-frequency text-xs border border-gray-300 rounded p-1.5 focus:outline-none text-gray-700 bg-white shadow-sm">
+                                        <option value="hourly" <?php selected($frequency, 'hourly'); ?>>Mỗi giờ</option>
                                         <option value="twice_daily" <?php selected($frequency, 'twice_daily'); ?>>2 lần/ngày</option>
                                         <option value="daily" <?php selected($frequency, 'daily'); ?>>Mỗi ngày</option>
                                     </select>
                                 </div>
 
-                                <!-- Daily Report -->
-                                <div class="tkgadm-report-row tkgadm-report-daily-row flex items-start justify-between">
+                                <!-- Hàng 4: Báo cáo traffic tổng hợp -->
+                                <div class="pt-3 flex items-center justify-between gap-3">
                                     <div>
-                                        <p class="tkgadm-report-label text-sm font-medium text-gray-800 m-0">Báo cáo traffic tổng hợp</p>
-                                        <p class="tkgadm-report-description text-xs text-gray-500 mt-1 mb-0">Gửi số liệu tóm tắt của ngày hôm trước</p>
+                                        <p class="text-xs font-medium text-gray-800 m-0">Báo cáo traffic ngày</p>
+                                        <p class="text-[11px] text-gray-500 mt-0.5 mb-0">Tóm tắt số liệu hôm trước</p>
                                     </div>
-                                    <div class="tkgadm-report-actions flex flex-col items-end gap-2 mt-1">
-                                        <div class="tkgadm-report-toggle">
-                                            <input type="checkbox" name="enable_daily_reports" id="toggle3" <?php checked($daily_reports, '1'); ?> class="tkgadm-report-toggle__input" aria-label="Bật báo cáo traffic tổng hợp" />
-                                            <label for="toggle3" class="tkgadm-report-toggle__track"></label>
+                                    <div class="flex items-center gap-3">
+                                        <div class="flex items-center gap-1.5 text-xs text-gray-700 bg-white border border-gray-300 px-2.5 py-1.5 rounded-lg shadow-sm">
+                                            <span class="text-gray-500 font-medium whitespace-nowrap"><i class="fa-regular fa-clock text-gray-400 mr-1"></i>Giờ gửi:</span>
+                                            <input type="time" name="daily_report_time" value="<?php echo esc_attr($report_time); ?>" class="tkgadm-inline-time bg-transparent border-none font-semibold text-gray-800 focus:ring-0 text-sm w-28 p-0 cursor-pointer outline-none">
                                         </div>
-                                        <div class="tkgadm-report-time flex items-center gap-1 text-xs text-gray-600 bg-gray-100 px-2 py-1 rounded">
-                                            Lần gửi: <input type="time" name="daily_report_time" value="<?php echo esc_attr($report_time); ?>" class="tkgadm-inline-time bg-transparent border-none font-medium focus:ring-0 text-xs w-16">
+                                        <div class="tkgadm-switch">
+                                            <input type="checkbox" name="enable_daily_reports" id="toggle3" <?php checked($daily_reports, '1'); ?> class="tkgadm-switch__input" aria-label="Bật báo cáo traffic tổng hợp" />
+                                            <label for="toggle3" class="tkgadm-switch__track"></label>
                                         </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
-
-                        <!-- Deep Test Module -->
-                        <div class="bg-gray-800 rounded-xl shadow-sm p-4 text-white">
-                            <h3 class="text-sm font-bold mb-3 flex items-center gap-2 m-0 pb-1">
-                                <i class="fa-solid fa-flask text-purple-400"></i> Debug Mode: Test Connection
-                            </h3>
-                            <div class="flex gap-2">
-                                <button type="button" id="btn-test-email" class="bg-gray-700 hover:bg-gray-600 border border-gray-600 text-xs font-medium py-1.5 px-3 rounded transition flex items-center gap-1 cursor-pointer">
-                                    <i class="fa-regular fa-envelope"></i> Test Email
-                                </button>
-                                <button type="button" id="btn-test-telegram" class="bg-blue-600 hover:bg-blue-500 text-white border-none text-xs font-medium py-1.5 px-3 rounded transition flex items-center gap-1 cursor-pointer">
-                                    <i class="fa-brands fa-telegram"></i> Test Telegram
-                                </button>
-                            </div>
-                            <div id="test-result" class="mt-2 text-xs hidden p-2 rounded"></div>
-                        </div>
-
                     </div>
                 </div>
             </div>

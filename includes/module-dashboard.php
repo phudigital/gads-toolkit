@@ -77,6 +77,11 @@ function tkgadm_render_dashboard_page() {
     // phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
     $blocked_ips = $wpdb->get_col("SELECT ip_address FROM $table_blocked");
     
+    // Lấy danh sách IP whitelist
+    $table_whitelist = $wpdb->prefix . 'gads_toolkit_whitelist';
+    // phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+    $whitelist_ips = $wpdb->get_col("SELECT ip_address FROM $table_whitelist");
+    
     // Nếu chỉ xem IP blocked, query lại để lấy TẤT CẢ IP blocked (kể cả không có trong stats)
     if ($show_blocked_only) {
         // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
@@ -127,12 +132,14 @@ function tkgadm_render_dashboard_page() {
         /* From Prototype */
         .wp-wrap {
             max-width: 1200px;
-            margin: 0 auto;
+            margin: 0;
+            padding-right: 20px;
+            box-sizing: border-box;
             font-family: 'Inter', sans-serif;
         }
     </style>
 
-    <div class="wp-wrap space-y-6" style="padding: 20px 0;">
+    <div class="wp-wrap space-y-6" style="padding: 20px 20px 40px 0;">
         <!-- Header & Filters -->
         <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5 flex flex-col md:flex-row justify-between items-center gap-4">
             <div>
@@ -270,6 +277,7 @@ function tkgadm_render_dashboard_page() {
                         <?php else: ?>
                             <?php foreach ($results as $index => $row): 
                                 $is_blocked = in_array($row->ip_address, $blocked_ips);
+                                $is_whitelisted = in_array($row->ip_address, $whitelist_ips);
                                 $row_bg = $is_blocked ? 'bg-red-50/30' : 'hover:bg-gray-50';
                                 
                                 $urls = !empty($row->urls) ? explode('|||', $row->urls) : [];
@@ -286,7 +294,9 @@ function tkgadm_render_dashboard_page() {
                                 <tr class="ip-row <?php echo $row_bg; ?>" data-ip="<?php echo esc_attr($row->ip_address); ?>" data-visits="<?php echo intval($row->total_visits); ?>" data-ad-clicks="<?php echo intval($row->ad_clicks); ?>">
                                     <td class="px-6 py-4 font-medium text-gray-900">
                                         <?php echo esc_html($row->ip_address); ?>
-                                        <?php if ($is_blocked): ?>
+                                        <?php if ($is_whitelisted): ?>
+                                            <span class="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800 status-badge" style="background-color: #cce5ff; color: #004085;">Whitelist</span>
+                                        <?php elseif ($is_blocked): ?>
                                             <span class="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800 status-badge">Banned</span>
                                         <?php endif; ?>
                                     </td>
@@ -308,13 +318,19 @@ function tkgadm_render_dashboard_page() {
                                         </div>
                                     </td>
                                     <td class="px-6 py-4 text-center">
-                                        <div class="tkgadm-switch mr-2">
-                                            <input type="checkbox" id="<?php echo esc_attr($toggle_id); ?>" class="toggle-block tkgadm-switch__input" data-ip="<?php echo esc_attr($row->ip_address); ?>" aria-label="Chặn địa chỉ IP <?php echo esc_attr($row->ip_address); ?>" <?php checked($is_blocked); ?>>
-                                            <label for="<?php echo esc_attr($toggle_id); ?>" class="tkgadm-switch__track"></label>
-                                        </div>
-                                        <span class="status-label text-xs font-semibold <?php echo $is_blocked ? 'text-red-600' : 'text-emerald-600'; ?>">
-                                            <?php echo $is_blocked ? 'Bị chặn' : 'Hoạt động'; ?>
-                                        </span>
+                                        <?php if ($is_whitelisted): ?>
+                                            <span class="status-label text-xs font-semibold" style="color: #0056b3;">
+                                                Đã Whitelist
+                                            </span>
+                                        <?php else: ?>
+                                            <div class="tkgadm-switch mr-2">
+                                                <input type="checkbox" id="<?php echo esc_attr($toggle_id); ?>" class="toggle-block tkgadm-switch__input" data-ip="<?php echo esc_attr($row->ip_address); ?>" aria-label="Chặn địa chỉ IP <?php echo esc_attr($row->ip_address); ?>" <?php checked($is_blocked); ?>>
+                                                <label for="<?php echo esc_attr($toggle_id); ?>" class="tkgadm-switch__track"></label>
+                                            </div>
+                                            <span class="status-label text-xs font-semibold <?php echo $is_blocked ? 'text-red-600' : 'text-emerald-600'; ?>">
+                                                <?php echo $is_blocked ? 'Bị chặn' : 'Hoạt động'; ?>
+                                            </span>
+                                        <?php endif; ?>
                                     </td>
                                 </tr>
                             <?php endforeach; ?>
@@ -845,7 +861,7 @@ function tkgadm_ajax_get_daily_details() {
     
     // 3. Check Blocked Status for all these IPs
     // phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-    $all_blocked_ips = $wpdb->get_col("SELECT ip_address FROM $table_blocked");
+    $all_whitelist_ips = $wpdb->get_col("SELECT ip_address FROM $table_whitelist");
     
     // 4. Group by IP
     $grouped_data = [];
@@ -883,6 +899,7 @@ function tkgadm_ajax_get_daily_details() {
         $grouped_data[] = [
             'ip_address' => $ip,
             'is_blocked' => in_array($ip, $all_blocked_ips),
+            'is_whitelist' => function_exists('tkgadm_is_ip_whitelisted') && tkgadm_is_ip_whitelisted($ip),
             'session_count' => $total_sessions,
             'last_visit' => $last_visit,
             'sessions' => $formatted_sessions,
