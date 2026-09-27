@@ -6,7 +6,7 @@
     <title>GAds Toolkit - Phần Mềm Chặn Click Tặc Google Ads Hiệu Quả 2026</title>
     <meta name="description" content="GAds Toolkit là phần mềm chặn click tặc Google Ads (click ảo) số 1 hiện nay. Bảo vệ ngân sách quảng cáo, tăng tỷ lệ chuyển đổi, loại bỏ đối thủ cạnh tranh xấu chơi.">
     <meta name="keywords" content="chặn click tặc, chặn click ảo, phần mềm chặn click tặc, chống click tặc google ads, bảo vệ ngân sách quảng cáo, gads toolkit">
-    <link rel="icon" type="image/svg+xml" href="favicon-landing.svg">
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
     <link rel="alternate icon" href="favicon-landing.svg">
     
     <!-- Open Graph / Facebook -->
@@ -215,20 +215,31 @@ html{scroll-behavior:smooth}
                     <div class="h-6 w-px bg-gray-300 ml-5"></div>
                     <img src="https://upload.wikimedia.org/wikipedia/commons/c/c7/Google_Ads_logo.svg" alt="Google Ads" class="h-6 w-auto object-contain">
                 </div>
-                <div class="hidden md:flex space-x-8 items-center">
-                    <a href="#tinh-nang" class="text-gray-600 hover:text-blue-600 font-medium transition-colors">Tính năng</a>
-                    <a href="#loi-ich" class="text-gray-600 hover:text-blue-600 font-medium transition-colors">Lợi ích</a>
+                <div class="hidden md:flex space-x-7 items-center">
                     <a href="#trai-nghiem" class="text-gray-600 hover:text-blue-600 font-medium transition-colors">Trải nghiệm</a>
+                    <a href="#tinh-nang" class="text-gray-600 hover:text-blue-600 font-medium transition-colors">Tính năng</a>
+                    <a href="#kien-thuc" class="text-gray-600 hover:text-blue-600 font-medium transition-colors">Kiến thức Ads</a>
                     <a href="#bang-gia" class="text-gray-600 hover:text-blue-600 font-medium transition-colors">Bảng giá</a>
-                    <a href="https://zalo.me/0961330088" data-contact-cta class="bg-blue-600 text-white px-6 py-2.5 rounded-full font-medium hover:bg-blue-700 transition-all shadow-md hover:shadow-lg transform hover:-translate-y-0.5">Dùng Thử Miễn Phí</a>
+                    <a href="#faq" class="text-gray-600 hover:text-blue-600 font-medium transition-colors">Hỏi đáp</a>
+                    <a href="https://zalo.me/0961330088" data-contact-cta class="bg-blue-600 text-white px-5 py-2.5 rounded-full font-medium hover:bg-blue-700 transition-all shadow-md hover:shadow-lg transform hover:-translate-y-0.5">Dùng Thử Miễn Phí</a>
                 </div>
                 <!-- Mobile menu button -->
                 <div class="md:hidden flex items-center">
-                    <button class="text-gray-600 hover:text-gray-900 focus:outline-none">
+                    <button id="mobile-menu-btn" class="text-gray-600 hover:text-gray-900 focus:outline-none p-2" aria-label="Menu">
                         <i class="fa-solid fa-bars text-2xl"></i>
                     </button>
                 </div>
             </div>
+        </div>
+
+        <!-- Mobile menu dropdown -->
+        <div id="mobile-menu" class="hidden md:hidden border-t border-gray-100 bg-white/95 backdrop-blur-md px-4 pt-3 pb-5 space-y-3">
+            <a href="#trai-nghiem" class="block text-gray-700 hover:text-blue-600 font-medium py-1">Trải nghiệm</a>
+            <a href="#tinh-nang" class="block text-gray-700 hover:text-blue-600 font-medium py-1">Tính năng</a>
+            <a href="#kien-thuc" class="block text-gray-700 hover:text-blue-600 font-medium py-1">Kiến thức Ads</a>
+            <a href="#bang-gia" class="block text-gray-700 hover:text-blue-600 font-medium py-1">Bảng giá</a>
+            <a href="#faq" class="block text-gray-700 hover:text-blue-600 font-medium py-1">Hỏi đáp</a>
+            <a href="https://zalo.me/0961330088" data-contact-cta class="block text-center bg-blue-600 text-white px-4 py-2.5 rounded-full font-medium mt-2">Dùng Thử Miễn Phí</a>
         </div>
     </nav>
 
@@ -1004,7 +1015,7 @@ html{scroll-behavior:smooth}
 
 
     <!-- SEO Content Section -->
-    <section class="py-20 bg-white">
+    <section id="loi-ich" class="py-20 bg-white">
         <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-gray-700">
             <h2 class="text-3xl font-bold text-gray-900 mb-6">Plugin WordPress chặn click ảo Google Ads hiệu quả nhất</h2>
             <p class="mb-6 leading-relaxed">GAds Toolkit là <a href="https://phudigital.github.io/gads-toolkit/#features" class="text-blue-600 hover:underline">plugin WordPress chặn click ảo Google Ads</a> được tin dùng bởi hàng trăm doanh nghiệp tại Việt Nam. Với công nghệ AI và machine learning tiên tiến, plugin giúp bạn phát hiện và chặn click ảo tự động, bảo vệ ngân sách quảng cáo khỏi các cuộc tấn công từ bot và đối thủ cạnh tranh.</p>
@@ -1077,7 +1088,8 @@ html{scroll-behavior:smooth}
     <!-- ========================================== -->
     <!-- SEO Deep-Dive Content (GAds Toolkit)      -->
     <!-- ========================================== -->
-    <div class="gseo-block" id="gads-seo-content">
+    <div class="gseo-block" id="kien-thuc">
+        <span id="gads-seo-content" class="sr-only"></span>
 <!-- SECTION 01 / SEO INTENT -->
   <section class="gseo-section gseo-section--bluewash">
     <div class="gseo-inner gseo-grid gseo-grid--2">
@@ -1286,7 +1298,7 @@ html{scroll-behavior:smooth}
   </section>
 
   <!-- SECTION 12 / FAQ -->
-  <section class="gseo-section gseo-section--soft">
+  <section id="faq" class="gseo-section gseo-section--soft">
     <div class="gseo-inner gseo-faqwrap">
       <div class="gseo-faqintro gseo-reveal">
         <div class="gseo-kicker">FAQ / Long-tail SEO</div>
@@ -1355,9 +1367,9 @@ html{scroll-behavior:smooth}
                 <div>
                     <h4 class="text-white font-semibold mb-4">Sản Phẩm</h4>
                     <ul class="space-y-2 text-sm">
-                        <li><a href="#" class="hover:text-blue-400 transition-colors">Tính năng chính</a></li>
-                        <li><a href="#" class="hover:text-blue-400 transition-colors">Bảng giá</a></li>
-                        <li><a href="#" class="hover:text-blue-400 transition-colors">Tích hợp</a></li>
+                        <li><a href="#tinh-nang" class="hover:text-blue-400 transition-colors">Tính năng chính</a></li>
+                        <li><a href="#bang-gia" class="hover:text-blue-400 transition-colors">Bảng giá</a></li>
+                        <li><a href="#trai-nghiem" class="hover:text-blue-400 transition-colors">Trải nghiệm Dashboard</a></li>
                         <li><a href="https://github.com/phudigital/gads-toolkit/blob/main/CHANGELOG.md" target="_blank" class="hover:text-blue-400 transition-colors">Cập nhật mới (Changelog)</a></li>
                     </ul>
                 </div>
@@ -1365,10 +1377,10 @@ html{scroll-behavior:smooth}
                 <div>
                     <h4 class="text-white font-semibold mb-4">Hỗ Trợ</h4>
                     <ul class="space-y-2 text-sm">
-                        <li><a href="#" class="hover:text-blue-400 transition-colors">Tài liệu hướng dẫn</a></li>
-                        <li><a href="#" class="hover:text-blue-400 transition-colors">Câu hỏi thường gặp (FAQ)</a></li>
-                        <li><a href="#" class="hover:text-blue-400 transition-colors">Liên hệ bộ phận Support</a></li>
-                        <li><a href="#" class="hover:text-blue-400 transition-colors">Blog / Kiến thức Ads</a></li>
+                        <li><a href="#loi-ich" class="hover:text-blue-400 transition-colors">Lợi ích vượt trội</a></li>
+                        <li><a href="#faq" class="hover:text-blue-400 transition-colors">Câu hỏi thường gặp (FAQ)</a></li>
+                        <li><a href="https://zalo.me/0961330088" target="_blank" class="hover:text-blue-400 transition-colors">Liên hệ bộ phận Support</a></li>
+                        <li><a href="#kien-thuc" class="hover:text-blue-400 transition-colors">Kiến thức chống click ảo</a></li>
                     </ul>
                 </div>
             </div>
@@ -1443,6 +1455,20 @@ html{scroll-behavior:smooth}
                 closeContactPopup();
             }
         });
+
+        // Mobile menu toggle
+        const mobileMenuBtn = document.getElementById('mobile-menu-btn');
+        const mobileMenu = document.getElementById('mobile-menu');
+        if (mobileMenuBtn && mobileMenu) {
+            mobileMenuBtn.addEventListener('click', () => {
+                mobileMenu.classList.toggle('hidden');
+            });
+            mobileMenu.querySelectorAll('a').forEach((link) => {
+                link.addEventListener('click', () => {
+                    mobileMenu.classList.add('hidden');
+                });
+            });
+        }
     </script>
 </body>
 </html>

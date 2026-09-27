@@ -72,6 +72,14 @@ export default {
         });
       }
 
+      // ── Static assets fallback ──
+      if (env.ASSETS) {
+        const assetResponse = await env.ASSETS.fetch(request);
+        if (assetResponse.status !== 404) {
+          return assetResponse;
+        }
+      }
+
       // ── 404 ──
       return errorResponse('Not found. Available routes: /api, /oauth, /admin', 404);
 

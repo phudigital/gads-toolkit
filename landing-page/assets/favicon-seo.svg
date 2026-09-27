@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="GAds Toolkit SEO Showcase">
+  <defs>
+    <linearGradient id="seoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#246bfd"/>
+      <stop offset="100%" stop-color="#11cbd7"/>
+    </linearGradient>
+    <filter id="seoShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="2" stdDeviation="2" flood-opacity="0.25"/>
+    </filter>
+  </defs>
+  <rect width="64" height="64" rx="16" fill="url(#seoGrad)"/>
+  <g filter="url(#seoShadow)">
+    <!-- Shield Border -->
+    <path d="M32 9 L49 16 V28 C49 40.5 41.5 48 32 53 C22.5 48 15 40.5 15 28 V16 Z" fill="#ffffff" fill-opacity="0.15" stroke="#ffffff" stroke-width="3" stroke-linejoin="round"/>
+    <!-- Search Magnifier -->
+    <circle cx="30" cy="27" r="8" fill="none" stroke="#ffffff" stroke-width="3"/>
+    <path d="m36 33 7 7" stroke="#ffffff" stroke-width="3.5" stroke-linecap="round"/>
+    <!-- Analytics / SEO Growth Pulse Bars inside lens -->
+    <rect x="25.5" y="27" width="2" height="4" rx="1" fill="#ffffff"/>
+    <rect x="29" y="24" width="2" height="7" rx="1" fill="#ffffff"/>
+    <rect x="32.5" y="22" width="2" height="9" rx="1" fill="#ffffff"/>
+  </g>
+</svg>

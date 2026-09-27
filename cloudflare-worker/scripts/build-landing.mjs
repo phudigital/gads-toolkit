@@ -54,9 +54,12 @@ await writeFile(docsUrl, output);
 await mkdir(docsAssetsDir, { recursive: true });
 await cp(landingAssetsDir, docsAssetsDir, { recursive: true });
 
-// Copy favicon to docs/
-const landingFavicon = new URL('../../landing-page/favicon-landing.svg', import.meta.url);
-const docsFavicon = new URL('../../docs/favicon-landing.svg', import.meta.url);
-await cp(landingFavicon, docsFavicon);
+// Copy favicons to public and docs/
+const favicons = ['favicon.svg', 'favicon-landing.svg'];
+for (const fav of favicons) {
+  const src = new URL(`../../landing-page/${fav}`, import.meta.url);
+  await cp(src, new URL(`../public/${fav}`, import.meta.url)).catch(() => {});
+  await cp(src, new URL(`../../docs/${fav}`, import.meta.url)).catch(() => {});
+}
 
 console.log(`Built landing page for v${APP_VERSION}, updated ${updatedDate} (synced to cloudflare-worker/public and docs/).`);

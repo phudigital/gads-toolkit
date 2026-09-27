@@ -1,7 +1,18 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="title">
-  <title>GAds Toolkit</title>
-  <rect width="64" height="64" rx="16" fill="#2563eb"/>
-  <path d="M32 10 49 16v14c0 11-7.2 19.8-17 24-9.8-4.2-17-13-17-24V16l17-6Z" fill="#fff" opacity=".96"/>
-  <path d="M32 18 42 22v8.2c0 6.5-3.9 11.8-10 15-6.1-3.2-10-8.5-10-15V22l10-4Z" fill="#dbeafe"/>
-  <path d="m27.3 31.7 3.1 3.1 6.5-7" fill="none" stroke="#2563eb" stroke-linecap="round" stroke-linejoin="round" stroke-width="4"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="GAds Toolkit">
+  <defs>
+    <linearGradient id="gadsGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#2563eb"/>
+      <stop offset="100%" stop-color="#059669"/>
+    </linearGradient>
+    <filter id="gadsShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="2" stdDeviation="2.5" flood-opacity="0.25"/>
+    </filter>
+  </defs>
+  <rect width="64" height="64" rx="16" fill="url(#gadsGrad)"/>
+  <g filter="url(#gadsShadow)">
+    <!-- Shield Base -->
+    <path d="M32 10 L48 17 V29 C48 40.5 41 47.5 32 52 C23 47.5 16 40.5 16 29 V17 Z" fill="none" stroke="#ffffff" stroke-width="3.5" stroke-linejoin="round"/>
+    <!-- Center Cursor Indicator -->
+    <path d="M28 23 L28 39 L32 35 L37 43 L40.5 41 L35.5 33 L41 33 Z" fill="#ffffff"/>
+  </g>
 </svg>
