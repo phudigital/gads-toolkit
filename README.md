@@ -119,16 +119,20 @@ Trải nghiệm đầy đủ các tính năng:
 
 ### Bước 1: Tải plugin
 
+- 🚀 **[Tải file gads-toolkit.zip mới nhất (v4.2.8)](https://github.com/phudigital/gads-toolkit/releases/latest/download/gads-toolkit.zip)**
+- 📦 **[Tải file gads-toolkit-4.2.8.zip](https://github.com/phudigital/gads-toolkit/releases/download/4.2.8/gads-toolkit-4.2.8.zip)**
+- 🌐 Hoặc xem tất cả phiên bản tại **[GitHub Releases](https://github.com/phudigital/gads-toolkit/releases)**
+
+Hoặc clone mã nguồn bằng Git:
 ```bash
 git clone https://github.com/phudigital/gads-toolkit.git
 ```
 
 ### Bước 2: Upload lên WordPress
 
-1. Nén thư mục `gads-toolkit` thành file `.zip`
-2. Vào **WordPress Admin → Plugins → Add New → Upload Plugin**
-3. Chọn file `.zip` và nhấn **Install Now**
-4. Nhấn **Activate Plugin**
+1. Vào **WordPress Admin → Plugins → Add New → Upload Plugin**
+2. Chọn file `.zip` vừa tải về và nhấn **Install Now**
+3. Nhấn **Activate Plugin**
 
 ### Bước 3: Cấu hình cơ bản
 
