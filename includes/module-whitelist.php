@@ -97,6 +97,8 @@ function tkgadm_is_ip_whitelisted($ip) {
  * @return bool|WP_Error   True nếu thêm thành công
  */
 function tkgadm_add_to_whitelist($ip, $reason = '', $added_by = 'manual') {
+    if (!tkgadm_license_is_valid()) { return new WP_Error('license_required', tkgadm_license_message()); }
+
     global $wpdb;
     $table = $wpdb->prefix . 'gads_toolkit_whitelist';
 
@@ -139,6 +141,8 @@ function tkgadm_add_to_whitelist($ip, $reason = '', $added_by = 'manual') {
  * @return bool
  */
 function tkgadm_remove_from_whitelist($id) {
+    if (!tkgadm_license_is_valid()) { return false; }
+
     global $wpdb;
     $table = $wpdb->prefix . 'gads_toolkit_whitelist';
     // phpcs:ignore WordPress.DB.DirectDatabaseQuery
@@ -162,6 +166,8 @@ function tkgadm_remove_from_whitelist($id) {
  * @return array|WP_Error
  */
 function tkgadm_get_google_ads_blocked_ips($access_token, $customer_id, $developer_token, $manager_id = '') {
+    if (!tkgadm_license_is_valid()) { return new WP_Error('license_required', tkgadm_license_message()); }
+
     $api_version = 'v25';
     $url = "https://googleads.googleapis.com/{$api_version}/customers/{$customer_id}/googleAds:searchStream";
 
@@ -225,6 +231,8 @@ function tkgadm_get_google_ads_blocked_ips($access_token, $customer_id, $develop
  * @return bool|WP_Error
  */
 function tkgadm_remove_google_ads_ips($access_token, $customer_id, $developer_token, $resource_names, $manager_id = '') {
+    if (!tkgadm_license_is_valid()) { return new WP_Error('license_required', tkgadm_license_message()); }
+
     if (empty($resource_names)) return true;
 
     $api_version = 'v25';
@@ -279,6 +287,8 @@ function tkgadm_remove_google_ads_ips($access_token, $customer_id, $developer_to
  * @return array               ['freed' => int, 'message' => string]
  */
 function tkgadm_smart_rotate_google_ads_ips($slots_needed = 50, $gads_limit = 500) {
+    if (!tkgadm_license_is_valid()) { return array('freed' => 0, 'message' => tkgadm_license_message()); }
+
     $use_central = tkgadm_is_using_central_service();
 
     // Central Service path: dùng list_ips / remove_ips qua proxy
@@ -410,6 +420,8 @@ function tkgadm_smart_rotate_google_ads_ips($slots_needed = 50, $gads_limit = 50
  * @return array
  */
 function tkgadm_smart_rotate_via_central_service($slots_needed = 50, $gads_limit = 500) {
+    if (!tkgadm_license_is_valid()) { return array('freed' => 0, 'message' => tkgadm_license_message()); }
+
     $gads_ips = tkgadm_list_ips_via_central_service();
     if (is_wp_error($gads_ips)) {
         return ['freed' => 0, 'message' => 'Lỗi lấy danh sách IP: ' . $gads_ips->get_error_message()];
@@ -497,6 +509,8 @@ function tkgadm_smart_rotate_via_central_service($slots_needed = 50, $gads_limit
  * @return array  ['added' => int, 'ips' => string[], 'message' => string]
  */
 function tkgadm_run_smart_whitelist_scan($threshold = null, $remove_from_gads = true) {
+    if (!tkgadm_license_is_valid()) { return array('added' => 0, 'ips' => array(), 'message' => tkgadm_license_message()); }
+
     // Lấy ngưỡng từ option nếu không truyền
     if ($threshold === null) {
         $threshold = (int) get_option('tkgadm_smart_wl_threshold', 30);
@@ -630,6 +644,8 @@ function tkgadm_run_smart_whitelist_scan($threshold = null, $remove_from_gads = 
  */
 add_action('tkgadm_auto_block_scan_event', 'tkgadm_hook_smart_whitelist_in_cron');
 function tkgadm_hook_smart_whitelist_in_cron() {
+    if (!tkgadm_license_is_valid()) { return; }
+
     if (get_option('tkgadm_smart_wl_enabled', '1')) {
         tkgadm_run_smart_whitelist_scan();
     }
@@ -640,6 +656,9 @@ function tkgadm_hook_smart_whitelist_in_cron() {
  */
 add_action('wp_ajax_tkgadm_smart_whitelist_scan', 'tkgadm_ajax_smart_whitelist_scan');
 function tkgadm_ajax_smart_whitelist_scan() {
+    if (!current_user_can('manage_options')) { wp_send_json_error('Không có quyền truy cập.', 403); return; }
+    if (!tkgadm_license_is_valid()) { wp_send_json_error(tkgadm_license_message(), 403); return; }
+
     check_ajax_referer('tkgadm_whitelist_nonce', 'nonce');
     if (!current_user_can('manage_options')) wp_send_json_error('Không có quyền.');
 
@@ -657,6 +676,9 @@ function tkgadm_ajax_smart_whitelist_scan() {
  */
 add_action('wp_ajax_tkgadm_smart_wl_save', 'tkgadm_ajax_smart_wl_save');
 function tkgadm_ajax_smart_wl_save() {
+    if (!current_user_can('manage_options')) { wp_send_json_error('Không có quyền truy cập.', 403); return; }
+    if (!tkgadm_license_is_valid()) { wp_send_json_error(tkgadm_license_message(), 403); return; }
+
     check_ajax_referer('tkgadm_whitelist_nonce', 'nonce');
     if (!current_user_can('manage_options')) wp_send_json_error('Không có quyền.');
 
@@ -678,6 +700,9 @@ function tkgadm_ajax_smart_wl_save() {
 /** Thêm IP vào whitelist */
 add_action('wp_ajax_tkgadm_whitelist_add', 'tkgadm_ajax_whitelist_add');
 function tkgadm_ajax_whitelist_add() {
+    if (!current_user_can('manage_options')) { wp_send_json_error('Không có quyền truy cập.', 403); return; }
+    if (!tkgadm_license_is_valid()) { wp_send_json_error(tkgadm_license_message(), 403); return; }
+
     check_ajax_referer('tkgadm_whitelist_nonce', 'nonce');
     if (!current_user_can('manage_options')) wp_send_json_error('Không có quyền.');
 
@@ -694,6 +719,9 @@ function tkgadm_ajax_whitelist_add() {
 /** Xóa IP khỏi whitelist */
 add_action('wp_ajax_tkgadm_whitelist_remove', 'tkgadm_ajax_whitelist_remove');
 function tkgadm_ajax_whitelist_remove() {
+    if (!current_user_can('manage_options')) { wp_send_json_error('Không có quyền truy cập.', 403); return; }
+    if (!tkgadm_license_is_valid()) { wp_send_json_error(tkgadm_license_message(), 403); return; }
+
     check_ajax_referer('tkgadm_whitelist_nonce', 'nonce');
     if (!current_user_can('manage_options')) wp_send_json_error('Không có quyền.');
 
@@ -724,6 +752,9 @@ function tkgadm_ajax_whitelist_remove() {
 /** Chạy Smart Rotation thủ công */
 add_action('wp_ajax_tkgadm_smart_rotate', 'tkgadm_ajax_smart_rotate');
 function tkgadm_ajax_smart_rotate() {
+    if (!current_user_can('manage_options')) { wp_send_json_error('Không có quyền truy cập.', 403); return; }
+    if (!tkgadm_license_is_valid()) { wp_send_json_error(tkgadm_license_message(), 403); return; }
+
     check_ajax_referer('tkgadm_whitelist_nonce', 'nonce');
     if (!current_user_can('manage_options')) wp_send_json_error('Không có quyền.');
 
@@ -739,6 +770,8 @@ function tkgadm_ajax_smart_rotate() {
  */
 
 function tkgadm_render_whitelist_page() {
+    if (!tkgadm_license_is_valid()) { tkgadm_render_license_lock(); return; }
+
     if (!current_user_can('manage_options')) return;
 
     global $wpdb;

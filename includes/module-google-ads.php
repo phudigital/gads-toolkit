@@ -36,6 +36,8 @@ function tkgadm_get_gads_connection_mode() {
 
 /** List blocked IPs using the same connection as uploads. */
 function tkgadm_list_connected_google_ads_ips() {
+    if (!tkgadm_license_is_valid()) { return new WP_Error('license_required', tkgadm_license_message()); }
+
     $mode = tkgadm_get_gads_connection_mode();
     if ($mode === 'central') return tkgadm_list_ips_via_central_service();
     if (!$mode) return new WP_Error('missing_config', 'Vui lòng kiểm tra kết nối Google Ads và Customer ID trong Cấu hình & Tích hợp.');
@@ -47,6 +49,8 @@ function tkgadm_list_connected_google_ads_ips() {
 
 /** Remove selected criteria using the configured connection. */
 function tkgadm_remove_connected_google_ads_ips($resource_names) {
+    if (!tkgadm_license_is_valid()) { return new WP_Error('license_required', tkgadm_license_message()); }
+
     $mode = tkgadm_get_gads_connection_mode();
     if ($mode === 'central') return tkgadm_remove_ips_via_central_service($resource_names);
     if (!$mode) return new WP_Error('missing_config', 'Vui lòng kiểm tra kết nối Google Ads và Customer ID trong Cấu hình & Tích hợp.');
@@ -189,35 +193,8 @@ function tkgadm_get_central_service_api_key() {
  * @return bool|WP_Error True if valid, WP_Error if invalid
  */
 function tkgadm_validate_api_key($api_key) {
-    $service_url = defined('GADS_SERVICE_URL') ? GADS_SERVICE_URL : get_option('tkgadm_central_service_url');
-
-    if (empty($service_url)) {
-        $service_url = 'https://pdl.vn/gads-toolkit/';
-    }
-
-    // Try to get credentials with this key (health check)
-    $url = add_query_arg('api_key', $api_key, trailingslashit($service_url) . 'api/?action=health');
-
-    $response = wp_remote_get($url, array(
-        'timeout' => 10
-    ));
-
-    if (is_wp_error($response)) {
-        return new WP_Error('connection_error', 'Không thể kết nối đến pdl.vn. Vui lòng kiểm tra kết nối internet.');
-    }
-
-    $code = wp_remote_retrieve_response_code($response);
-    $data = json_decode(wp_remote_retrieve_body($response), true);
-
-    if ($code === 401 || $code === 403) {
-        return new WP_Error('invalid_key', 'API Key không hợp lệ hoặc đã hết hạn. Vui lòng liên hệ phu@pdl.vn để gia hạn.');
-    }
-
-    if ($code !== 200 || !isset($data['success']) || !$data['success']) {
-        return new WP_Error('validation_failed', 'Không thể xác thực API Key. Vui lòng thử lại.');
-    }
-
-    return true;
+    $status = tkgadm_license_status(true, $api_key);
+    return $status['valid'] ? true : new WP_Error('invalid_key', $status['message']);
 }
 
 
@@ -227,6 +204,8 @@ function tkgadm_validate_api_key($api_key) {
  * @return array|WP_Error Credentials or error
  */
 function tkgadm_get_central_service_credentials() {
+    if (!tkgadm_license_is_valid()) { return new WP_Error('license_required', tkgadm_license_message()); }
+
     $service_url = defined('GADS_SERVICE_URL') ? GADS_SERVICE_URL : get_option('tkgadm_central_service_url');
     $api_key = tkgadm_get_central_service_api_key();
 
@@ -234,10 +213,12 @@ function tkgadm_get_central_service_credentials() {
         return new WP_Error('missing_service_config', 'Central service not configured');
     }
 
-    // Send API Key via URL parameter for better server compatibility
-    $url = add_query_arg('api_key', $api_key, trailingslashit($service_url) . 'api/?action=get_credentials');
+    // Keep license and installation credentials in headers, never in URLs.
+    $url = trailingslashit($service_url) . 'api?action=get_credentials';
 
     $response = wp_remote_get($url, array(
+        'headers' => tkgadm_service_headers($api_key),
+        'redirection' => 0,
         'timeout' => 15
     ));
 
@@ -261,15 +242,16 @@ function tkgadm_get_central_service_credentials() {
  * @return array|WP_Error Token data or error
  */
 function tkgadm_exchange_code_via_service($code) {
+    if (!tkgadm_license_is_valid()) { return new WP_Error('license_required', tkgadm_license_message()); }
+
     $service_url = defined('GADS_SERVICE_URL') ? GADS_SERVICE_URL : get_option('tkgadm_central_service_url');
     $api_key = tkgadm_get_central_service_api_key();
 
-    $url = add_query_arg('api_key', $api_key, trailingslashit($service_url) . 'api/?action=exchange_code');
+    $url = trailingslashit($service_url) . 'api?action=exchange_code';
 
     $response = wp_remote_post($url, array(
-        'headers' => array(
-            'Content-Type' => 'application/json'
-        ),
+        'headers' => tkgadm_service_headers($api_key, array('Content-Type' => 'application/json')),
+        'redirection' => 0,
         'body' => json_encode(array('code' => $code)),
         'timeout' => 30
     ));
@@ -291,6 +273,8 @@ function tkgadm_exchange_code_via_service($code) {
  * Get Access Token from Refresh Token
  */
 function tkgadm_get_google_access_token() {
+    if (!tkgadm_license_is_valid()) { return new WP_Error('license_required', tkgadm_license_message()); }
+
     // Note: When using central service, we don't need to get access token separately
     // The central service handles this internally during sync_ips
 
@@ -352,6 +336,8 @@ function tkgadm_normalize_google_ads_ip($ip) {
  * Sync IPs to Google Ads (Account Level)
  */
 function tkgadm_sync_ip_to_google_ads($ips_to_block, $skip_auto_rotate = false) {
+    if (!tkgadm_license_is_valid()) { return array('success' => false, 'message' => tkgadm_license_message()); }
+
     if (empty($ips_to_block)) {
         return ['success' => true, 'message' => 'Không có IP nào cần đồng bộ.'];
     }
@@ -379,8 +365,7 @@ function tkgadm_sync_ip_to_google_ads($ips_to_block, $skip_auto_rotate = false) 
             
             // 2. Thực hiện Full Sync nếu Auto-Sync đang bật
             if (get_option('tkgadm_gads_auto_sync', '1') === '1') {
-                tkgadm_do_full_sync_google_ads();
-                return ['success' => true, 'message' => "Đã kích hoạt Full Sync do danh sách vượt ngưỡng {$ar_threshold}."];
+                return tkgadm_do_full_sync_google_ads();
             }
         }
     }
@@ -557,6 +542,8 @@ function tkgadm_sync_ip_to_google_ads($ips_to_block, $skip_auto_rotate = false) 
  * @return array Result array with success status and message
  */
 function tkgadm_sync_via_central_service($ips_to_block) {
+    if (!tkgadm_license_is_valid()) { return array('success' => false, 'message' => tkgadm_license_message()); }
+
     $service_url = defined('GADS_SERVICE_URL') ? GADS_SERVICE_URL : get_option('tkgadm_central_service_url');
     $api_key = tkgadm_get_central_service_api_key();
     $ids = tkgadm_get_gads_ids();
@@ -573,12 +560,11 @@ function tkgadm_sync_via_central_service($ips_to_block) {
         return ['success' => false, 'message' => 'Manager ID không hợp lệ. Hãy nhập đủ 10 chữ số, có thể có dấu gạch ngang.'];
     }
 
-    $url = add_query_arg('api_key', $api_key, trailingslashit($service_url) . 'api/?action=sync_ips');
+    $url = trailingslashit($service_url) . 'api?action=sync_ips';
 
     $response = wp_remote_post($url, array(
-        'headers' => array(
-            'Content-Type' => 'application/json'
-        ),
+        'headers' => tkgadm_service_headers($api_key, array('Content-Type' => 'application/json')),
+        'redirection' => 0,
         'body' => json_encode(array(
             'customer_id' => $customer_id,
             'manager_id' => $manager_id,
@@ -611,6 +597,8 @@ function tkgadm_sync_via_central_service($ips_to_block) {
  * @return array|WP_Error Array of ['resource_name'=>string,'ip_address'=>string] or WP_Error
  */
 function tkgadm_list_ips_via_central_service() {
+    if (!tkgadm_license_is_valid()) { return new WP_Error('license_required', tkgadm_license_message()); }
+
     $service_url = defined('GADS_SERVICE_URL') ? GADS_SERVICE_URL : get_option('tkgadm_central_service_url');
     $api_key = tkgadm_get_central_service_api_key();
     $ids = tkgadm_get_gads_ids();
@@ -619,10 +607,11 @@ function tkgadm_list_ips_via_central_service() {
         return new WP_Error('missing_config', 'Thiếu Customer ID hoặc chưa kết nối Google Ads.');
     }
 
-    $url = add_query_arg('api_key', $api_key, trailingslashit($service_url) . 'api/?action=list_ips');
+    $url = trailingslashit($service_url) . 'api?action=list_ips';
 
     $response = wp_remote_post($url, [
-        'headers' => ['Content-Type' => 'application/json'],
+        'headers' => tkgadm_service_headers($api_key, array('Content-Type' => 'application/json')),
+        'redirection' => 0,
         'body'    => json_encode([
             'customer_id'   => $ids['customer_id'],
             'manager_id'    => $ids['manager_id'],
@@ -655,16 +644,19 @@ function tkgadm_list_ips_via_central_service() {
  * @return true|WP_Error
  */
 function tkgadm_remove_ips_via_central_service($resource_names) {
+    if (!tkgadm_license_is_valid()) { return new WP_Error('license_required', tkgadm_license_message()); }
+
     if (empty($resource_names)) return true;
 
     $service_url = defined('GADS_SERVICE_URL') ? GADS_SERVICE_URL : get_option('tkgadm_central_service_url');
     $api_key = tkgadm_get_central_service_api_key();
     $ids = tkgadm_get_gads_ids();
 
-    $url = add_query_arg('api_key', $api_key, trailingslashit($service_url) . 'api/?action=remove_ips');
+    $url = trailingslashit($service_url) . 'api?action=remove_ips';
 
     $response = wp_remote_post($url, [
-        'headers' => ['Content-Type' => 'application/json'],
+        'headers' => tkgadm_service_headers($api_key, array('Content-Type' => 'application/json')),
+        'redirection' => 0,
         'body'    => json_encode([
             'customer_id'    => $ids['customer_id'],
             'manager_id'     => $ids['manager_id'],
@@ -692,14 +684,20 @@ function tkgadm_remove_ips_via_central_service($resource_names) {
  * Main Sync Function (Called by Cron or Manual)
  */
 function tkgadm_do_sync_process() {
+    if (!tkgadm_license_is_valid()) { return array('success' => false, 'message' => tkgadm_license_message()); }
+
     global $wpdb;
     $blocking_table = $wpdb->prefix . 'gads_toolkit_blocked';
 
     // Lấy giới hạn IP từ cài đặt Smart Rotation (mặc định 500)
-    $max_ips = (int) get_option('tkgadm_rotation_max_ips', 500);
+    $max_ips = max(1, min(500, (int) get_option('tkgadm_rotation_max_ips', 500)));
 
     // phpcs:ignore WordPress.DB.DirectDatabaseQuery
     $blocked_ips = $wpdb->get_col("SELECT ip_address FROM $blocking_table ORDER BY blocked_time DESC LIMIT $max_ips");
+
+    if ($wpdb->last_error || !is_array($blocked_ips)) {
+        return array('success' => false, 'message' => 'Không đọc được danh sách IP local; chưa thay đổi Google Ads.');
+    }
 
     // The blocked table has a unique IP constraint, but de-duplicate defensively
     // so a manual upload can never send the same address more than once.
@@ -732,6 +730,8 @@ function tkgadm_do_sync_process() {
  */
 
 function tkgadm_render_google_ads_page() {
+    if (!tkgadm_license_is_valid()) { tkgadm_render_license_lock(); return; }
+
     // 1. Handle OAuth Callback
     // Only process if NOT saving settings to avoid double-processing expired codes
     if (isset($_GET['code']) && !isset($_POST['tkgadm_gads_save'])) {
@@ -1243,6 +1243,9 @@ function tkgadm_render_google_ads_page() {
  */
 add_action('wp_ajax_tkgadm_manual_sync_gads', 'tkgadm_ajax_manual_sync_gads');
 function tkgadm_ajax_manual_sync_gads() {
+    if (!current_user_can('manage_options')) { wp_send_json_error('Không có quyền truy cập.', 403); return; }
+    if (!tkgadm_license_is_valid()) { wp_send_json_error(tkgadm_license_message(), 403); return; }
+
     check_ajax_referer('tkgadm_sync_gads', 'nonce');
 
     if (!current_user_can('manage_options')) {
@@ -1267,6 +1270,8 @@ function tkgadm_ajax_manual_sync_gads() {
  */
 add_action('tkgadm_hourly_sync_event', 'tkgadm_handle_hourly_sync');
 function tkgadm_handle_hourly_sync() {
+    if (!tkgadm_license_is_valid()) { return; }
+
     if (!get_option('tkgadm_auto_sync_hourly')) {
         return;
     }
@@ -1290,11 +1295,12 @@ function tkgadm_register_site_heartbeat($api_key = null) {
     if (empty($api_key) || empty($service_url)) return;
 
     // Register URL
-    $url = add_query_arg('api_key', $api_key, trailingslashit($service_url) . 'api/?action=register_site');
+    $url = trailingslashit($service_url) . 'api?action=register_site';
 
     wp_remote_post($url, array(
-        'headers' => array('Content-Type' => 'application/json'),
-        'body' => json_encode(array('site_url' => home_url())),
+        'headers' => tkgadm_service_headers($api_key, array('Content-Type' => 'application/json')),
+        'redirection' => 0,
+        'body' => json_encode(array('site_url' => tkgadm_license_site_url())),
         'timeout' => 5,
         'blocking' => false // Fire and forget
     ));
@@ -1304,6 +1310,8 @@ function tkgadm_register_site_heartbeat($api_key = null) {
  * Xóa sạch IP trên Google Ads và đồng bộ lại toàn bộ danh sách từ local DB
  */
 function tkgadm_do_full_sync_google_ads() {
+    if (!tkgadm_license_is_valid()) { return array('success' => false, 'message' => tkgadm_license_message()); }
+
     if (!tkgadm_get_gads_connection_mode()) {
         return ['success' => false, 'message' => 'Vui lòng kiểm tra kết nối Google Ads và Customer ID.'];
     }
@@ -1312,7 +1320,7 @@ function tkgadm_do_full_sync_google_ads() {
     global $wpdb;
     $blocked_table = $wpdb->prefix . 'gads_toolkit_blocked';
     $local_ips = $wpdb->get_col("SELECT ip_address FROM $blocked_table");
-    if ($wpdb->last_error) {
+    if ($wpdb->last_error || !is_array($local_ips)) {
         return ['success' => false, 'message' => 'Không đọc được danh sách IP local; chưa thay đổi Google Ads.'];
     }
     if (function_exists('tkgadm_is_ip_whitelisted')) {

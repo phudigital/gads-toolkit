@@ -1,5 +1,6 @@
 import { hashAdminToken, verifyAdminToken, verifyAdminTokenValue } from './auth.js';
 import { logActivity } from './utils.js';
+import { normalizeLicenseDomain } from './license-domain.js';
 import { APP_VERSION } from './version.js';
 
 const TURNSTILE_VERIFY_URL = 'https://challenges.cloudflare.com/turnstile/v0/siteverify';
@@ -178,9 +179,11 @@ export async function handleAdminRequest(request, env, path) {
       const { key, domain, label, expires_at, active } = body;
 
       if (!key) return jsonResponse({ error: 'Key is required' }, 400);
+      const licenseDomain = normalizeLicenseDomain(domain);
+      if (!licenseDomain) return jsonResponse({ error: 'Nhập một domain công khai hợp lệ, ví dụ abc.com; không dùng wildcard hoặc đường dẫn.' }, 400);
 
       const licenseData = {
-        domain: domain || '',
+        domain: licenseDomain,
         label: label || '',
         expires_at: expires_at || null,
         active: active !== undefined ? active : true,
@@ -207,6 +210,9 @@ export async function handleAdminRequest(request, env, path) {
 
       const existing = JSON.parse(existingStr);
       const updated = { ...existing, ...body };
+      const licenseDomain = normalizeLicenseDomain(updated.domain);
+      if (!licenseDomain) return jsonResponse({ error: 'License cần một domain công khai hợp lệ.' }, 400);
+      updated.domain = licenseDomain;
       // Prevent created_at override if not needed, but body could have it.
       // We just merge.
 
@@ -1089,8 +1095,8 @@ function getDashboardHTML({ turnstileSiteKey, turnstileEnabled }) {
                     </div>
                 </div>
                 <div class="input-group">
-                    <label>Domain áp dụng</label>
-                    <input type="text" id="lic-domain" placeholder="example.com">
+                    <label>Domain áp dụng (bắt buộc)</label>
+                    <input type="text" id="lic-domain" placeholder="example.com" required>
                 </div>
                 <div class="input-group">
                     <label>Nhãn (Label)</label>

@@ -43,6 +43,8 @@ function tkgadm_get_table_count($table_name) {
  */
 
 function tkgadm_render_maintenance_page() {
+    if (!tkgadm_license_is_valid()) { tkgadm_render_license_lock(); return; }
+
     global $wpdb;
     $table_stats = $wpdb->prefix . 'gads_toolkit_stats';
     $table_blocked = $wpdb->prefix . 'gads_toolkit_blocked';
@@ -1085,6 +1087,9 @@ function tkgadm_render_maintenance_page() {
 
 add_action('wp_ajax_tkgadm_get_blocked_ips', 'tkgadm_ajax_get_blocked_ips');
 function tkgadm_ajax_get_blocked_ips() {
+    if (!current_user_can('manage_options')) { wp_send_json_error('Không có quyền truy cập.', 403); return; }
+    if (!tkgadm_license_is_valid()) { wp_send_json_error(tkgadm_license_message(), 403); return; }
+
     check_ajax_referer('tkgadm_data_nonce', 'nonce');
     
     if (!current_user_can('manage_options')) {
@@ -1152,6 +1157,9 @@ function tkgadm_ajax_get_blocked_ips() {
 
 add_action('wp_ajax_tkgadm_delete_data', 'tkgadm_ajax_delete_data');
 function tkgadm_ajax_delete_data() {
+    if (!current_user_can('manage_options')) { wp_send_json_error('Không có quyền truy cập.', 403); return; }
+    if (!tkgadm_license_is_valid()) { wp_send_json_error(tkgadm_license_message(), 403); return; }
+
     check_ajax_referer('tkgadm_delete_nonce', 'nonce');
     
     if (!current_user_can('manage_options')) {

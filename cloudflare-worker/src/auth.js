@@ -7,6 +7,7 @@
  */
 
 import { errorResponse, kvListByPrefix } from './utils.js';
+import { verifyLicenseDomain } from './license-domain.js';
 
 const LICENSE_ERROR_MESSAGE = 'Khóa API không hợp lệ. Vui lòng gia hạn hoặc mua giấy phép mới tại https://gads.pdl.vn';
 
@@ -18,9 +19,10 @@ const LICENSE_ERROR_MESSAGE = 'Khóa API không hợp lệ. Vui lòng gia hạn 
  *
  * @param {Request} request
  * @param {Object} env
+ * @param {boolean} requireLicense Reject legacy/master-only keys for paid activation.
  * @returns {Response|null} - Returns error Response if invalid, null if valid
  */
-export async function verifyApiKey(request, env) {
+export async function verifyApiKey(request, env, requireLicense = false) {
   // Extract API key from header or query param
   const url = new URL(request.url);
   let apiKey = request.headers.get('X-API-Key') || '';
@@ -35,8 +37,8 @@ export async function verifyApiKey(request, env) {
 
   // 1. Check legacy/master key
   const legacyKey = await env.GADS_KV.get('config:legacy_api_key');
-  if (legacyKey && apiKey === legacyKey) {
-    return null; // Valid
+  if (!requireLicense && legacyKey && apiKey === legacyKey) {
+    return checkRateLimit(request, env); // Legacy transport compatibility; never paid activation.
   }
 
   // 2. Check licensed keys
@@ -50,23 +52,26 @@ export async function verifyApiKey(request, env) {
     }
 
     // Check active status
-    if (!license.active) {
+    if (!license || typeof license !== 'object' || license.active !== true) {
       return errorResponse(LICENSE_ERROR_MESSAGE, 403);
     }
 
     // Check expiration
     if (license.expires_at) {
       const expiry = new Date(license.expires_at);
-      if (expiry < new Date()) {
+      if (!Number.isFinite(expiry.getTime()) || expiry <= new Date()) {
         return errorResponse(LICENSE_ERROR_MESSAGE, 403);
       }
     }
 
-    return null; // Valid
+    // Rate-limit before DNS/callback work to bound verification abuse with a copied key.
+    const rateLimitError = await checkRateLimit(request, env);
+    if (rateLimitError) return rateLimitError;
+    return verifyLicenseDomain(request, env, license, apiKey);
   }
 
   // 3. Invalid key
-  console.warn(`Invalid API key attempt: ${apiKey.substring(0, 8)}... from IP: ${request.headers.get('CF-Connecting-IP')}`);
+  console.warn('Invalid API key attempt');
   return errorResponse(LICENSE_ERROR_MESSAGE, 401);
 }
 

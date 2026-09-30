@@ -7,6 +7,7 @@ class GoogleAdsConnectionTest extends TestCase {
     protected function setUp(): void {
         parent::setUp();
         Monkey\setUp();
+        Functions\when('tkgadm_license_is_valid')->justReturn(true);
         require_once dirname(__DIR__, 2) . '/includes/module-google-ads.php';
     }
     protected function tearDown(): void {

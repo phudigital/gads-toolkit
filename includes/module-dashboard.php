@@ -13,6 +13,8 @@ if (!defined('ABSPATH')) exit;
  * ============================================================================
  */
 function tkgadm_render_dashboard_page() {
+    if (!tkgadm_license_is_valid()) { tkgadm_render_license_lock(); return; }
+
     global $wpdb;
     $table_stats = $wpdb->prefix . 'gads_toolkit_stats';
     $table_blocked = $wpdb->prefix . 'gads_toolkit_blocked';
@@ -411,6 +413,9 @@ function tkgadm_render_dashboard_page() {
  */
 add_action('wp_ajax_tkgadm_toggle_block_ip', 'tkgadm_ajax_toggle_block_ip');
 function tkgadm_ajax_toggle_block_ip() {
+    if (!current_user_can('manage_options')) { wp_send_json_error('Không có quyền truy cập.', 403); return; }
+    if (!tkgadm_license_is_valid()) { wp_send_json_error(tkgadm_license_message(), 403); return; }
+
     check_ajax_referer('tkgadm_nonce', 'nonce');
     
     if (!current_user_can('manage_options')) {
@@ -510,6 +515,9 @@ function tkgadm_ajax_toggle_block_ip() {
  */
 add_action('wp_ajax_tkgadm_get_chart_data', 'tkgadm_ajax_get_chart_data');
 function tkgadm_ajax_get_chart_data() {
+    if (!current_user_can('manage_options')) { wp_send_json_error('Không có quyền truy cập.', 403); return; }
+    if (!tkgadm_license_is_valid()) { wp_send_json_error(tkgadm_license_message(), 403); return; }
+
     check_ajax_referer('tkgadm_chart', 'nonce');
     
     if (!current_user_can('manage_options')) {
@@ -554,6 +562,9 @@ function tkgadm_ajax_get_chart_data() {
  */
 add_action('wp_ajax_tkgadm_get_visit_details', 'tkgadm_ajax_get_visit_details');
 function tkgadm_ajax_get_visit_details() {
+    if (!current_user_can('manage_options')) { wp_send_json_error('Không có quyền truy cập.', 403); return; }
+    if (!tkgadm_license_is_valid()) { wp_send_json_error(tkgadm_license_message(), 403); return; }
+
     check_ajax_referer('tkgadm_chart', 'nonce');
     
     if (!current_user_can('manage_options')) {
@@ -604,11 +615,24 @@ function tkgadm_ajax_get_visit_details() {
 add_action('wp_ajax_nopriv_tkgadm_update_time_on_page', 'tkgadm_ajax_update_time_on_page');
 add_action('wp_ajax_tkgadm_update_time_on_page', 'tkgadm_ajax_update_time_on_page');
 function tkgadm_ajax_update_time_on_page() {
+    if (!tkgadm_license_is_valid()) { wp_send_json_error(tkgadm_license_message(), 403); return; }
+
     if (!isset($_POST['ip']) || !isset($_POST['url']) || !isset($_POST['time'])) {
         wp_send_json_error('Missing parameters');
         return;
     }
     
+    // Public payloads must be scalar and bounded before WordPress sanitizers/casts.
+    foreach (array('ip' => 45, 'url' => 4096, 'time' => 10, 'user_agent' => 1024, 'gclid' => 1024) as $field => $limit) {
+        if (isset($_POST[$field]) && (!is_string($_POST[$field]) || strlen($_POST[$field]) > $limit)) {
+            wp_send_json_error('Invalid tracking payload', 400); return;
+        }
+    }
+    if (!filter_var($_POST['ip'], FILTER_VALIDATE_IP) || !ctype_digit($_POST['time'])
+        || (int) $_POST['time'] > 604800) {
+        wp_send_json_error('Invalid tracking payload', 400); return;
+    }
+
     global $wpdb;
     $table = $wpdb->prefix . 'gads_toolkit_stats';
     
@@ -661,6 +685,9 @@ function tkgadm_ajax_update_time_on_page() {
  */
 add_action('wp_ajax_tkgadm_get_daily_stats', 'tkgadm_ajax_get_daily_stats');
 function tkgadm_ajax_get_daily_stats() {
+    if (!current_user_can('manage_options')) { wp_send_json_error('Không có quyền truy cập.', 403); return; }
+    if (!tkgadm_license_is_valid()) { wp_send_json_error(tkgadm_license_message(), 403); return; }
+
     check_ajax_referer('tkgadm_nonce', 'nonce');
     
     if (!current_user_can('manage_options')) {
@@ -776,6 +803,9 @@ function tkgadm_ajax_get_daily_stats() {
  */
 add_action('wp_ajax_tkgadm_get_daily_details', 'tkgadm_ajax_get_daily_details');
 function tkgadm_ajax_get_daily_details() {
+    if (!current_user_can('manage_options')) { wp_send_json_error('Không có quyền truy cập.', 403); return; }
+    if (!tkgadm_license_is_valid()) { wp_send_json_error(tkgadm_license_message(), 403); return; }
+
     check_ajax_referer('tkgadm_nonce', 'nonce');
     
     if (!current_user_can('manage_options')) {

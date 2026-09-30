@@ -208,6 +208,7 @@ function tkgadm_validate_ip_pattern($pattern) {
  * Kiểm tra IP có bị chặn không
  */
 function tkgadm_is_ip_blocked($ip) {
+    if (!tkgadm_license_is_valid()) { return false; }
     global $wpdb;
     $table = $wpdb->prefix . 'gads_toolkit_blocked';
     
@@ -249,6 +250,8 @@ function tkgadm_is_ip_blocked($ip) {
  * Returns true if newly blocked, false if already blocked or error
  */
 function tkgadm_block_ip_internal($ip, $reason = '') {
+    if (!tkgadm_license_is_valid()) { return false; }
+
     global $wpdb;
     $table = $wpdb->prefix . 'gads_toolkit_blocked';
     $stats_table = $wpdb->prefix . 'gads_toolkit_stats';
@@ -294,6 +297,8 @@ function tkgadm_block_ip_internal($ip, $reason = '') {
  */
 add_action('wp_head', 'tkgadm_track_visit');
 function tkgadm_track_visit() {
+    if (!tkgadm_license_is_valid()) { return; }
+
     if (is_admin()) return;
 
     global $wpdb;
@@ -406,6 +411,8 @@ function tkgadm_track_visit() {
  * Kiểm tra IP ngay lập tức theo Rules (Real-time Auto Block)
  */
 function tkgadm_check_ip_instant($ip) {
+    if (!tkgadm_license_is_valid()) { return; }
+
     $rules = get_option('tkgadm_auto_block_rules', []);
     if (empty($rules) || !is_array($rules)) {
         return;
@@ -468,6 +475,8 @@ function tkgadm_check_ip_instant($ip) {
  */
 add_action('wp_enqueue_scripts', 'tkgadm_enqueue_time_tracker');
 function tkgadm_enqueue_time_tracker() {
+    if (!tkgadm_license_is_valid()) { return; }
+
     // Kiểm tra và loại bỏ Bot
     $user_agent = isset($_SERVER['HTTP_USER_AGENT']) ? sanitize_textarea_field(wp_unslash($_SERVER['HTTP_USER_AGENT'])) : '';
     $bots = array('bot', 'crawl', 'spider', 'slurp', 'mediapartners', 'facebookexternalhit', 'whatsapp', 'curl', 'wget', 'python', 'java', 'go-http');
@@ -630,6 +639,8 @@ function tkgadm_add_cron_interval($schedules) {
  */
 add_action('tkgadm_auto_block_scan_event', 'tkgadm_run_auto_block_scan');
 function tkgadm_run_auto_block_scan() {
+    if (!tkgadm_license_is_valid()) { return; }
+
     if (!get_option('tkgadm_auto_block_enabled')) {
         return;
     }
@@ -719,6 +730,8 @@ function tkgadm_run_auto_block_scan() {
  * Gửi thông báo khi có IP bị chặn tự động
  */
 function tkgadm_send_auto_block_notification($blocked_ips_data) {
+    if (!tkgadm_license_is_valid()) { return; }
+
     if (empty($blocked_ips_data)) return;
 
     $count = count($blocked_ips_data);

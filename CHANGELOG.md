@@ -2,6 +2,33 @@
 
 All notable changes to **GAds Toolkit - Phần mềm chống click ảo Google Ads** will be documented in this file.
 
+## [4.2.10] - 2026-09-30
+
+### Đồng bộ phát hành
+- Đồng bộ phiên bản plugin, Worker, package-lock và link tải trên GitHub.
+- Phát hành gói GitHub và updater cùng nội dung runtime; giữ nguyên gói 4.2.9 đã publish.
+
+## [4.2.9] - 2026-09-30
+
+### Ràng buộc license theo domain
+- Giữ tương thích hạn license dạng timestamp millisecond hiện có; response updater/license chuẩn hóa hạn sang ISO cho WordPress.
+- License cần domain công khai hợp lệ; bare domain và `www` được coi là một domain, subdomain khác không tự được phép.
+- Xác minh cài đặt WordPress bằng challenge HMAC qua endpoint REST chỉ đọc; không tin `Origin` hoặc domain do client tự khai báo.
+- Yêu cầu HTTPS, giữ đường dẫn cài đặt, không theo redirect; kiểm tra DNS công khai, giới hạn response/timeout và rate limit trước callback.
+- Các API dùng License Key đều kiểm tra domain; cache ownership 5 phút không vượt qua kiểm tra active/expiry. Master key giữ tương thích transport cũ nhưng không mở khóa plugin trả phí.
+- Plugin gửi key/mã cài đặt qua header và cache license theo key + site + mã cài đặt; đổi domain hoặc clone site không dùng lại cache của website cũ.
+- Khi triển khai cần điền domain cho license cũ và cập nhật plugin cùng Worker. Website HTTP/local hoặc REST API bị chặn sẽ không xác minh được.
+
+### Kiểm tra tương thích và bảo mật
+- Giữ đúng kiểu trả về khi license khóa để tránh lỗi PHP ở sync/rotation/whitelist; kiểm tra quyền quản trị trước khi gọi xác thực license.
+- Kiểm tra dữ liệu license/cache, giới hạn payload tracking và hiển thị lỗi IP manager bằng text để tránh chèn HTML.
+- Báo lỗi đọc DB khi upload và trả kết quả thực của Full Sync trong auto-cleanup.
+
+### License bắt buộc
+- Khóa tracking, chặn IP, AJAX nghiệp vụ, Google Ads Direct/Central, rotation, whitelist và thông báo khi thiếu hoặc không xác thực được License Key. Giữ cấu hình, dữ liệu cũ và updater.
+- Thêm `GET /api?action=validate_license`: chỉ chấp nhận license active/còn hạn, không chấp nhận master key thay giấy phép.
+- Cache xác thực tối đa 5 phút, không vượt hạn giấy phép; lỗi xác thực sau khi cache hết hạn sẽ khóa plugin.
+
 ## [4.2.8] - 2026-09-28
 
 ### Sửa lỗi quản lý IP Google Ads

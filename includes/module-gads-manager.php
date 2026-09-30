@@ -18,6 +18,9 @@ if (!defined('ABSPATH')) exit;
 
 add_action("wp_ajax_tkgadm_ar_save_config", "tkgadm_ajax_ar_save_config");
 function tkgadm_ajax_ar_save_config() {
+    if (!current_user_can('manage_options')) { wp_send_json_error('Không có quyền truy cập.', 403); return; }
+    if (!tkgadm_license_is_valid()) { wp_send_json_error(tkgadm_license_message(), 403); return; }
+
     check_ajax_referer("tkgadm_gads_manager_nonce", "nonce");
     if (!current_user_can("manage_options")) wp_send_json_error("Không có quyền.");
 
@@ -34,6 +37,9 @@ function tkgadm_ajax_ar_save_config() {
 
 add_action("wp_ajax_tkgadm_gads_save_auto_sync", "tkgadm_ajax_gads_save_auto_sync");
 function tkgadm_ajax_gads_save_auto_sync() {
+    if (!current_user_can('manage_options')) { wp_send_json_error('Không có quyền truy cập.', 403); return; }
+    if (!tkgadm_license_is_valid()) { wp_send_json_error(tkgadm_license_message(), 403); return; }
+
     check_ajax_referer("tkgadm_gads_manager_nonce", "nonce");
     if (!current_user_can("manage_options")) wp_send_json_error("Không có quyền.");
 
@@ -44,6 +50,9 @@ function tkgadm_ajax_gads_save_auto_sync() {
 }
 add_action('wp_ajax_tkgadm_gads_list_ips', 'tkgadm_ajax_gads_list_ips');
 function tkgadm_ajax_gads_list_ips() {
+    if (!current_user_can('manage_options')) { wp_send_json_error('Không có quyền truy cập.', 403); return; }
+    if (!tkgadm_license_is_valid()) { wp_send_json_error(tkgadm_license_message(), 403); return; }
+
     check_ajax_referer('tkgadm_gads_manager_nonce', 'nonce');
     if (!current_user_can('manage_options')) wp_send_json_error('Không có quyền.');
 
@@ -117,6 +126,9 @@ function tkgadm_ajax_gads_list_ips() {
  */
 add_action('wp_ajax_tkgadm_gads_delete_ips', 'tkgadm_ajax_gads_delete_ips');
 function tkgadm_ajax_gads_delete_ips() {
+    if (!current_user_can('manage_options')) { wp_send_json_error('Không có quyền truy cập.', 403); return; }
+    if (!tkgadm_license_is_valid()) { wp_send_json_error(tkgadm_license_message(), 403); return; }
+
     check_ajax_referer('tkgadm_gads_manager_nonce', 'nonce');
     if (!current_user_can('manage_options')) wp_send_json_error('Không có quyền.');
 
@@ -151,6 +163,9 @@ function tkgadm_ajax_gads_delete_ips() {
  */
 add_action('wp_ajax_tkgadm_gads_delete_oldest', 'tkgadm_ajax_gads_delete_oldest');
 function tkgadm_ajax_gads_delete_oldest() {
+    if (!current_user_can('manage_options')) { wp_send_json_error('Không có quyền truy cập.', 403); return; }
+    if (!tkgadm_license_is_valid()) { wp_send_json_error(tkgadm_license_message(), 403); return; }
+
     check_ajax_referer('tkgadm_gads_manager_nonce', 'nonce');
     if (!current_user_can('manage_options')) wp_send_json_error('Không có quyền.');
 
@@ -192,6 +207,8 @@ function tkgadm_ajax_gads_delete_oldest() {
  * ============================================================================
  */
 function tkgadm_render_gads_manager_page() {
+    if (!tkgadm_license_is_valid()) { tkgadm_render_license_lock(); return; }
+
     if (!current_user_can('manage_options')) return;
 
     $can_manage_ips = (bool) tkgadm_get_gads_connection_mode();
@@ -525,7 +542,7 @@ function tkgadm_render_gads_manager_page() {
         });
 
         function doDeleteIps(resourceNames, label) {
-            showStatus('loading', '<i class="fa-solid fa-spinner fa-spin"></i> Đang xóa ' + label + ' khỏi Google Ads...');
+            showStatus('loading', 'Đang xóa ' + label + ' khỏi Google Ads...');
             $('#btn-delete-selected, #btn-delete-oldest, #btn-load-ips').prop('disabled', true);
 
             $.post(ajaxurl, {
@@ -555,7 +572,7 @@ function tkgadm_render_gads_manager_page() {
 
             if (!confirm('Xóa ' + count + ' IP cũ nhất khỏi Google Ads?\n\nHành động này không thể hoàn tác!')) return;
 
-            showStatus('loading', '<i class="fa-solid fa-spinner fa-spin"></i> Đang xóa ' + count + ' IP cũ nhất...');
+            showStatus('loading', 'Đang xóa ' + count + ' IP cũ nhất...');
             $('#btn-delete-selected, #btn-delete-oldest, #btn-load-ips').prop('disabled', true);
 
             $.post(ajaxurl, {
@@ -587,7 +604,7 @@ function tkgadm_render_gads_manager_page() {
                 loading : 'bg-sky-50 text-sky-800 border border-sky-200',
                 info    : 'bg-gray-50 text-gray-700 border border-gray-200',
             }[type] || '';
-            $('#gads-action-status').attr('class', cls + ' p-4 rounded-xl text-sm font-medium').html(msg).show();
+            $('#gads-action-status').attr('class', cls + ' p-4 rounded-xl text-sm font-medium').text(msg).show();
         }
 
         function formatDate(str) {
@@ -612,6 +629,9 @@ function tkgadm_render_gads_manager_page() {
 
 add_action('wp_ajax_tkgadm_gads_full_sync', 'tkgadm_ajax_gads_full_sync');
 function tkgadm_ajax_gads_full_sync() {
+    if (!current_user_can('manage_options')) { wp_send_json_error('Không có quyền truy cập.', 403); return; }
+    if (!tkgadm_license_is_valid()) { wp_send_json_error(tkgadm_license_message(), 403); return; }
+
     check_ajax_referer('tkgadm_gads_manager_nonce', 'nonce');
     if (!current_user_can('manage_options')) wp_send_json_error('Không có quyền.');
 

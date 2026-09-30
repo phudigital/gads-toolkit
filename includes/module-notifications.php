@@ -17,6 +17,8 @@ if (!defined('ABSPATH')) exit;
  * Gửi tin nhắn Telegram
  */
 function tkgadm_send_telegram_message($message) {
+    if (!tkgadm_license_is_valid()) { return false; }
+
     $token = get_option('tkgadm_telegram_bot_token', '');
     $chat_id = get_option('tkgadm_telegram_chat_id', '');
     
@@ -47,6 +49,8 @@ function tkgadm_send_telegram_message($message) {
  * Gửi email thông báo
  */
 function tkgadm_send_email_notification($subject, $message) {
+    if (!tkgadm_license_is_valid()) { return false; }
+
     $emails = get_option('tkgadm_notification_emails', '');
     if (empty($emails)) {
         return false;
@@ -69,6 +73,8 @@ function tkgadm_send_email_notification($subject, $message) {
  */
 add_action('tkgadm_hourly_alert', 'tkgadm_check_suspicious_ips');
 function tkgadm_check_suspicious_ips() {
+    if (!tkgadm_license_is_valid()) { return; }
+
     if (get_option('tkgadm_enable_hourly_alerts', '1') !== '1') {
         return;
     }
@@ -146,6 +152,8 @@ function tkgadm_check_suspicious_ips() {
  */
 add_action('tkgadm_daily_report', 'tkgadm_send_daily_report');
 function tkgadm_send_daily_report() {
+    if (!tkgadm_license_is_valid()) { return; }
+
     if (get_option('tkgadm_enable_daily_reports', '1') !== '1') {
         return;
     }
@@ -260,6 +268,8 @@ function tkgadm_unschedule_notifications() {
  * ============================================================================
  */
 function tkgadm_render_notifications_page() {
+    if (!tkgadm_license_is_valid()) { tkgadm_render_license_lock(); return; }
+
     // Lưu settings
     if (isset($_POST['tkgadm_save_notifications']) && check_admin_referer('tkgadm_notifications_nonce')) {
         update_option('tkgadm_notification_emails', sanitize_text_field(wp_unslash($_POST['notification_emails'])));
@@ -640,6 +650,7 @@ function tkgadm_render_notifications_page() {
  */
 class TKGADM_Notification_Tester {
     public static function run_email_test($email_string) {
+        if (!tkgadm_license_is_valid()) { return array('success' => false, 'log' => array(tkgadm_license_message())); }
         $result = [
             'success' => false,
             'log' => [],
@@ -760,6 +771,7 @@ class TKGADM_Notification_Tester {
     }
 
     public static function run_telegram_test($token, $chat_id) {
+        if (!tkgadm_license_is_valid()) { return array('success' => false, 'log' => array(tkgadm_license_message())); }
         $result = [
             'success' => false,
             'log' => [],
@@ -820,6 +832,9 @@ class TKGADM_Notification_Tester {
 // AJAX Handler
 add_action('wp_ajax_tkgadm_run_deep_test', 'tkgadm_ajax_run_deep_test');
 function tkgadm_ajax_run_deep_test() {
+    if (!current_user_can('manage_options')) { wp_send_json_error('Không có quyền truy cập.', 403); return; }
+    if (!tkgadm_license_is_valid()) { wp_send_json_error(tkgadm_license_message(), 403); return; }
+
     if (!current_user_can('manage_options')) {
         wp_send_json_error("Không có quyền truy cập.");
     }
@@ -859,6 +874,9 @@ function tkgadm_ajax_run_deep_test() {
  */
 add_action('wp_ajax_tkgadm_test_telegram_connection', 'tkgadm_ajax_test_telegram_connection');
 function tkgadm_ajax_test_telegram_connection() {
+    if (!current_user_can('manage_options')) { wp_send_json_error('Không có quyền truy cập.', 403); return; }
+    if (!tkgadm_license_is_valid()) { wp_send_json_error(tkgadm_license_message(), 403); return; }
+
     if (!current_user_can('manage_options')) {
         wp_send_json_error('Không có quyền truy cập.');
     }
@@ -879,6 +897,9 @@ function tkgadm_ajax_test_telegram_connection() {
 
 add_action('wp_ajax_tkgadm_test_email_connection', 'tkgadm_ajax_test_email_connection');
 function tkgadm_ajax_test_email_connection() {
+    if (!current_user_can('manage_options')) { wp_send_json_error('Không có quyền truy cập.', 403); return; }
+    if (!tkgadm_license_is_valid()) { wp_send_json_error(tkgadm_license_message(), 403); return; }
+
     if (!current_user_can('manage_options')) {
         wp_send_json_error('Không có quyền truy cập.');
     }

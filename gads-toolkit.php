@@ -3,7 +3,7 @@
  * Plugin Name: Phần mềm chống click ảo Google Ads (GAds Toolkit)
  * Plugin URI:  https://gads.pdl.vn
  * Description: Giải pháp toàn diện giúp theo dõi và ngăn chặn click ảo (Fraud Click) từ Google Ads.
- * Version:     4.2.8
+ * Version:     4.2.10
  * Author:      Phú Digital
  * Author URI:  https://pdl.vn
  * License:     GPLv2 or later
@@ -19,7 +19,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Define plugin constants
-define('GADS_TOOLKIT_VERSION', '4.2.8');
+define('GADS_TOOLKIT_VERSION', '4.2.10');
 define('GADS_TOOLKIT_PATH', plugin_dir_path(__FILE__));
 define('GADS_TOOLKIT_URL', plugin_dir_url(__FILE__));
 
@@ -30,6 +30,7 @@ define('GADS_SERVICE_URL', 'https://gads.pdl.vn');
 // --------------------------------------------------
 
 require_once GADS_TOOLKIT_PATH . 'includes/module-updater.php';
+require_once GADS_TOOLKIT_PATH . 'includes/module-license.php';
 
 // Load core functions (database, validation, helpers)
 // 1. Core Engine (Database, Tracking, Auto-Block, Admin Init)

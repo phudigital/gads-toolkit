@@ -103,6 +103,10 @@ function tkgadm_render_settings_page() {
     if (isset($_POST['tkgadm_save_settings']) && check_admin_referer('tkgadm_settings_nonce')) {
         // --- Lưu cấu hình Google Ads ---
         $api_key = isset($_POST['api_key']) ? sanitize_text_field(wp_unslash($_POST['api_key'])) : '';
+        if (isset($_POST['api_key']) && $api_key === '' && !defined('GADS_API_KEY')) {
+            delete_option('tkgadm_central_service_api_key');
+            delete_option('tkgadm_gads_api_key');
+        }
         if (!empty($api_key)) {
             if ($api_key === '**********************') {
                 // Không đổi
@@ -251,9 +255,9 @@ function tkgadm_render_settings_page() {
 
                             <div class="space-y-4">
                                 <div>
-                                    <label for="api-key-field" class="block text-sm font-medium text-gray-700 mb-1">Secure API Key</label>
+                                    <label for="api-key-field" class="block text-sm font-medium text-gray-700 mb-1">License Key</label>
                                     <div class="relative">
-                                        <input type="password" name="api_key" id="api-key-field" value="<?php echo esc_attr($api_key_hidden); ?>" <?php echo $saved_api_key ? 'readonly' : ''; ?> class="w-full text-sm bg-gray-50 border border-gray-300 rounded-lg p-2 text-gray-600 focus:outline-none" placeholder="Nhập API Key">
+                                        <input type="password" name="api_key" id="api-key-field" value="<?php echo esc_attr($api_key_hidden); ?>" <?php echo $saved_api_key ? 'readonly' : ''; ?> class="w-full text-sm bg-gray-50 border border-gray-300 rounded-lg p-2 text-gray-600 focus:outline-none" placeholder="Nhập License Key">
                                         <button type="button" id="edit-api-key" class="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-blue-600 hover:underline border-none bg-transparent cursor-pointer <?php echo $saved_api_key ? '' : 'hidden'; ?>">Chỉnh sửa</button>
                                     </div>
                                 </div>

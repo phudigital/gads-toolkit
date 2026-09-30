@@ -1,4 +1,4 @@
-import { verifyApiKey, checkRateLimit } from './auth.js';
+import { verifyApiKey } from './auth.js';
 import {
   jsonResponse,
   errorResponse,
@@ -8,6 +8,7 @@ import {
   formatGoogleAdsError,
 } from './utils.js';
 import { APP_VERSION } from './version.js';
+import { normalizeLicenseSite, normalizeLicenseDomain } from './license-domain.js';
 import { handleIpManager } from './ip-manager.js';
 
 export async function handleApiRequest(request, env) {
@@ -16,11 +17,8 @@ export async function handleApiRequest(request, env) {
   const hasApiKey = Boolean(request.headers.get('X-API-Key') || url.searchParams.get('api_key'));
 
   if (action !== 'health' || hasApiKey) {
-    const authError = await verifyApiKey(request, env);
+    const authError = await verifyApiKey(request, env, action === 'validate_license');
     if (authError) return authError;
-
-    const rateLimitError = await checkRateLimit(request, env);
-    if (rateLimitError) return rateLimitError;
   }
 
   if (request.method === 'GET') {
@@ -31,6 +29,19 @@ export async function handleApiRequest(request, env) {
         version: APP_VERSION,
         timestamp: Date.now()
       });
+    }
+
+    if (action === 'validate_license') {
+      const apiKey = request.headers.get('X-API-Key') || url.searchParams.get('api_key');
+      let license;
+      try { license = JSON.parse(await env.GADS_KV.get(`license:${apiKey}`)); }
+      catch { return errorResponse('Không thể xác thực giấy phép.', 503); }
+      if (!license || license.active !== true ||
+          normalizeLicenseDomain(license.domain) !== normalizeLicenseDomain(new URL(request.headers.get('X-GAds-Site')).origin) || (license.expires_at &&
+          (!Number.isFinite(new Date(license.expires_at).getTime()) || new Date(license.expires_at).getTime() <= Date.now()))) {
+        return errorResponse('Giấy phép không hợp lệ hoặc đã hết hạn.', 403);
+      }
+      return jsonResponse({ success: true, data: { valid: true, expires_at: license.expires_at ? new Date(license.expires_at).toISOString() : null, site_url: normalizeLicenseSite(request.headers.get('X-GAds-Site')) } });
     }
 
     if (action === 'get_credentials') {
@@ -201,6 +212,11 @@ export async function handleApiRequest(request, env) {
         return errorResponse('Missing site_url', 400);
       }
 
+      const verifiedSite = normalizeLicenseSite(request.headers.get('X-GAds-Site'));
+      if (verifiedSite && normalizeLicenseSite(site_url) !== verifiedSite) {
+        return errorResponse('site_url không khớp website đã xác minh.', 403);
+      }
+
       let parsedUrl;
       try {
         parsedUrl = new URL(site_url);
@@ -221,5 +237,5 @@ export async function handleApiRequest(request, env) {
     }
   }
 
-  return errorResponse('Invalid action. Available actions: health, get_credentials, exchange_code, sync_ips, list_ips, remove_ips, register_site', 400);
+  return errorResponse('Invalid action. Available actions: health, validate_license, get_credentials, exchange_code, sync_ips, list_ips, remove_ips, register_site', 400);
 }
