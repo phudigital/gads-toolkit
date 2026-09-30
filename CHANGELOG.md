@@ -2,6 +2,14 @@
 
 All notable changes to **GAds Toolkit - Phần mềm chống click ảo Google Ads** will be documented in this file.
 
+## [4.3.0] - 2026-09-30
+
+### Phát hành 4.3
+- Đồng bộ phiên bản plugin, Worker, tài liệu và gói cập nhật lên 4.3.0.
+- Giữ cơ chế license bắt buộc và xác minh domain của phiên bản trước.
+- Cập nhật landing page: nội dung mở rộng giúp cân bằng hai cột, liên kết nội bộ và metadata SEO; bảng giá Monthly 300.000 VNĐ/ngày, Yearly 3.000.000 VNĐ/năm.
+- Phát hành gói updater có checksum SHA-256, giữ nguyên các gói phiên bản cũ.
+
 ## [4.2.10] - 2026-09-30
 
 ### Đồng bộ phát hành

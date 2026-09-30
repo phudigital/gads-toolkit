@@ -1,6 +1,6 @@
 # 🛡️ Phần mềm chống click ảo Google Ads - GAds Toolkit
 
-![Version](https://img.shields.io/badge/version-4.2.10-blue.svg)
+![Version](https://img.shields.io/badge/version-4.3.0-blue.svg)
 ![WordPress](https://img.shields.io/badge/WordPress-5.0%2B-blue.svg)
 ![PHP](https://img.shields.io/badge/PHP-7.4%2B-purple.svg)
 ![License](https://img.shields.io/badge/license-GPL--2.0-green.svg)
@@ -119,8 +119,8 @@ Trải nghiệm đầy đủ các tính năng:
 
 ### Bước 1: Tải plugin
 
-- 🚀 **[Tải file gads-toolkit.zip mới nhất (v4.2.10)](https://github.com/phudigital/gads-toolkit/releases/latest/download/gads-toolkit.zip)**
-- 📦 **[Tải file gads-toolkit-4.2.10.zip](https://github.com/phudigital/gads-toolkit/releases/download/4.2.10/gads-toolkit-4.2.10.zip)**
+- 🚀 **[Tải file gads-toolkit.zip mới nhất (v4.3.0)](https://github.com/phudigital/gads-toolkit/releases/latest/download/gads-toolkit.zip)**
+- 📦 **[Tải file gads-toolkit-4.3.0.zip](https://github.com/phudigital/gads-toolkit/releases/download/4.3.0/gads-toolkit-4.3.0.zip)**
 - 🌐 Hoặc xem tất cả phiên bản tại **[GitHub Releases](https://github.com/phudigital/gads-toolkit/releases)**
 
 Hoặc clone mã nguồn bằng Git:
