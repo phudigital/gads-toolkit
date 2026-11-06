@@ -1,4 +1,53 @@
 jQuery(document).ready(function ($) {
+  // Escape any server-provided text before it goes into an HTML string.
+  function esc(value) {
+    return String(value === undefined || value === null ? "" : value)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
+  }
+  function safeUrl(url) {
+    return /^https?:\/\//i.test(String(url || "")) ? esc(url) : "#";
+  }
+  window.tkgadmEsc = esc;
+
+  // ---- Fraud score badges (loaded for visible rows only) ----
+  const fraudScores = {};
+  function fraudBadge(score) {
+    const styles = {
+      high: "background:#fee2e2;color:#b91c1c;",
+      medium: "background:#fef3c7;color:#92400e;",
+      low: "background:#ecfdf5;color:#047857;",
+    };
+    const title = score.signals && score.signals.length ? score.signals.join(" · ") : "Chưa có dấu hiệu bất thường";
+    return `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold" style="${styles[score.level] || styles.low}" title="${esc(title)}">${esc(score.score)} · ${esc(score.level_label)}</span>`;
+  }
+  function loadFraudScores($rows) {
+    const need = [];
+    $rows.each(function () {
+      const ip = $(this).data("ip");
+      const $cell = $(this).find(".fraud-cell");
+      if (!$cell.length) return;
+      if (fraudScores[ip]) {
+        $cell.html(fraudBadge(fraudScores[ip]));
+      } else {
+        need.push(ip);
+      }
+    });
+    if (!need.length || typeof tkgadm_vars === "undefined") return;
+    $.post(tkgadm_vars.ajaxurl, { action: "tkgadm_get_fraud_scores", nonce: tkgadm_vars.nonce, ips: need }, function (res) {
+      if (!res || !res.success) return;
+      Object.keys(res.data.scores).forEach(function (ip) {
+        fraudScores[ip] = res.data.scores[ip];
+      });
+      $rows.each(function () {
+        const ip = $(this).data("ip");
+        if (fraudScores[ip]) $(this).find(".fraud-cell").html(fraudBadge(fraudScores[ip]));
+      });
+    });
+  }
   // Toggle switch Ẩn/Hiện IP Blocked
   $("#toggle-blocked-ips").on("change", function () {
     const isChecked = $(this).is(":checked");
@@ -115,6 +164,7 @@ jQuery(document).ready(function ($) {
     const startIndex = (dashboardCurrentPage - 1) * dashboardPageSize;
     const endIndex = Math.min(startIndex + dashboardPageSize, totalRows);
     $filteredRows.slice(startIndex, endIndex).show();
+    loadFraudScores($filteredRows.slice(startIndex, endIndex));
 
     $("#total-ips-count").text(totalRows);
     $("#table-info").text(
@@ -385,6 +435,10 @@ jQuery(document).ready(function ($) {
               }, 2000);
             }
           } else {
+            if (response.data.sync_message) {
+              $("<div>").css({ position: "fixed", top: "50%", left: "50%", transform: "translate(-50%, -50%)", background: "#0f766e", color: "white", padding: "15px 30px", borderRadius: "8px", fontSize: "16px", fontWeight: "bold", zIndex: 99999 })
+                .text(response.data.sync_message).appendTo("body").delay(2000).fadeOut(300, function () { $(this).remove(); });
+            }
             updateBlockedIpCache(ip, false);
             $row.removeClass("bg-red-50/30").addClass("hover:bg-gray-50");
             $row.find(".status-badge").remove();
@@ -504,7 +558,7 @@ jQuery(document).ready(function ($) {
         } else {
           console.error("AJAX error:", response.data);
           $("#url-list").html(
-            "<p style='color:red;'>Lỗi tải biểu đồ: " + response.data + "</p>",
+            "<p style='color:red;'>Lỗi tải biểu đồ: " + esc(response.data) + "</p>",
           );
         }
 
@@ -576,7 +630,7 @@ jQuery(document).ready(function ($) {
                   })
                   .html(
                     "<small style='word-break:break-all; color: #007cba;'>" +
-                      displayUrl +
+                      esc(displayUrl) +
                       "</small>",
                   )
                   .data("full-url", visit.url);
@@ -878,15 +932,15 @@ jQuery(document).ready(function ($) {
       // Main Row
       html += `<tr class="tkgadm-accordion-toggle" onclick="toggleAccordion('${detailId}', this)">`;
       html += `<td><span class="tkgadm-accordion-icon">▶</span></td>`;
-      html += `<td><strong>${ip.ip_address}</strong></td>`;
+      html += `<td><strong>${esc(ip.ip_address)}</strong></td>`;
 
       if (type === "ads" || type === "organic") {
-        html += `<td>${ip.session_count || 0} phiên</td>`;
-        html += `<td>${ip.last_visit || "-"}</td>`;
+        html += `<td>${esc(ip.session_count || 0)} phiên</td>`;
+        html += `<td>${esc(ip.last_visit || "-")}</td>`;
       } else {
-        html += `<td>${ip.blocked_time || "-"}</td>`;
-        html += `<td>${ip.total_visits || 0}</td>`;
-        html += `<td>${ip.ad_clicks || 0}</td>`;
+        html += `<td>${esc(ip.blocked_time || "-")}</td>`;
+        html += `<td>${esc(ip.total_visits || 0)}</td>`;
+        html += `<td>${esc(ip.ad_clicks || 0)}</td>`;
       }
 
       html += `<td>${blockedBadge}</td>`;
@@ -906,19 +960,19 @@ jQuery(document).ready(function ($) {
             s.type === "Ads" ? "tkgadm-badge-ads" : "tkgadm-badge-organic";
           const badgeIcon = s.type === "Ads" ? "📊" : "🌱";
           const link = s.url
-            ? `<a href="${s.url}" target="_blank" class="tkgadm-link">🔗 ${s.url}</a>`
+            ? `<a href="${safeUrl(s.url)}" target="_blank" rel="noopener noreferrer" class="tkgadm-link">🔗 ${esc(s.url)}</a>`
             : "";
           const timeOnPage =
             s.time_on_page > 0
-              ? `⏱️ ${s.time_on_page}s`
+              ? `⏱️ ${esc(s.time_on_page)}s`
               : `<span style="color:#999">⏱️ < 1s</span>`;
           const visitCount =
-            s.visit_count > 1 ? `📶 ${s.visit_count} lượt` : `📶 1 lượt`;
+            s.visit_count > 1 ? `📶 ${esc(s.visit_count)} lượt` : `📶 1 lượt`;
 
           html += `<tr>`;
           html += `<td style="width: 120px;"><span class="tkgadm-badge-sm ${badgeClass}">${badgeIcon} ${s.type}</span></td>`;
           html += `<td style="width: 80px; color:#777;">Phiên ${ip.session_count - sIndex}</td>`;
-          html += `<td style="width: 150px;">⏰ ${s.time}</td>`; // Just time part
+          html += `<td style="width: 150px;">⏰ ${esc(s.time)}</td>`; // Just time part
           html += `<td style="width: 100px;">${timeOnPage}</td>`;
           html += `<td style="width: 100px;">${visitCount}</td>`;
           html += `<td>${link}</td>`;
@@ -984,7 +1038,7 @@ jQuery(document).ready(function ($) {
         } else {
           $("#daily-details-content").html(
             '<p style="color:red; text-align:center;">Lỗi tải dữ liệu: ' +
-              (response.data || "Unknown") +
+              esc(response.data || "Unknown") +
               "</p>",
           );
         }

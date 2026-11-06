@@ -291,7 +291,8 @@ export async function handleAdminRequest(request, env, path) {
     }
 
   } catch (error) {
-    return jsonResponse({ error: 'Internal Server Error', details: error.message }, 500);
+    console.error('Admin API error:', error);
+    return jsonResponse({ error: 'Internal Server Error' }, 500);
   }
 
   // Not Found
@@ -1190,6 +1191,12 @@ function getDashboardHTML({ turnstileSiteKey, turnstileEnabled }) {
             } catch(e) { return isoStr; }
         }
 
+        function esc(value) {
+            return String(value === undefined || value === null ? '' : value).replace(/[&<>"']/g, function (c) {
+                return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+            });
+        }
+
         function truncateStr(str, max = 15) {
             if (!str) return '';
             return str.length > max ? str.substring(0, max) + '...' : str;
@@ -1376,8 +1383,8 @@ function getDashboardHTML({ turnstileSiteKey, turnstileEnabled }) {
 
                 tr.innerHTML = \`
                     <td>\${formatLogDate(log.time)}</td>
-                    <td>\${log.action || '-'}</td>
-                    <td>\${truncateStr(presentation.client, 20)}</td>
+                    <td>\${esc(log.action || '-')}</td>
+                    <td>\${esc(truncateStr(presentation.client, 20))}</td>
                     <td><span class="badge \${badgeClass}">\${resultText}</span></td>
                 \`;
                 tbody.appendChild(tr);
@@ -1395,13 +1402,13 @@ function getDashboardHTML({ turnstileSiteKey, turnstileEnabled }) {
                 licenses.forEach(lic => {
                     const tr = document.createElement('tr');
                     const expiry = lic.expires_at ? new Date(lic.expires_at).toLocaleDateString('vi-VN') : 'Vĩnh viễn';
-                    const keyJson = JSON.stringify(lic).replace(/'/g, '&#39;');
+                    const keyJson = JSON.stringify(lic).replace(/&/g, '&amp;').replace(/'/g, '&#39;').replace(/</g, '&lt;');
                     tr.innerHTML = \`
-                        <td title="\${lic.key}"><div class="key-cell"><span class="license-key">\${truncateStr(lic.key, 18)}</span><button class="copy-key" title="Sao chép key" aria-label="Sao chép key" onclick="copyKey('\${lic.key}')"><i class="far fa-copy"></i></button></div></td>
-                        <td class="font-medium">\${lic.domain || '<span style="color:#94a3b8">Mọi domain</span>'}<small class="expiry-note">\${expiry}</small></td>
-                        <td><span class="label-badge">\${lic.label || '-'}</span></td>
-                        <td><label class="switch"><input type="checkbox" \${lic.active ? 'checked' : ''} onchange="toggleLicenseStatus('\${lic.key}', this.checked)"><span class="slider"></span></label></td>
-                        <td style="text-align:right"><button class="action-btn" title="Sửa" aria-label="Sửa license" onclick='editLicense(\${keyJson})'><i class="fas fa-edit"></i></button><button class="action-btn delete" title="Xóa" aria-label="Xóa license" onclick="deleteLicense('\${lic.key}')"><i class="fas fa-trash-alt"></i></button></td>
+                        <td title="\${esc(lic.key)}"><div class="key-cell"><span class="license-key">\${esc(truncateStr(lic.key, 18))}</span><button class="copy-key" title="Sao chép key" aria-label="Sao chép key" data-key="\${esc(lic.key)}" onclick="copyKey(this.dataset.key)"><i class="far fa-copy"></i></button></div></td>
+                        <td class="font-medium">\${lic.domain ? esc(lic.domain) : '<span style="color:#94a3b8">Mọi domain</span>'}<small class="expiry-note">\${esc(expiry)}</small></td>
+                        <td><span class="label-badge">\${esc(lic.label || '-')}</span></td>
+                        <td><label class="switch"><input type="checkbox" \${lic.active ? 'checked' : ''} data-key="\${esc(lic.key)}" onchange="toggleLicenseStatus(this.dataset.key, this.checked)"><span class="slider"></span></label></td>
+                        <td style="text-align:right"><button class="action-btn" title="Sửa" aria-label="Sửa license" onclick='editLicense(\${keyJson})'><i class="fas fa-edit"></i></button><button class="action-btn delete" title="Xóa" aria-label="Xóa license" data-key="\${esc(lic.key)}" onclick="deleteLicense(this.dataset.key)"><i class="fas fa-trash-alt"></i></button></td>
                     \`;
                     tbody.appendChild(tr);
                 });
@@ -1538,13 +1545,13 @@ function getDashboardHTML({ turnstileSiteKey, turnstileEnabled }) {
                     else if (client.status === 'warning') { statusDot = 'status-warning'; statusText = 'Warning'; }
 
                     tr.innerHTML = \`
-                        <td>\${client.url}</td>
-                        <td>\${client.ip || '-'}</td>
+                        <td>\${esc(client.url)}</td>
+                        <td>\${esc(client.ip || '-')}</td>
                         <td>\${formatDate(client.registered_at)}</td>
                         <td>\${formatDate(client.last_sync)}</td>
                         <td><span class="status-dot \${statusDot}"></span> \${statusText}</td>
                         <td>
-                            <button class="action-btn delete" onclick="deleteClient('\${client.url}')">🗑️</button>
+                            <button class="action-btn delete" data-url="\${esc(client.url)}" onclick="deleteClient(this.dataset.url)">🗑️</button>
                         </td>
                     \`;
                     tbody.appendChild(tr);
@@ -1587,7 +1594,7 @@ function getDashboardHTML({ turnstileSiteKey, turnstileEnabled }) {
             allowedOriginsList.forEach((origin, index) => {
                 const tag = document.createElement('div');
                 tag.className = 'tag';
-                tag.innerHTML = \`\${origin} <span onclick="removeOrigin(\${index})">×</span>\`;
+                tag.innerHTML = \`\${esc(origin)} <span onclick="removeOrigin(\${Number(index)})">×</span>\`;
                 container.insertBefore(tag, input);
             });
         }
@@ -1669,12 +1676,12 @@ function getDashboardHTML({ turnstileSiteKey, turnstileEnabled }) {
 
                     tr.innerHTML = \`
                         <td>\${formatLogDate(log.time)}</td>
-                        <td>\${log.action || '-'}</td>
+                        <td>\${esc(log.action || '-')}</td>
                         <td>
-                            \${presentation.client}
+                            \${esc(presentation.client)}
                         </td>
                         <td><span class="badge \${badgeClass}">\${resultText}</span></td>
-                        <td><span style="font-size:12px;color:var(--text-muted)">\${truncateStr(presentation.detail, 40)}</span></td>
+                        <td><span style="font-size:12px;color:var(--text-muted)">\${esc(truncateStr(presentation.detail, 40))}</span></td>
                     \`;
                     tbody.appendChild(tr);
                 });

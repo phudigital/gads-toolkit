@@ -2,6 +2,43 @@
 
 All notable changes to **GAds Toolkit - Phần mềm chống click ảo Google Ads** will be documented in this file.
 
+## [4.4.0] - 2026-11-06
+
+### Bảo mật & độ chính xác
+- Xác định IP khách an toàn: chỉ tin header proxy (CF-Connecting-IP, X-Forwarded-For, X-Real-IP) khi request đến từ Cloudflare hoặc proxy nội bộ; khách truy cập trực tiếp không thể giả IP để "đổ oan" IP người khác. Thêm tuỳ chọn "Cách xác định IP khách" trong Cấu hình → Nâng cao.
+- Bỏ cơ chế cookie chặn chéo IP (không hoạt động và có thể bị lạm dụng).
+- Quy tắc chặn, cảnh báo và thời gian hiển thị dùng cùng múi giờ WordPress (trước đây quy tắc "N click/1 giờ" có thể tính trên ~8 giờ ở site UTC+7; cảnh báo IP nghi ngờ không bao giờ gửi).
+- Kiểm tra đầu vào: quy tắc chặn, xoá dữ liệu theo ngày, cấu hình xoay vòng, giờ gửi báo cáo, tần suất cảnh báo ("2 lần/ngày" trước đây không lên lịch được).
+
+### Đồng bộ Google Ads an toàn
+- Đồng bộ kiểu đối chiếu: chỉ thêm IP còn thiếu và gỡ IP do plugin quản lý mà website không còn chặn; IP bạn tự thêm trên Google Ads được giữ nguyên. Không còn bước xoá sạch rồi tải lại.
+- Chặn tức thì chỉ ghi DB; đồng bộ Google Ads và thông báo chạy nền qua cron (không làm chậm trang của khách). Đồng bộ tự động hằng giờ hoạt động trở lại.
+- Có khoá chống chạy chồng; khi tài khoản đầy 500 IP chỉ đưa lên số IP còn chỗ và báo rõ.
+- Smart Auto-Whitelist chỉ tính click mới sau khi đã chặn; nút tắt tính năng hoạt động đúng.
+- Xoá IP trên trang Quản lý IP Google Ads đồng thời bỏ chặn trên website để không bị đẩy lên lại.
+
+### Tracking
+- Ghi nhận phía server ở template_redirect và beacon REST khi trang tải, hoạt động cả khi dùng page cache; IP luôn lấy từ server. Thời gian ở trang và dấu hiệu chạy JavaScript được lưu theo lượt.
+- Tự xoá dữ liệu truy cập cũ (mặc định 180 ngày, chỉnh trong Cấu hình → Nâng cao).
+
+### Tính năng mới
+- Điểm gian lận 0-100 cho từng IP (số click, lượt dưới 3 giây, không chạy JavaScript, trình duyệt tự động) hiển thị trên bảng Thống kê; xoay vòng ưu tiên bỏ IP điểm thấp.
+- Gợi ý gộp các IP bị chặn cùng dải /24 thành một mục để tiết kiệm chỗ trên Google Ads.
+- Nhật ký chặn: chặn, bỏ chặn, xoay vòng, whitelist tự động, gộp dải — có nút Hoàn tác.
+
+### License
+- Xác thực license lưu 12 giờ; nếu dịch vụ tạm không phản hồi vẫn hoạt động tối đa 72 giờ. Không kiểm tra license trong request của khách truy cập (làm mới nền qua cron).
+
+### Giao diện & hiệu năng
+- Bỏ Tailwind CDN runtime trong trang quản trị, dùng CSS build sẵn (tải nhanh hơn, không phụ thuộc CDN).
+- Sửa popup chi tiết theo ngày bị lỗi, bỏ số liệu "so với kỳ trước" giả, escape dữ liệu khi hiển thị.
+- Gỡ các trang quản trị cũ không còn trong menu; huỷ toàn bộ cron khi tắt plugin.
+
+### Central Service (Worker)
+- Giảm mạnh lượt ghi KV (rate limit và cache xác minh domain không còn ghi KV).
+- `sync_ips` trả về danh sách IP đã thêm khi Google Ads lỗi một phần thay vì báo lỗi cả lô.
+- Escape dữ liệu trong trang Admin; OAuth chỉ trả mã về trang Cấu hình của plugin qua HTTPS và license còn hạn.
+
 ## [4.3.0] - 2026-09-30
 
 ### Phát hành 4.3

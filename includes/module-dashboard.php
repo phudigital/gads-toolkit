@@ -61,11 +61,12 @@ function tkgadm_render_dashboard_page() {
                 MAX(visit_time) as last_visit,
                 SUM(visit_count) as total_visits,
                 COUNT(DISTINCT CASE WHEN gclid IS NOT NULL AND gclid != '' THEN gclid END) as ad_clicks,
-                GROUP_CONCAT(DISTINCT url_visited SEPARATOR '|||') as urls
+                MAX(url_visited) as urls
               FROM $table_stats
               WHERE $where AND (gclid IS NOT NULL AND gclid != '')
               GROUP BY ip_address
-              ORDER BY last_visit DESC";
+              ORDER BY last_visit DESC
+              LIMIT 2000";
     
     if (!empty($params)) {
         // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
@@ -92,11 +93,12 @@ function tkgadm_render_dashboard_page() {
                     COALESCE(MAX(s.visit_time), b.blocked_time) as last_visit,
                     COALESCE(SUM(s.visit_count), 0) as total_visits,
                     COUNT(DISTINCT CASE WHEN s.gclid IS NOT NULL AND s.gclid != '' THEN s.gclid END) as ad_clicks,
-                    GROUP_CONCAT(DISTINCT s.url_visited SEPARATOR '|||') as urls
+                    MAX(s.url_visited) as urls
                   FROM $table_blocked b
                   LEFT JOIN $table_stats s ON b.ip_address = s.ip_address AND $where
                   GROUP BY b.ip_address
-                  ORDER BY last_visit DESC";
+                  ORDER BY last_visit DESC
+                  LIMIT 2000";
         
         if (!empty($params)) {
             // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
@@ -178,7 +180,7 @@ function tkgadm_render_dashboard_page() {
                 <button type="button" id="copy-blocked-ips" class="bg-white hover:bg-gray-50 text-gray-700 text-sm font-medium py-2 px-4 rounded-lg border border-gray-200 transition shadow-sm flex items-center gap-2 cursor-pointer">
                     <i class="fa-regular fa-copy"></i> Copy IP (<span id="copy-count-badge"><?php echo count($blocked_ips); ?></span>)
                 </button>
-                <textarea id="blocked-ips-textarea" style="position: absolute; left: -9999px;"><?php echo implode("\n", $blocked_ips); ?></textarea>
+                <textarea id="blocked-ips-textarea" style="position: absolute; left: -9999px;"><?php echo esc_textarea(implode("\n", $blocked_ips)); ?></textarea>
                 
                 <button type="button" id="toggle-blocked-view" data-show="<?php echo $show_blocked_only ? '1' : '0'; ?>" class="bg-white hover:bg-gray-50 text-gray-700 text-sm font-medium py-2 px-4 rounded-lg border border-gray-200 transition shadow-sm flex items-center gap-2 cursor-pointer">
                     <i class="fa-solid fa-filter"></i> <span id="toggle-blocked-text"><?php echo $show_blocked_only ? 'Hiện tất cả' : 'Chỉ IP chặn'; ?></span>
@@ -195,7 +197,7 @@ function tkgadm_render_dashboard_page() {
                     <div class="p-2 bg-blue-50 rounded-lg text-blue-600"><i class="fa-solid fa-users"></i></div>
                 </div>
                 <h3 id="daily-total-ads" class="text-3xl font-bold text-gray-800 m-0">-</h3>
-                <p class="text-xs text-green-600 mt-2 m-0 font-medium"><i class="fa-solid fa-arrow-trend-up"></i> +12% so với kỳ trước</p>
+                <p class="text-xs text-gray-400 mt-2 m-0 font-medium">IP có click quảng cáo trong kỳ</p>
             </div>
             
             <!-- Card 2 -->
@@ -205,7 +207,7 @@ function tkgadm_render_dashboard_page() {
                     <div class="p-2 bg-emerald-50 rounded-lg text-emerald-600"><i class="fa-solid fa-leaf"></i></div>
                 </div>
                 <h3 id="daily-total-organic" class="text-3xl font-bold text-gray-800 m-0">-</h3>
-                <p class="text-xs text-green-600 mt-2 m-0 font-medium"><i class="fa-solid fa-arrow-trend-up"></i> +5% so với kỳ trước</p>
+                <p class="text-xs text-gray-400 mt-2 m-0 font-medium">IP truy cập tự nhiên trong kỳ</p>
             </div>
 
             <!-- Card 3 -->
@@ -215,7 +217,7 @@ function tkgadm_render_dashboard_page() {
                     <div class="p-2 bg-red-50 rounded-lg text-red-600"><i class="fa-solid fa-ban"></i></div>
                 </div>
                 <h3 id="daily-total-blocked" class="text-3xl font-bold text-gray-800 m-0">-</h3>
-                <p class="text-xs text-red-600 mt-2 m-0 font-medium"><i class="fa-solid fa-arrow-trend-up"></i> +24% so với kỳ trước</p>
+                <p class="text-xs text-gray-400 mt-2 m-0 font-medium">IP bị chặn trong kỳ</p>
             </div>
 
             <!-- Card 4 -->
@@ -225,7 +227,7 @@ function tkgadm_render_dashboard_page() {
                     <div class="p-2 bg-purple-50 rounded-lg text-purple-600"><i class="fa-solid fa-chart-line"></i></div>
                 </div>
                 <h3 id="daily-avg-ads" class="text-3xl font-bold text-gray-800 m-0">-</h3>
-                <p class="text-xs text-gray-400 mt-2 m-0 font-medium">Trung bình 30 ngày</p>
+                <p class="text-xs text-gray-400 mt-2 m-0 font-medium">Trung bình mỗi ngày trong kỳ</p>
             </div>
 
             <!-- Card 5 -->
@@ -270,12 +272,13 @@ function tkgadm_render_dashboard_page() {
                             <th class="px-6 py-4 border-b border-gray-100">UTM Term</th>
                             <th class="px-6 py-4 border-b border-gray-100">Lần truy cập cuối</th>
                             <th class="px-6 py-4 border-b border-gray-100 sortable cursor-pointer" data-sort="visits">Thống kê <span class="sort-icon">⇅</span></th>
+                            <th class="px-6 py-4 border-b border-gray-100" title="Điểm 0-100 tính từ số click, thời gian ở trang, JavaScript và trình duyệt trong 30 ngày">Điểm gian lận</th>
                             <th class="px-6 py-4 border-b border-gray-100 text-center">Trạng thái</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-gray-100" id="ip-table-body">
                         <?php if (empty($results)): ?>
-                            <tr class="no-data-row"><td colspan="5" class="text-center py-10">Không có dữ liệu</td></tr>
+                            <tr class="no-data-row"><td colspan="6" class="text-center py-10">Không có dữ liệu</td></tr>
                         <?php else: ?>
                             <?php foreach ($results as $index => $row): 
                                 $is_blocked = in_array($row->ip_address, $blocked_ips);
@@ -305,7 +308,7 @@ function tkgadm_render_dashboard_page() {
                                     <td class="px-6 py-4 text-gray-500"><?php echo esc_html($utm_display); ?></td>
                                     <td class="px-6 py-4">
                                         <a href="#" class="view-details text-blue-600 hover:underline font-medium flex items-center gap-1" data-ip="<?php echo esc_attr($row->ip_address); ?>" data-urls="<?php echo esc_attr((string) $row->urls); ?>">
-                                            <?php echo esc_html(wp_date('d/m/Y, H:i', strtotime($row->last_visit))); ?> <i class="fa-regular fa-eye text-xs"></i>
+                                            <?php echo esc_html(mysql2date('d/m/Y, H:i', $row->last_visit)); ?> <i class="fa-regular fa-eye text-xs"></i>
                                         </a>
                                     </td>
                                     <td class="px-6 py-4">
@@ -319,6 +322,7 @@ function tkgadm_render_dashboard_page() {
                                             </div>
                                         </div>
                                     </td>
+                                    <td class="px-6 py-4 fraud-cell" data-ip="<?php echo esc_attr($row->ip_address); ?>"><span class="text-gray-300">…</span></td>
                                     <td class="px-6 py-4 text-center">
                                         <?php if ($is_whitelisted): ?>
                                             <span class="status-label text-xs font-semibold" style="color: #0056b3;">
@@ -438,21 +442,24 @@ function tkgadm_ajax_toggle_block_ip() {
     }
     
     // phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-    $existing = $wpdb->get_row($wpdb->prepare("SELECT * FROM $table WHERE ip_address = %s", $ip));
+    $existing = $wpdb->get_var($wpdb->prepare("SELECT id FROM $table WHERE ip_address = %s", $ip));
 
     if ($block_action === 'toggle') {
         $block_action = $existing ? 'unblock' : 'block';
     }
-    
+    $actor = tkgadm_current_actor();
+    $will_sync = get_option('tkgadm_gads_auto_sync', '1') === '1' && tkgadm_get_gads_connection_mode();
+
     if ($block_action === 'unblock') {
         if (!$existing) {
             wp_send_json_success(['message' => 'IP chưa nằm trong danh sách chặn: ' . $ip, 'blocked' => false]);
         }
-
-        // Unblock
-        // phpcs:ignore WordPress.DB.DirectDatabaseQuery
-        $wpdb->delete($table, ['ip_address' => $ip]);
-        wp_send_json_success(['message' => 'Đã bỏ chặn IP: ' . $ip, 'blocked' => false]);
+        tkgadm_unblock_ip_internal($ip, 'Bỏ chặn thủ công', $actor);
+        wp_send_json_success([
+            'message' => 'Đã bỏ chặn IP: ' . $ip,
+            'blocked' => false,
+            'sync_message' => $will_sync ? 'Sẽ gỡ khỏi Google Ads trong ít phút' : '',
+        ]);
     }
 
     if ($block_action !== 'block') {
@@ -462,51 +469,18 @@ function tkgadm_ajax_toggle_block_ip() {
     if ($existing) {
         wp_send_json_success(['message' => 'IP đã nằm trong danh sách chặn: ' . $ip, 'blocked' => true]);
     }
-
-    // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-    $visit_count = $wpdb->get_var($wpdb->prepare("SELECT SUM(visit_count) FROM $stats_table WHERE ip_address = %s", $ip));
-
-    // Block
-    // phpcs:ignore WordPress.DB.DirectDatabaseQuery
-    $inserted = $wpdb->insert($table, [
-        'ip_address' => $ip,
-        'blocked_time' => current_time('mysql'),
-        'reason' => $reason,
-        'visit_count' => intval($visit_count)
-    ]);
-
-    if (!$inserted) {
-        wp_send_json_error('Không thể thêm IP vào danh sách chặn.');
+    if (function_exists('tkgadm_is_ip_whitelisted') && tkgadm_is_ip_whitelisted($ip)) {
+        wp_send_json_error('IP ' . $ip . ' đang nằm trong whitelist. Xóa khỏi whitelist trước khi chặn.');
     }
-        
-    $sync_message = '';
-    $sync_status = 'not_synced';
-        
-    // Try to sync if option is enabled
-    if (get_option('tkgadm_gads_auto_sync', '1') === '1') {
-        if (function_exists('tkgadm_sync_ip_to_google_ads')) {
-            $sync_result = tkgadm_sync_ip_to_google_ads([$ip]);
-                
-            if (isset($sync_result['success']) && $sync_result['success']) {
-                $sync_message = 'Đã chặn trên Google Ads';
-                $sync_status = 'synced';
-            } else {
-                $sync_message = 'Chỉ chặn ở website, chưa đồng bộ Google Ads';
-                $sync_status = 'not_synced';
-            }
-        } else {
-            $sync_message = 'Chỉ chặn ở website, chưa đồng bộ Google Ads';
-        }
-    } else {
-        // Sync option is disabled
-        $sync_message = 'Chỉ chặn ở website, chưa đồng bộ Google Ads';
+    if (!tkgadm_block_ip_internal($ip, $reason, $actor)) {
+        wp_send_json_error('Không thể thêm IP vào danh sách chặn.');
     }
 
     wp_send_json_success([
         'message' => 'Đã chặn IP: ' . $ip,
         'blocked' => true,
-        'sync_message' => $sync_message,
-        'sync_status' => $sync_status
+        'sync_message' => $will_sync ? 'Đã chặn — sẽ đẩy lên Google Ads trong ít phút' : 'Chỉ chặn ở website, chưa bật đồng bộ Google Ads',
+        'sync_status' => $will_sync ? 'synced' : 'not_synced',
     ]);
 }
 
@@ -550,7 +524,7 @@ function tkgadm_ajax_get_chart_data() {
     $data = [];
     
     foreach ($results as $row) {
-        $labels[] = wp_date('d/m H:00', strtotime($row->hour));
+        $labels[] = mysql2date('d/m H:00', $row->hour);
         $data[] = (int)$row->total;
     }
     
@@ -607,72 +581,6 @@ function tkgadm_ajax_get_visit_details() {
     }
     
     wp_send_json_success(['visits' => $visits]);
-}
-
-/**
- * Cập nhật time on page (Heartbeat)
- */
-add_action('wp_ajax_nopriv_tkgadm_update_time_on_page', 'tkgadm_ajax_update_time_on_page');
-add_action('wp_ajax_tkgadm_update_time_on_page', 'tkgadm_ajax_update_time_on_page');
-function tkgadm_ajax_update_time_on_page() {
-    if (!tkgadm_license_is_valid()) { wp_send_json_error(tkgadm_license_message(), 403); return; }
-
-    if (!isset($_POST['ip']) || !isset($_POST['url']) || !isset($_POST['time'])) {
-        wp_send_json_error('Missing parameters');
-        return;
-    }
-    
-    // Public payloads must be scalar and bounded before WordPress sanitizers/casts.
-    foreach (array('ip' => 45, 'url' => 4096, 'time' => 10, 'user_agent' => 1024, 'gclid' => 1024) as $field => $limit) {
-        if (isset($_POST[$field]) && (!is_string($_POST[$field]) || strlen($_POST[$field]) > $limit)) {
-            wp_send_json_error('Invalid tracking payload', 400); return;
-        }
-    }
-    if (!filter_var($_POST['ip'], FILTER_VALIDATE_IP) || !ctype_digit($_POST['time'])
-        || (int) $_POST['time'] > 604800) {
-        wp_send_json_error('Invalid tracking payload', 400); return;
-    }
-
-    global $wpdb;
-    $table = $wpdb->prefix . 'gads_toolkit_stats';
-    
-    $ip = sanitize_text_field(wp_unslash($_POST['ip']));
-    $url = esc_url_raw(wp_unslash($_POST['url']));
-    $time = intval($_POST['time']);
-    $user_agent = isset($_POST['user_agent']) ? sanitize_textarea_field(wp_unslash($_POST['user_agent'])) : '';
-    $gclid = isset($_POST['gclid']) ? sanitize_text_field(wp_unslash($_POST['gclid'])) : '';
-    
-    // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-    $query = $wpdb->prepare(
-        "SELECT id, time_on_page FROM $table 
-         WHERE ip_address = %s 
-         AND url_visited = %s 
-         AND user_agent = %s 
-         AND gclid = %s
-         ORDER BY visit_time DESC 
-         LIMIT 1",
-        $ip, $url, $user_agent, $gclid
-    );
-    
-    // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.DirectDatabaseQuery
-    $record = $wpdb->get_row($query);
-    
-    if ($record) {
-        $new_time = max($record->time_on_page, $time);
-        
-        // phpcs:ignore WordPress.DB.DirectDatabaseQuery
-        $wpdb->update(
-            $table,
-            ['time_on_page' => $new_time],
-            ['id' => $record->id],
-            ['%d'],
-            ['%d']
-        );
-        
-        wp_send_json_success(['updated' => true, 'time' => $new_time]);
-    } else {
-        wp_send_json_error('Record not found');
-    }
 }
 
 /**
@@ -819,8 +727,11 @@ function tkgadm_ajax_get_daily_details() {
     $date = isset($_POST['date']) ? sanitize_text_field(wp_unslash($_POST['date'])) : '';
     $type = isset($_POST['type']) ? sanitize_text_field(wp_unslash($_POST['type'])) : 'ads';
     
-    if (empty($date)) {
+    if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
         wp_send_json_error('Thiếu tham số ngày');
+    }
+    if (!in_array($type, ['ads', 'organic', 'blocked'], true)) {
+        $type = 'ads';
     }
     
     // 1. Get List of Target IPs first
@@ -889,31 +800,33 @@ function tkgadm_ajax_get_daily_details() {
     // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.DirectDatabaseQuery
     $sessions = $wpdb->get_results($query_sessions);
     
-    // 3. Check Blocked Status for all these IPs
+    // 3. Blocked status lookup
+    $blocked_placeholders = implode(',', array_fill(0, count($target_ips), '%s'));
     // phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-    $all_whitelist_ips = $wpdb->get_col("SELECT ip_address FROM $table_whitelist");
+    $blocked_rows = $wpdb->get_results($wpdb->prepare(
+        "SELECT ip_address, blocked_time FROM $table_blocked WHERE ip_address IN ($blocked_placeholders)",
+        $target_ips
+    ), OBJECT_K);
+    $sessions_by_ip = [];
+    foreach ((array) $sessions as $session) {
+        $sessions_by_ip[$session->ip_address][] = $session;
+    }
     
     // 4. Group by IP
     $grouped_data = [];
     foreach ($target_ips as $ip) {
-        $ip_sessions = array_filter($sessions, function($s) use ($ip) {
-            return $s->ip_address === $ip;
-        });
+        $ip_sessions = isset($sessions_by_ip[$ip]) ? $sessions_by_ip[$ip] : [];
         
         if (empty($ip_sessions) && $type !== 'blocked') continue;
         
         // Find blocked info if exists
-        $blocked_info = null;
-        if ($type === 'blocked') {
-            // phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-            $blocked_info = $wpdb->get_row($wpdb->prepare("SELECT * FROM $table_blocked WHERE ip_address = %s", $ip));
-        }
+        $blocked_info = isset($blocked_rows[$ip]) ? $blocked_rows[$ip] : null;
 
         $formatted_sessions = [];
         foreach ($ip_sessions as $s) {
             $is_ad = !empty($s->gclid);
             $formatted_sessions[] = [
-                'time' => date('H:i:s', strtotime($s->visit_time)),
+                'time' => mysql2date('H:i:s', $s->visit_time),
                 'full_time' => $s->visit_time,
                 'url' => $s->url_visited,
                 'type' => $is_ad ? 'Ads' : 'Organic',
@@ -928,12 +841,14 @@ function tkgadm_ajax_get_daily_details() {
         
         $grouped_data[] = [
             'ip_address' => $ip,
-            'is_blocked' => in_array($ip, $all_blocked_ips),
+            'is_blocked' => $blocked_info !== null,
             'is_whitelist' => function_exists('tkgadm_is_ip_whitelisted') && tkgadm_is_ip_whitelisted($ip),
             'session_count' => $total_sessions,
             'last_visit' => $last_visit,
             'sessions' => $formatted_sessions,
-            'blocked_time' => $blocked_info ? $blocked_info->blocked_time : null
+            'blocked_time' => $blocked_info ? $blocked_info->blocked_time : null,
+            'total_visits' => array_sum(array_map(function ($row) { return (int) $row->visit_count; }, $ip_sessions)),
+            'ad_clicks' => count(array_unique(array_filter(array_map(function ($row) { return (string) $row->gclid; }, $ip_sessions)))),
         ];
     }
     

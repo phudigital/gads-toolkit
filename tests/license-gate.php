@@ -1,11 +1,20 @@
 <?php
 // Isolated runtime harness: no WordPress DB, Google Ads, email or Telegram access.
 define('ABSPATH', __DIR__);
+foreach (['MINUTE_IN_SECONDS' => 60, 'HOUR_IN_SECONDS' => 3600, 'DAY_IN_SECONDS' => 86400, 'WEEK_IN_SECONDS' => 604800] as $c => $v) { define($c, $v); }
 class WP_Error { public function __construct($code, $message = '') {} }
 function is_wp_error($v) { return $v instanceof WP_Error; }
 $options = []; $cache = []; $calls = 0; $reply = null;
 function get_option($key, $default = false) { global $options; return $options[$key] ?? $default; }
 function add_option($key, $value, ...$args) { global $options; if (isset($options[$key])) return false; $options[$key] = $value; return true; }
+function update_option($key, $value, ...$args) { global $options; $options[$key] = $value; return true; }
+function delete_option($key) { global $options; unset($options[$key]); return true; }
+$scheduled = [];
+function wp_next_scheduled($hook) { global $scheduled; return $scheduled[$hook] ?? false; }
+function wp_schedule_single_event($ts, $hook) { global $scheduled; $scheduled[$hook] = $ts; return true; }
+$is_admin = true;
+function is_admin() { global $is_admin; return $is_admin; }
+function wp_doing_cron() { return false; }
 function home_url($path = '') { global $site_url; return ($site_url ?? 'https://licensed.com') . $path; }
 function get_transient($key) { global $cache; return $cache[$key] ?? false; }
 function set_transient($key, $value, $ttl) { global $cache; $cache[$key] = $value; }
@@ -32,11 +41,11 @@ class WP_REST_Response { public $data; public $headers = array(); public functio
 function wp_send_json_error($message, $code) { throw new RuntimeException('locked:' . $code); }
 function current_user_can($cap) { global $allowed; return $allowed ?? true; }
 function check($condition, $message) { if (!$condition) { throw new Exception($message); } }
-foreach (['module-license','core-engine','module-google-ads','module-whitelist','module-notifications','module-dashboard','module-gads-manager','module-data'] as $module) { require __DIR__ . '/../includes/' . $module . '.php'; }
+foreach (['module-license','core-engine','module-google-ads','module-sync','module-activity-log','module-insights','module-tracking','module-whitelist','module-notifications','module-dashboard','module-gads-manager','module-data'] as $module) { require __DIR__ . '/../includes/' . $module . '.php'; }
 check(!tkgadm_license_is_valid() && $calls === 0, 'Missing key must lock without network');
 // Any access to local data while locked is a failure.
 $wpdb = new class { public function __get($name) { throw new Exception('DB accessed while locked'); } public function __call($name, $args) { throw new Exception('DB accessed while locked'); } };
-tkgadm_track_visit(); tkgadm_enqueue_time_tracker(); tkgadm_check_ip_instant('203.0.113.1');
+tkgadm_track_visit(); tkgadm_enqueue_time_tracker(); tkgadm_check_ip_instant('203.0.113.1'); tkgadm_handle_sync_now();
 tkgadm_run_auto_block_scan(); tkgadm_handle_hourly_sync(); tkgadm_check_suspicious_ips(); tkgadm_send_daily_report(); tkgadm_hook_smart_whitelist_in_cron();
 check(tkgadm_block_ip_internal('203.0.113.1') === false, 'Local block locked');
 check(tkgadm_is_ip_blocked('203.0.113.1') === false, 'Existing local block must be inactive');
@@ -53,23 +62,41 @@ foreach (['tkgadm_ajax_update_time_on_page','tkgadm_ajax_toggle_block_ip','tkgad
 $options = ['tkgadm_central_service_api_key' => 'paid', 'tkgadm_central_service_url' => 'https://service.test'];
 $reply = ['status' => 200, 'body' => ['success' => true, 'data' => ['valid' => true, 'expires_at' => null, 'site_url' => 'https://licensed.com/']]];
 check(tkgadm_license_is_valid(), 'Valid key unlocks'); $n = $calls;
-check(tkgadm_license_is_valid() && $calls === $n, 'Bounded cache avoids extra fetch');
-foreach ($cache as &$entry) { $entry['until'] = time() - 1; } unset($entry);
+check(tkgadm_license_is_valid() && $calls === $n, 'Cached state avoids extra fetch');
+// Service outage after a success: keep working within the grace window.
 $reply = new WP_Error('timeout');
-check(!tkgadm_license_status(true)['valid'], 'Network failure must lock without old success');
+check(tkgadm_license_status(true)['valid'], 'Outage keeps a recent success valid (grace)');
 $reply = ['status' => 200, 'body' => ['success' => true]];
-check(!tkgadm_license_status(true)['valid'], 'Health-like malformed success cannot unlock');
+check(tkgadm_license_status(true)['valid'], 'Malformed reply is treated as outage, not success');
+// Explicit rejection locks immediately.
+$reply = ['status' => 403, 'body' => ['success' => false, 'error' => 'revoked']];
+check(!tkgadm_license_status(true)['valid'], 'Explicit rejection locks');
+$reply = new WP_Error('timeout');
+check(!tkgadm_license_status(true)['valid'], 'Outage after rejection stays locked');
 $reply = ['status' => 200, 'body' => ['success' => true, 'data' => ['valid' => true, 'expires_at' => '2020-01-01', 'site_url' => 'https://licensed.com/']]];
 check(!tkgadm_license_status(true)['valid'], 'Expired license locks');
 $reply['body']['data']['expires_at'] = gmdate('c', time() + 30);
-$status = tkgadm_license_status(true);
-check($status['valid'] && $status['until'] <= time() + 30, 'Cache cannot outlive license expiry');
+check(tkgadm_license_status(true)['valid'], 'Dated license unlocks');
+// Visitor requests never call the service; a stale state schedules a background refresh.
+$saved_key = $options['tkgadm_central_service_api_key'];
+$options['tkgadm_central_service_api_key'] = 'frontend-key';
+$state_key = 'tkgadm_license_state_' . substr(hash('sha256', 'https://service.test|frontend-key|' . tkgadm_license_site_url() . '|' . tkgadm_license_site_token()), 0, 32);
+$options[$state_key] = ['valid' => true, 'message' => 'ok', 'checked_at' => time() - 13 * 3600, 'last_ok' => time() - 13 * 3600, 'expires' => null];
+$is_admin = false; $n = $calls; $scheduled = [];
+check(tkgadm_license_is_valid() && $calls === $n, 'Visitor request uses stored state without calling the service');
+check(isset($scheduled['tkgadm_license_refresh_event']), 'Stale state schedules a background refresh');
+$options[$state_key]['last_ok'] = time() - 73 * 3600;
+$options['tkgadm_central_service_api_key'] = 'frontend-key-2';
+$state_key2 = 'tkgadm_license_state_' . substr(hash('sha256', 'https://service.test|frontend-key-2|' . tkgadm_license_site_url() . '|' . tkgadm_license_site_token()), 0, 32);
+$options[$state_key2] = ['valid' => true, 'message' => 'ok', 'checked_at' => time() - 80 * 3600, 'last_ok' => time() - 80 * 3600, 'expires' => null];
+check(!tkgadm_license_is_valid() && $calls === $n, 'Success older than the grace window locks');
+$is_admin = true; $options['tkgadm_central_service_api_key'] = $saved_key;
 // Unauthorized admin AJAX must not consult the Worker even with a saved key.
 $allowed = false; $n = $calls;
 try { tkgadm_ajax_gads_full_sync(); } catch (RuntimeException $e) {}
 check($calls === $n, 'Authorization must precede license request'); $allowed = true;
 $reply = ['status' => 200, 'body' => ['success' => true, 'data' => 'wrong-type']];
-check(!tkgadm_license_status(true)['valid'], 'Malformed data must lock without a PHP error');
+tkgadm_license_status(true); // Malformed data must not raise a PHP error.
 $options['tkgadm_central_service_api_key'] = 'different'; $reply = ['status' => 403, 'body' => []];
 check(!tkgadm_license_is_valid(), 'Changing key cannot reuse previous success');
 $options['tkgadm_central_service_api_key'] = '';
@@ -77,7 +104,7 @@ check(!tkgadm_license_is_valid(), 'Removing key immediately locks');
 // Licensed public tracking still rejects malformed payloads before DB access.
 $options['tkgadm_central_service_api_key'] = 'payload-test';
 $reply = ['status' => 200, 'body' => ['success' => true, 'data' => ['valid' => true, 'expires_at' => null, 'site_url' => 'https://licensed.com/']]];
-foreach ([['ip' => ['bad'], 'url' => '/', 'time' => '5'], ['ip' => '203.0.113.1', 'url' => '/', 'time' => '-1'], ['ip' => '203.0.113.1', 'url' => str_repeat('x', 4097), 'time' => '5']] as $payload) {
+foreach ([['url' => ['bad'], 'time' => '5'], ['url' => '/', 'time' => '-1'], ['url' => str_repeat('x', 4097), 'time' => '5']] as $payload) {
     $_POST = $payload;
     try { tkgadm_ajax_update_time_on_page(); throw new Exception('Malformed tracking accepted'); }
     catch (RuntimeException $e) { check($e->getMessage() === 'locked:400', 'Tracking schema rejection'); }

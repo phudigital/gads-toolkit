@@ -23,9 +23,16 @@ function tkgadm_settings_oauth_actions() {
             update_option('tkgadm_central_service_api_key', $api_key);
             update_option('tkgadm_gads_api_key', $api_key);
         }
-        update_option('tkgadm_gads_customer_id', sanitize_text_field(wp_unslash($_POST['customer_id'] ?? '')));
-        update_option('tkgadm_gads_manager_id', sanitize_text_field(wp_unslash($_POST['manager_id'] ?? '')));
-        $credentials = tkgadm_get_central_service_credentials();
+        $raw_cid = sanitize_text_field(wp_unslash($_POST['customer_id'] ?? ''));
+        $raw_mid = sanitize_text_field(wp_unslash($_POST['manager_id'] ?? ''));
+        $check_cid = $raw_cid === '' ? true : tkgadm_validate_gads_id_format($raw_cid, 'Customer ID');
+        $check_mid = $raw_mid === '' ? true : tkgadm_validate_gads_id_format($raw_mid, 'Manager ID (MCC)');
+        $credentials = is_wp_error($check_cid) ? $check_cid : (is_wp_error($check_mid) ? $check_mid : null);
+        if (!$credentials) {
+            update_option('tkgadm_gads_customer_id', $raw_cid);
+            update_option('tkgadm_gads_manager_id', $raw_mid);
+            $credentials = tkgadm_get_central_service_credentials();
+        }
         if (is_wp_error($credentials)) {
             $error = $credentials->get_error_message();
         } elseif (empty($credentials['client_id']) || empty($credentials['oauth_redirect_uri'])) {
@@ -148,38 +155,24 @@ function tkgadm_render_settings_page() {
         $gads_auto_sync = isset($_POST['tkgadm_gads_auto_sync']) ? '1' : '0';
         update_option('tkgadm_gads_auto_sync', $gads_auto_sync);
         
-        // Cronjob hourly sync event logic
-        $sync_timestamp = wp_next_scheduled('tkgadm_hourly_sync_event');
-        $auto_sync = $gads_auto_sync === '1';
-        if ($auto_sync && !$sync_timestamp) {
-            wp_schedule_event(time(), 'hourly', 'tkgadm_hourly_sync_event');
-        } elseif (!$auto_sync && $sync_timestamp) {
-            wp_unschedule_event($sync_timestamp, 'tkgadm_hourly_sync_event');
-        }
-        
-        // Rules
+        // Rules (limit/duration >= 1, unit HOUR|DAY|WEEK)
         $rules = [];
         if (isset($_POST['rules']) && is_array($_POST['rules'])) {
-            foreach ($_POST['rules'] as $rule) {
-                if (!empty($rule['limit']) && !empty($rule['duration'])) {
-                    $rules[] = [
-                        'limit' => intval($rule['limit']),
-                        'duration' => intval($rule['duration']),
-                        'unit' => sanitize_text_field($rule['unit'])
-                    ];
+            foreach (wp_unslash($_POST['rules']) as $rule) {
+                $rule = tkgadm_sanitize_block_rule($rule);
+                if ($rule) {
+                    $rules[] = $rule;
                 }
             }
         }
         update_option('tkgadm_auto_block_rules', $rules);
-        $auto_block_enabled = !empty($rules) ? '1' : '0';
-        update_option('tkgadm_auto_block_enabled', $auto_block_enabled);
+        update_option('tkgadm_auto_block_enabled', !empty($rules) ? '1' : '0');
 
-        $block_timestamp = wp_next_scheduled('tkgadm_auto_block_scan_event');
-        if (!empty($rules) && !$block_timestamp) {
-            wp_schedule_event(time(), 'tkgadm_15_minutes', 'tkgadm_auto_block_scan_event');
-        } elseif (empty($rules) && $block_timestamp) {
-            wp_unschedule_event($block_timestamp, 'tkgadm_auto_block_scan_event');
-        }
+        // Advanced
+        $ip_source = isset($_POST['ip_source']) ? sanitize_key(wp_unslash($_POST['ip_source'])) : 'auto';
+        update_option('tkgadm_ip_source', in_array($ip_source, ['auto', 'remote_addr', 'cloudflare', 'proxy'], true) ? $ip_source : 'auto');
+        $retention = isset($_POST['stats_retention_days']) ? intval($_POST['stats_retention_days']) : 180;
+        update_option('tkgadm_stats_retention_days', in_array($retention, [0, 30, 90, 180, 365], true) ? $retention : 180);
 
         // --- Lưu cấu hình Notifications ---
         update_option('tkgadm_notification_emails', isset($_POST['notification_emails']) ? sanitize_textarea_field(wp_unslash($_POST['notification_emails'])) : '');
@@ -187,10 +180,16 @@ function tkgadm_render_settings_page() {
         update_option('tkgadm_telegram_chat_id', isset($_POST['telegram_chat_id']) ? sanitize_text_field(wp_unslash($_POST['telegram_chat_id'])) : '');
         
         update_option('tkgadm_alert_threshold', isset($_POST['alert_threshold']) ? intval($_POST['alert_threshold']) : 5);
-        update_option('tkgadm_alert_frequency', isset($_POST['alert_frequency']) ? sanitize_text_field($_POST['alert_frequency']) : 'hourly');
+        $alert_frequency = isset($_POST['alert_frequency']) ? sanitize_key(wp_unslash($_POST['alert_frequency'])) : 'hourly';
+        update_option('tkgadm_alert_frequency', in_array($alert_frequency, ['hourly', 'twicedaily', 'daily'], true) ? $alert_frequency : 'hourly');
         
         update_option('tkgadm_enable_daily_reports', isset($_POST['enable_daily_reports']) ? '1' : '0');
-        update_option('tkgadm_daily_report_time', isset($_POST['daily_report_time']) ? sanitize_text_field($_POST['daily_report_time']) : '08:00');
+        $report_time_raw = isset($_POST['daily_report_time']) ? sanitize_text_field(wp_unslash($_POST['daily_report_time'])) : '08:00';
+        update_option('tkgadm_daily_report_time', preg_match('/^([01]\d|2[0-3]):[0-5]\d$/', $report_time_raw) ? $report_time_raw : '08:00');
+
+        // Apply new schedules (sync, scan, alerts, daily report).
+        tkgadm_schedule_core_events();
+        tkgadm_schedule_notifications();
         
         $message = '<div class="bg-emerald-50 text-emerald-600 p-3 rounded-lg border border-emerald-200 mb-6 font-medium text-sm">Đã lưu cấu hình thành công!</div>';
         } // end if (!$id_error)
@@ -205,8 +204,6 @@ function tkgadm_render_settings_page() {
     $customer_id = get_option('tkgadm_gads_customer_id', '');
     $manager_id = get_option('tkgadm_gads_manager_id', '');
     $refresh_token = get_option('tkgadm_gads_refresh_token', '');
-    $auto_sync = get_option('tkgadm_auto_sync_hourly', get_option('tkgadm_auto_sync', '0'));
-    $sync_on_block = get_option('tkgadm_auto_sync_on_block', get_option('tkgadm_sync_on_block', '1'));
     $rules = get_option('tkgadm_auto_block_rules', []);
     $can_upload_blocked_ips = !empty($refresh_token) && !empty($customer_id);
 
@@ -215,6 +212,15 @@ function tkgadm_render_settings_page() {
     $chat_id = get_option('tkgadm_telegram_chat_id', '');
     $threshold = get_option('tkgadm_alert_threshold', 5);
     $frequency = get_option('tkgadm_alert_frequency', 'hourly');
+    if ($frequency === 'twice_daily') { $frequency = 'twicedaily'; }
+    $ip_source = get_option('tkgadm_ip_source', 'auto');
+    $retention_days = (int) get_option('tkgadm_stats_retention_days', 180);
+    $detected_ip = tkgadm_get_real_user_ip();
+    // Behind a non-Cloudflare CDN/load balancer with a public address, "auto" sees the proxy's IP.
+    $remote_addr = tkgadm_server_header('REMOTE_ADDR');
+    $forwarded_ip = tkgadm_ip_from_forwarded_for(true);
+    $proxy_hint = $ip_source === 'auto' && $forwarded_ip && $forwarded_ip !== $remote_addr
+        && tkgadm_is_public_ip($remote_addr) && !tkgadm_ip_in_ranges($remote_addr, tkgadm_cloudflare_ranges());
     $daily_reports = get_option('tkgadm_enable_daily_reports', '1');
     $report_time = get_option('tkgadm_daily_report_time', '08:00');
 
@@ -403,7 +409,7 @@ function tkgadm_render_settings_page() {
                                     </div>
                                     <select name="alert_frequency" class="tkgadm-alert-frequency text-xs border border-gray-300 rounded p-1.5 focus:outline-none text-gray-700 bg-white shadow-sm">
                                         <option value="hourly" <?php selected($frequency, 'hourly'); ?>>Mỗi giờ</option>
-                                        <option value="twice_daily" <?php selected($frequency, 'twice_daily'); ?>>2 lần/ngày</option>
+                                        <option value="twicedaily" <?php selected($frequency, 'twicedaily'); ?>>2 lần/ngày</option>
                                         <option value="daily" <?php selected($frequency, 'daily'); ?>>Mỗi ngày</option>
                                     </select>
                                 </div>
@@ -424,6 +430,37 @@ function tkgadm_render_settings_page() {
                                             <label for="toggle3" class="tkgadm-switch__track"></label>
                                         </div>
                                     </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Section: Advanced -->
+                        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                            <h3 class="text-base font-bold text-gray-800 mb-4 flex items-center gap-2 m-0 pb-2">
+                                <i class="fa-solid fa-sliders text-gray-500"></i> Nâng cao
+                            </h3>
+                            <div class="space-y-4">
+                                <div>
+                                    <label for="tkgadm-ip-source" class="block text-sm font-medium text-gray-800 mb-1">Cách xác định IP khách</label>
+                                    <select name="ip_source" id="tkgadm-ip-source" class="w-full text-sm border border-gray-300 rounded-lg p-2 bg-white text-gray-700">
+                                        <option value="auto" <?php selected($ip_source, 'auto'); ?>>Tự động (khuyên dùng)</option>
+                                        <option value="cloudflare" <?php selected($ip_source, 'cloudflare'); ?>>Luôn dùng Cloudflare (CF-Connecting-IP)</option>
+                                        <option value="proxy" <?php selected($ip_source, 'proxy'); ?>>Sau load balancer (X-Forwarded-For)</option>
+                                        <option value="remote_addr" <?php selected($ip_source, 'remote_addr'); ?>>Chỉ kết nối trực tiếp (REMOTE_ADDR)</option>
+                                    </select>
+                                    <p class="text-xs text-gray-500 mt-1 mb-0">Tự động chỉ tin header proxy khi request đến từ Cloudflare hoặc proxy nội bộ, nên khách không thể giả IP. IP của bạn lúc này: <code><?php echo esc_html($detected_ip ?: 'không xác định'); ?></code></p>
+                                    <?php if ($proxy_hint) : ?>
+                                        <p class="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded p-2 mt-2 mb-0">Website có vẻ đứng sau một CDN/load balancer (kết nối đến từ <code><?php echo esc_html($remote_addr); ?></code>, header báo IP <code><?php echo esc_html($forwarded_ip); ?></code>). Nếu đúng, hãy chọn "Sau load balancer (X-Forwarded-For)" để ghi nhận đúng IP khách.</p>
+                                    <?php endif; ?>
+                                </div>
+                                <div>
+                                    <label for="tkgadm-retention" class="block text-sm font-medium text-gray-800 mb-1">Lưu dữ liệu truy cập</label>
+                                    <select name="stats_retention_days" id="tkgadm-retention" class="w-full text-sm border border-gray-300 rounded-lg p-2 bg-white text-gray-700">
+                                        <?php foreach ([30 => '30 ngày', 90 => '90 ngày', 180 => '180 ngày', 365 => '1 năm', 0 => 'Không tự xoá'] as $days => $label) : ?>
+                                            <option value="<?php echo (int) $days; ?>" <?php selected($retention_days, $days); ?>><?php echo esc_html($label); ?></option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                    <p class="text-xs text-gray-500 mt-1 mb-0">Dữ liệu cũ hơn được xoá tự động mỗi ngày để database gọn nhẹ. Danh sách IP bị chặn không bị ảnh hưởng.</p>
                                 </div>
                             </div>
                         </div>

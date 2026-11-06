@@ -3,7 +3,7 @@
  * Plugin Name: Phần mềm chống click ảo Google Ads (GAds Toolkit)
  * Plugin URI:  https://gads.pdl.vn
  * Description: Giải pháp toàn diện giúp theo dõi và ngăn chặn click ảo (Fraud Click) từ Google Ads.
- * Version:     4.3.0
+ * Version:     4.4.0
  * Author:      Phú Digital
  * Author URI:  https://pdl.vn
  * License:     GPLv2 or later
@@ -19,7 +19,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Define plugin constants
-define('GADS_TOOLKIT_VERSION', '4.3.0');
+define('GADS_TOOLKIT_VERSION', '4.4.0');
 define('GADS_TOOLKIT_PATH', plugin_dir_path(__FILE__));
 define('GADS_TOOLKIT_URL', plugin_dir_url(__FILE__));
 
@@ -38,6 +38,10 @@ require_once GADS_TOOLKIT_PATH . 'includes/core-engine.php';
 
 // 2. Functional Modules (API, Cron, Background Logic)
 require_once GADS_TOOLKIT_PATH . 'includes/module-google-ads.php';
+require_once GADS_TOOLKIT_PATH . 'includes/module-sync.php';
+require_once GADS_TOOLKIT_PATH . 'includes/module-activity-log.php';
+require_once GADS_TOOLKIT_PATH . 'includes/module-insights.php';
+require_once GADS_TOOLKIT_PATH . 'includes/module-tracking.php';
 require_once GADS_TOOLKIT_PATH . 'includes/module-notifications.php';
 
 // 3. Admin & Data Modules (Admin UI & AJAX)
@@ -58,10 +62,13 @@ function tkgadm_activate_plugin() {
         tkgadm_create_whitelist_table();
     }
     tkgadm_schedule_notifications(); // Kích hoạt cron jobs
+    tkgadm_schedule_core_events();
 }
 
 // Deactivation hook
 register_deactivation_hook(__FILE__, 'tkgadm_deactivate_plugin');
 function tkgadm_deactivate_plugin() {
-    tkgadm_unschedule_notifications(); // Hủy cron jobs
+    foreach (tkgadm_all_cron_hooks() as $hook) {
+        wp_clear_scheduled_hook($hook);
+    }
 }

@@ -166,7 +166,7 @@ export function normalizeIpForGoogleAds(value) {
   if (typeof value !== 'string') return null;
 
   const trimmed = value.trim();
-  const wildcardMatch = trimmed.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.\*$/);
+  const wildcardMatch = trimmed.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(?:\*|0\/24)$/);
   if (wildcardMatch) {
     const octets = wildcardMatch.slice(1, 4).map(Number);
     if (octets.some((octet) => octet < 0 || octet > 255)) return null;

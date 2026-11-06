@@ -1,72 +1,54 @@
 /**
- * GAds Toolkit - Time on Page Tracker
- * Đo thời gian người dùng ở lại trang và gửi về server
- * Chạy cho TẤT CẢ traffic (đã lọc Bot ở PHP)
+ * GAds Toolkit - visit beacon + time on page.
+ * Works with page caches: no per-visitor data is embedded in the HTML,
+ * the server derives the visitor IP itself.
  */
-
 (function () {
-  let startTime = Date.now();
+  var cfg = window.tkgadm_tracker || {};
+  var startTime = Date.now();
+  var lastSent = 0;
 
-  // Lấy thông tin cần thiết
-  function getTrackingData() {
-    const urlParams = new URLSearchParams(window.location.search);
-    // Ưu tiên gclid, nếu không có thì dùng gbraid
-    let clickId = urlParams.get("gclid") || "";
-    if (!clickId) {
-      clickId = urlParams.get("gbraid") || "";
-    }
-
-    return {
-      url: window.location.href,
-      gclid: clickId, // Lưu cả gclid hoặc gbraid (hoặc rỗng nếu là Organic)
-      user_agent: navigator.userAgent,
-    };
+  function pageUrl() {
+    return window.location.href.split("#")[0];
   }
 
-  // Gửi thời gian về server
-  function sendTimeUpdate() {
-    const currentTime = Date.now();
-    const timeOnPage = Math.floor((currentTime - startTime) / 1000); // Đổi sang giây
-
-    // Chỉ gửi nếu đã qua ít nhất 3 giây
-    if (timeOnPage < 3) {
+  function send(path, fields) {
+    var body = new URLSearchParams(fields);
+    if (cfg.rest) {
+      var url = cfg.rest + path;
+      if (navigator.sendBeacon && navigator.sendBeacon(url, body)) {
+        return;
+      }
+      if (window.fetch) {
+        fetch(url, { method: "POST", body: body, keepalive: true, credentials: "omit" }).catch(function () {});
+      }
       return;
     }
-
-    const trackingData = getTrackingData();
-
-    // Gửi AJAX bằng sendBeacon (tối ưu cho beforeunload)
-    const data = new URLSearchParams({
-      action: "tkgadm_update_time_on_page",
-      ip: tkgadm_tracker.user_ip,
-      url: trackingData.url,
-      time: timeOnPage,
-      user_agent: trackingData.user_agent,
-      gclid: trackingData.gclid,
-    });
-
-    // Dùng sendBeacon nếu có, fallback sang XHR
-    if (navigator.sendBeacon) {
-      navigator.sendBeacon(tkgadm_tracker.ajaxurl, data);
-    } else {
-      const xhr = new XMLHttpRequest();
-      xhr.open("POST", tkgadm_tracker.ajaxurl, false); // Sync request cho beforeunload
-      xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
-      xhr.send(data.toString());
+    // Pre-4.4 localized config (old cached HTML): admin-ajax fallback.
+    if (cfg.ajaxurl && path === "time" && navigator.sendBeacon) {
+      var params = new URLSearchParams(window.location.search);
+      fields.action = "tkgadm_update_time_on_page";
+      fields.gclid = params.get("gclid") || params.get("gbraid") || params.get("wbraid") || "";
+      navigator.sendBeacon(cfg.ajaxurl, new URLSearchParams(fields));
     }
   }
 
-  // Gửi khi người dùng rời trang
-  window.addEventListener("beforeunload", function () {
-    sendTimeUpdate();
-  });
+  function sendTime() {
+    var seconds = Math.floor((Date.now() - startTime) / 1000);
+    if (seconds < 3 || seconds === lastSent) {
+      return;
+    }
+    lastSent = seconds;
+    send("time", { url: pageUrl(), time: String(seconds) });
+  }
 
-  // Gửi khi tab bị ẩn (người dùng chuyển tab hoặc minimize)
+  // Record the view (covers cached pages; deduplicated server side).
+  send("hit", { url: pageUrl() });
+
+  window.addEventListener("pagehide", sendTime);
   document.addEventListener("visibilitychange", function () {
-    if (document.hidden) {
-      sendTimeUpdate();
+    if (document.visibilityState === "hidden") {
+      sendTime();
     }
   });
-
-  console.log("GAds Toolkit Time Tracker initialized (All traffic)");
 })();

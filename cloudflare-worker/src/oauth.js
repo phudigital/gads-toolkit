@@ -1,3 +1,6 @@
+import { kvListByPrefix } from './utils.js';
+import { normalizeLicenseDomain } from './license-domain.js';
+
 export async function handleOAuthRedirect(request, env) {
   const url = new URL(request.url);
   const code = url.searchParams.get('code');
@@ -77,6 +80,13 @@ export async function handleOAuthRedirect(request, env) {
     return renderError('Invalid return_url');
   }
 
+  // Only the plugin's own settings screen over HTTPS may receive an authorization code.
+  if (parsedReturnUrl.protocol !== 'https:' || parsedReturnUrl.username || parsedReturnUrl.password ||
+      !parsedReturnUrl.pathname.endsWith('/wp-admin/admin.php') ||
+      parsedReturnUrl.searchParams.get('page') !== 'tkgad-settings') {
+    return renderError('return_url không hợp lệ');
+  }
+
   const origin = parsedReturnUrl.origin;
 
   // 4. Check allowed origins
@@ -84,15 +94,17 @@ export async function handleOAuthRedirect(request, env) {
 
   // List all active license domains from KV.
   const licensePrefix = 'license:';
-  const licenses = await env.GADS_KV.list({ prefix: licensePrefix });
+  const licenseKeys = await kvListByPrefix(env.GADS_KV, licensePrefix);
 
-  for (const key of licenses.keys) {
+  for (const key of licenseKeys) {
     const licenseStr = await env.GADS_KV.get(key.name);
     if (!licenseStr) continue;
 
     try {
       const license = JSON.parse(licenseStr);
-      if (license.active && license.domain && originMatchesDomain(origin, license.domain)) {
+      const expiry = license.expires_at ? new Date(license.expires_at).getTime() : null;
+      const unexpired = expiry === null || (Number.isFinite(expiry) && expiry > Date.now());
+      if (license.active === true && unexpired && license.domain && originMatchesDomain(origin, license.domain)) {
         isAllowed = true;
         break;
       }
@@ -140,17 +152,11 @@ export async function handleOAuthRedirect(request, env) {
 }
 
 function originMatchesDomain(origin, domain) {
-  const normalizedDomain = String(domain).trim();
-  if (!normalizedDomain) return false;
-
+  const licensed = normalizeLicenseDomain(String(domain));
+  if (!licensed) return false;
   try {
-    const originUrl = new URL(origin);
-    const domainUrl = new URL(
-      normalizedDomain.includes('://') ? normalizedDomain : `https://${normalizedDomain}`
-    );
-
-    return originUrl.hostname === domainUrl.hostname;
+    return normalizeLicenseDomain(new URL(origin).origin) === licensed;
   } catch (e) {
-    return origin.includes(normalizedDomain);
+    return false;
   }
 }

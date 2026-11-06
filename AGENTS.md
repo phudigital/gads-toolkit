@@ -26,6 +26,11 @@ Các thao tác này có thể xóa dữ liệu, thay đổi tài khoản quảng
 | --- | --- | --- |
 | Bootstrap, activation, deactivation | `gads-toolkit.php` | Thứ tự load module, tạo bảng, lịch thông báo; updater và whitelist được load ngoài admin |
 | Truy cập frontend, chặn tức thì, scan định kỳ | `includes/core-engine.php`: `tkgadm_track_visit`, `tkgadm_check_ip_instant`, `tkgadm_run_auto_block_scan`, `tkgadm_block_ip_internal` | Bảng stats/blocked, quy tắc chặn, whitelist; có các caller đồng bộ và thông báo |
+| Lấy IP thật (chỉ tin header proxy từ Cloudflare/proxy nội bộ) | `includes/ip-utils.php`: `tkgadm_get_real_user_ip`, option `tkgadm_ip_source` | Không đổi sang tin `X-Forwarded-For` mặc định |
+| Tracking 4.4 | `includes/module-tracking.php`: `template_redirect` + REST `gads-toolkit/v1/hit`, `/time` | Không gọi mạng trong request khách; cột `has_js` |
+| Đồng bộ Google Ads 4.4 | `includes/module-sync.php`: `tkgadm_reconcile_google_ads`, `tkgadm_queue_sync` | Option `tkgadm_gads_managed_ips`; chỉ gỡ IP plugin quản lý; lock `tkgadm_sync_lock` |
+| Nhật ký + hoàn tác | `includes/module-activity-log.php` | Bảng `gads_toolkit_log` |
+| Điểm gian lận, gộp dải /24 | `includes/module-insights.php` | Đọc stats 30 ngày |
 | Thời gian ở trang | `assets/time-tracker.js` → `includes/module-dashboard.php`: `tkgadm_ajax_update_time_on_page` | Endpoint công khai cập nhật stats; không phải bằng chứng danh tính khách |
 | Thống kê, chặn/bỏ chặn local | `includes/module-dashboard.php`: `tkgadm_ajax_toggle_block_ip` | `gads_toolkit_blocked`; nhánh bỏ chặn local không tự gỡ criterion trên Google |
 | Cấu hình, OAuth hiện hành | `includes/module-settings.php`: `tkgadm_settings_oauth_actions`, `tkgadm_render_settings_page` | Options `tkgadm_*`, refresh token; pending OAuth transient theo user |

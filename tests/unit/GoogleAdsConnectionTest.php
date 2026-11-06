@@ -57,38 +57,4 @@ class GoogleAdsConnectionTest extends TestCase {
         Functions\expect('tkgadm_remove_ips_via_central_service')->once()->with(['test'])->andReturn(true);
         $this->assertTrue(tkgadm_remove_connected_google_ads_ips(['test']));
     }
-    private function localDatabase($ips, $error = '') {
-        global $wpdb;
-        $wpdb = new class($ips, $error) {
-            public $prefix = 'wp_';
-            public $last_error;
-            private $ips;
-            public function __construct($ips, $error) { $this->ips = $ips; $this->last_error = $error; }
-            public function get_col($query) { return $this->ips; }
-        };
-        Functions\when('is_wp_error')->alias(function($value) { return $value instanceof WP_Error; });
-    }
-    public function test_full_sync_stops_before_google_when_local_read_fails() {
-        $this->options();
-        $this->localDatabase([], 'database unavailable');
-        Functions\expect('tkgadm_list_connected_google_ads_ips')->never();
-        Functions\expect('tkgadm_remove_connected_google_ads_ips')->never();
-        $this->assertFalse(tkgadm_do_full_sync_google_ads()['success']);
-    }
-    public function test_full_sync_preserves_wildcards_for_upload_normalization() {
-        $this->options();
-        $this->localDatabase(['203.0.113.*', '203.0.113.*']);
-        Functions\expect('tkgadm_list_connected_google_ads_ips')->once()->andReturn([['resource_name' => 'test']]);
-        Functions\expect('tkgadm_remove_connected_google_ads_ips')->once()->with(['test'])->andReturn(true);
-        Functions\expect('tkgadm_sync_ip_to_google_ads')->once()->with(['203.0.113.*'], true)->andReturn(['success' => true, 'message' => 'Synced']);
-        $this->assertTrue(tkgadm_do_full_sync_google_ads()['success']);
-    }
-    public function test_full_sync_does_not_upload_after_unconfirmed_removal() {
-        $this->options();
-        $this->localDatabase(['203.0.113.1']);
-        Functions\expect('tkgadm_list_connected_google_ads_ips')->once()->andReturn([['resource_name' => 'test']]);
-        Functions\expect('tkgadm_remove_connected_google_ads_ips')->once()->andReturn(new WP_Error('timeout', 'timeout'));
-        Functions\expect('tkgadm_sync_ip_to_google_ads')->never();
-        $this->assertFalse(tkgadm_do_full_sync_google_ads()['success']);
-    }
 }

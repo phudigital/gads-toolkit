@@ -6,6 +6,8 @@
 
 if (!defined('ABSPATH')) exit;
 
+require_once __DIR__ . '/ip-utils.php';
+
 /**
  * ============================================================================
  * 1. DATABASE & HELPERS
@@ -54,6 +56,25 @@ function tkgadm_create_tables() {
     dbDelta($sql_blocked);
 
     tkgadm_ensure_stats_indexes($table_stats);
+    tkgadm_ensure_stats_columns($table_stats);
+    if (function_exists('tkgadm_create_log_table')) {
+        tkgadm_create_log_table();
+    }
+}
+
+/**
+ * Columns added after the first release (dbDelta cannot alter "IF NOT EXISTS" tables).
+ * has_js: NULL = recorded server side only, 1 = the beacon ran (JavaScript executed).
+ */
+function tkgadm_ensure_stats_columns($table_stats) {
+    global $wpdb;
+    $table_name = str_replace('`', '``', $table_stats);
+    // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+    $columns = $wpdb->get_col("SHOW COLUMNS FROM `$table_name`", 0);
+    if (is_array($columns) && $columns && !in_array('has_js', $columns, true)) {
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+        $wpdb->query("ALTER TABLE `$table_name` ADD COLUMN `has_js` TINYINT(1) DEFAULT NULL");
+    }
 }
 
 /**
@@ -123,12 +144,30 @@ function tkgadm_get_table_index_names($table_name) {
 /**
  * Kiểm tra và cập nhật DB khi update version
  */
+// Schema must be current before tracking runs, also after auto-updates / WP-CLI
+// when nobody opens wp-admin: compare the stored version on every request (autoloaded option).
+add_action('plugins_loaded', 'tkgadm_maybe_upgrade_schema', 5);
+function tkgadm_maybe_upgrade_schema() {
+    $installed = get_option('tkgadm_version');
+    if ($installed === GADS_TOOLKIT_VERSION) {
+        return;
+    }
+    // Sites upgrading from < 4.4 keep all existing traffic data unless the owner opts in.
+    if ($installed && version_compare($installed, '4.4.0', '<') && get_option('tkgadm_stats_retention_days', null) === null) {
+        add_option('tkgadm_stats_retention_days', 0);
+    }
+    tkgadm_create_tables();
+    update_option('tkgadm_version', GADS_TOOLKIT_VERSION);
+    tkgadm_schedule_core_events();
+}
+
 add_action('admin_init', 'tkgadm_check_upgrade');
 function tkgadm_check_upgrade() {
     if (get_option('tkgadm_version') !== GADS_TOOLKIT_VERSION || !tkgadm_stats_indexes_exist()) {
         // 1. Cập nhật cấu trúc bảng
         tkgadm_create_tables();
         update_option('tkgadm_version', GADS_TOOLKIT_VERSION);
+        tkgadm_schedule_core_events();
     }
 
     // Tạo bảng whitelist nếu chưa có (cho cài đặt cũ)
@@ -140,43 +179,6 @@ function tkgadm_check_upgrade() {
             tkgadm_create_whitelist_table();
         }
     }
-}
-
-/**
- * Lấy IP thật của user (hỗ trợ Cloudflare Proxy)
- * Priority: CF-Connecting-IP > X-Forwarded-For > REMOTE_ADDR
- */
-function tkgadm_get_real_user_ip() {
-    // 1. Cloudflare Proxy (highest priority)
-    if (!empty($_SERVER['HTTP_CF_CONNECTING_IP'])) {
-        $ip = sanitize_text_field(wp_unslash($_SERVER['HTTP_CF_CONNECTING_IP']));
-        if (filter_var($ip, FILTER_VALIDATE_IP)) {
-            return $ip;
-        }
-    }
-    
-    // 2. Standard proxy headers
-    if (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
-        $ips = explode(',', $_SERVER['HTTP_X_FORWARDED_FOR']);
-        $ip = sanitize_text_field(trim($ips[0]));
-        if (filter_var($ip, FILTER_VALIDATE_IP)) {
-            return $ip;
-        }
-    }
-    
-    if (!empty($_SERVER['HTTP_X_REAL_IP'])) {
-        $ip = sanitize_text_field(wp_unslash($_SERVER['HTTP_X_REAL_IP']));
-        if (filter_var($ip, FILTER_VALIDATE_IP)) {
-            return $ip;
-        }
-    }
-    
-    // 3. Direct connection (fallback)
-    if (!empty($_SERVER['REMOTE_ADDR'])) {
-        return sanitize_text_field(wp_unslash($_SERVER['REMOTE_ADDR']));
-    }
-    
-    return '';
 }
 
 /**
@@ -205,75 +207,50 @@ function tkgadm_validate_ip_pattern($pattern) {
 }
 
 /**
- * Kiểm tra IP có bị chặn không
+ * Is $ip covered by a local block (exact, a.b.c.* or IPv6 /64)?
  */
 function tkgadm_is_ip_blocked($ip) {
     if (!tkgadm_license_is_valid()) { return false; }
     global $wpdb;
     $table = $wpdb->prefix . 'gads_toolkit_blocked';
-    
-    // phpcs:ignore WordPress.DB.DirectDatabaseQuery
-    $blocked_ips = $wpdb->get_col("SELECT ip_address FROM $table");
-    
-    foreach ($blocked_ips as $blocked_ip) {
-        if (strpos($blocked_ip, '*') !== false) {
-            // Wildcard matching - compare each octet
-            $blocked_parts = explode('.', $blocked_ip);
-            $ip_parts = explode('.', $ip);
-            
-            // Both must be valid IPv4 (4 octets)
-            if (count($blocked_parts) !== 4 || count($ip_parts) !== 4) {
-                continue;
-            }
-            
-            $match = true;
-            for ($i = 0; $i < 4; $i++) {
-                if ($blocked_parts[$i] !== '*' && $blocked_parts[$i] !== $ip_parts[$i]) {
-                    $match = false;
-                    break;
-                }
-            }
-            
-            if ($match) {
-                return true;
-            }
-        } elseif ($blocked_ip === $ip) {
+    // phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+    $patterns = $wpdb->get_col($wpdb->prepare(
+        "SELECT ip_address FROM $table WHERE ip_address = %s OR ip_address LIKE %s OR ip_address LIKE %s",
+        $ip, '%' . $wpdb->esc_like('*'), '%' . $wpdb->esc_like('/') . '%'
+    ));
+    foreach ((array) $patterns as $pattern) {
+        if (tkgadm_pattern_matches_ip($pattern, $ip)) {
             return true;
         }
     }
-    
     return false;
 }
 
 /**
- * Helper: Insert IP into Blocked List safely
- * Returns true if newly blocked, false if already blocked or error
+ * Insert an IP/range into the local block list, log it and queue Google Ads sync.
+ * Returns true if newly blocked; false if whitelisted, already blocked or on error.
+ *
+ * @param string $actor 'auto' or a user login.
  */
-function tkgadm_block_ip_internal($ip, $reason = '') {
+function tkgadm_block_ip_internal($ip, $reason = '', $actor = 'auto') {
     if (!tkgadm_license_is_valid()) { return false; }
 
     global $wpdb;
     $table = $wpdb->prefix . 'gads_toolkit_blocked';
     $stats_table = $wpdb->prefix . 'gads_toolkit_stats';
 
-    // === WHITELIST CHECK: Không chặn IP được tin cậy ===
     if (function_exists('tkgadm_is_ip_whitelisted') && tkgadm_is_ip_whitelisted($ip)) {
-        return false; // IP trong whitelist -> bỏ qua, không chặn
-    }
-
-    // Check exist
-    // phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-    $exists = $wpdb->get_var($wpdb->prepare("SELECT id FROM $table WHERE ip_address = %s", $ip));
-
-    if ($exists) {
         return false;
     }
-    
-    // Calculate current visit count
-    // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+
+    // phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+    if ($wpdb->get_var($wpdb->prepare("SELECT id FROM $table WHERE ip_address = %s", $ip))) {
+        return false;
+    }
+
+    // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.DirectDatabaseQuery
     $visit_count = $wpdb->get_var($wpdb->prepare("SELECT SUM(visit_count) FROM $stats_table WHERE ip_address = %s", $ip));
-    
-    // Insert
+
     // phpcs:ignore WordPress.DB.DirectDatabaseQuery
     $result = $wpdb->insert($table, [
         'ip_address' => $ip,
@@ -281,225 +258,141 @@ function tkgadm_block_ip_internal($ip, $reason = '') {
         'reason' => sanitize_text_field($reason),
         'visit_count' => intval($visit_count)
     ]);
-    
-    return $result !== false;
-}
-
-
-/**
- * ============================================================================
- * 2. TRACKING SYSTEM
- * ============================================================================
- */
-
-/**
- * Ghi log truy cập (hook vào wp_head)
- */
-add_action('wp_head', 'tkgadm_track_visit');
-function tkgadm_track_visit() {
-    if (!tkgadm_license_is_valid()) { return; }
-
-    if (is_admin()) return;
-
-    global $wpdb;
-    $table = $wpdb->prefix . 'gads_toolkit_stats';
-
-    if (!isset($_SERVER['REQUEST_URI'])) {
-        return;
+    if ($result === false) {
+        return false;
     }
 
-    $ip = tkgadm_get_real_user_ip();
-    if (empty($ip)) {
-        return;
+    if (function_exists('tkgadm_log_action')) {
+        tkgadm_log_action('block', $ip, $reason, $actor);
     }
-    $visit_time = current_time('mysql');
-    
-    // FIX: Construct URL đúng cách để giữ query string
-    $request_uri = wp_unslash($_SERVER['REQUEST_URI']);
-    $url = esc_url_raw(home_url($request_uri));
-    
-    $user_agent = isset($_SERVER['HTTP_USER_AGENT']) ? sanitize_textarea_field(wp_unslash($_SERVER['HTTP_USER_AGENT'])) : '';
-    
-    // FIX: Trích xuất gclid/gbraid trực tiếp từ $_GET (reliable hơn parse URL)
-    $gclid = '';
-    if (isset($_GET['gclid'])) {
-        $gclid = sanitize_text_field(wp_unslash($_GET['gclid']));
-    } elseif (isset($_GET['gbraid'])) {
-        $gclid = sanitize_text_field(wp_unslash($_GET['gbraid']));
+    if (function_exists('tkgadm_queue_sync')) {
+        tkgadm_queue_sync();
     }
-
-    // Xác định loại truy cập
-    $has_gad_source = strpos($url, 'gad_source') !== false;
-    $has_click_id = !empty($gclid);
-    
-    // Nếu là Organic (không phải Ads), kiểm tra và loại bỏ Bot
-    if (!$has_gad_source && !$has_click_id) {
-        // Danh sách Bot phổ biến
-        $bots = array('bot', 'crawl', 'spider', 'slurp', 'mediapartners', 'facebookexternalhit', 'whatsapp', 'curl', 'wget', 'python', 'java', 'go-http');
-        foreach ($bots as $bot) {
-            if (stripos($user_agent, $bot) !== false) {
-                return; // Bỏ qua Bot
-            }
-        }
-    }
-
-    // Kiểm tra entry đã tồn tại trong vòng 30 phút gần đây
-    // phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-    $existing = $wpdb->get_row($wpdb->prepare(
-        "SELECT * FROM $table 
-         WHERE ip_address = %s 
-         AND url_visited = %s 
-         AND user_agent = %s 
-         AND gclid = %s
-         AND visit_time >= DATE_SUB(%s, INTERVAL 30 MINUTE)
-         ORDER BY visit_time DESC
-         LIMIT 1",
-        $ip, $url, $user_agent, $gclid, $visit_time
-    ));
-
-    if ($existing) {
-        // Cập nhật record hiện tại (cùng phiên trong 30 phút)
-        // phpcs:ignore WordPress.DB.DirectDatabaseQuery
-        $wpdb->update(
-            $table,
-            ['visit_count' => $existing->visit_count + 1, 'visit_time' => $visit_time],
-            ['id' => $existing->id]
-        );
-    } else {
-        // Tạo record mới (phiên mới hoặc lần đầu)
-        // phpcs:ignore WordPress.DB.DirectDatabaseQuery
-        $wpdb->insert($table, [
-            'ip_address' => $ip,
-            'visit_time' => $visit_time,
-            'url_visited' => $url,
-            'user_agent' => $user_agent,
-            'gclid' => $gclid,
-            'time_on_page' => 0
-        ]);
-    }
-
-    // REAL-TIME PROTECTION: Nếu là Click Ads, kiểm tra quy tắc chặn ngay lập tức
-    if ($has_click_id && get_option('tkgadm_auto_block_enabled')) {
-        tkgadm_check_ip_instant($ip);
-    }
-    
-    // === SMART CROSS-IP BLOCKING (CHẶN CHÉO IP) ===
-    // Nếu trình duyệt này từng bị chặn (có Cookie 'tkgadm_banned'), 
-    // nhưng giờ quay lại bằng IP mới (ví dụ từ v4 chuyển sang v6), 
-    // thì chặn luôn IP mới này.
-    if (isset($_COOKIE['tkgadm_banned']) && $_COOKIE['tkgadm_banned'] === '1') {
-        // Kiểm tra xem IP hiện tại đã có trong blacklist chưa
-        $is_blocked = tkgadm_is_ip_blocked($ip);
-        
-        if (!$is_blocked) {
-            // Chưa bị chặn => Đây là IP mới của kẻ đã bị chặn => CHẶN NGAY
-            if (tkgadm_block_ip_internal($ip, "Smart Block: Phát hiện thiết bị đã bị cấm (Cross-IP)")) {
-                // Đồng bộ ngay
-                if (function_exists('tkgadm_sync_ip_to_google_ads')) {
-                    tkgadm_sync_ip_to_google_ads([$ip]);
-                }
-                // Gửi thông báo
-                if (function_exists('tkgadm_send_auto_block_notification')) {
-                    tkgadm_send_auto_block_notification([['ip' => $ip, 'rule_text' => 'Cross-IP']]);
-                }
-            }
-        }
-    }
+    return true;
 }
 
 /**
- * Kiểm tra IP ngay lập tức theo Rules (Real-time Auto Block)
+ * Auto-block rules, validated. Each: limit (>=1), duration (>=1), unit HOUR|DAY|WEEK.
  */
-function tkgadm_check_ip_instant($ip) {
-    if (!tkgadm_license_is_valid()) { return; }
-
+function tkgadm_get_block_rules() {
     $rules = get_option('tkgadm_auto_block_rules', []);
-    if (empty($rules) || !is_array($rules)) {
+    if (!is_array($rules)) {
+        return [];
+    }
+    $clean = [];
+    foreach ($rules as $rule) {
+        $rule = tkgadm_sanitize_block_rule($rule);
+        if ($rule) {
+            $clean[] = $rule;
+        }
+    }
+    return $clean;
+}
+
+function tkgadm_sanitize_block_rule($rule) {
+    if (!is_array($rule)) {
+        return null;
+    }
+    $limit = isset($rule['limit']) ? (int) $rule['limit'] : 0;
+    $duration = isset($rule['duration']) ? (int) $rule['duration'] : 0;
+    $unit = isset($rule['unit']) ? strtoupper((string) $rule['unit']) : 'HOUR';
+    if ($limit < 1 || $duration < 1) {
+        return null;
+    }
+    if (!in_array($unit, ['HOUR', 'DAY', 'WEEK'], true)) {
+        $unit = 'HOUR';
+    }
+    return ['limit' => min($limit, 10000), 'duration' => min($duration, 365), 'unit' => $unit];
+}
+
+/** Local-time (same clock as visit_time) start of a rule's window. */
+function tkgadm_rule_window_start($rule) {
+    $seconds = ['HOUR' => HOUR_IN_SECONDS, 'DAY' => DAY_IN_SECONDS, 'WEEK' => WEEK_IN_SECONDS];
+    return wp_date('Y-m-d H:i:s', time() - $rule['duration'] * $seconds[$rule['unit']]);
+}
+
+function tkgadm_rule_text($rule) {
+    $units = ['HOUR' => 'giờ', 'DAY' => 'ngày', 'WEEK' => 'tuần'];
+    return $rule['limit'] . ' click trong ' . $rule['duration'] . ' ' . $units[$rule['unit']];
+}
+
+/**
+ * Notices for real-time blocks are sent from cron, not from the visitor's request.
+ */
+function tkgadm_queue_block_notice($ip, $rule_text) {
+    $pending = get_option('tkgadm_pending_block_notices', []);
+    if (!is_array($pending)) {
+        $pending = [];
+    }
+    if (count($pending) < 200) {
+        $pending[] = ['ip' => $ip, 'rule_text' => $rule_text];
+        update_option('tkgadm_pending_block_notices', $pending, false);
+    }
+    if (function_exists('tkgadm_queue_sync')) {
+        tkgadm_queue_sync();
+    }
+}
+
+function tkgadm_flush_block_notices() {
+    $pending = get_option('tkgadm_pending_block_notices', []);
+    if (empty($pending) || !is_array($pending)) {
         return;
     }
+    delete_option('tkgadm_pending_block_notices');
+    tkgadm_send_auto_block_notification($pending);
+}
 
+/**
+ * Core recurring events (idempotent).
+ */
+function tkgadm_schedule_core_events() {
+    if (!wp_next_scheduled('tkgadm_daily_maintenance')) {
+        wp_schedule_event(time() + HOUR_IN_SECONDS, 'daily', 'tkgadm_daily_maintenance');
+    }
+    $auto_sync = get_option('tkgadm_gads_auto_sync', '1') === '1';
+    $next_sync = wp_next_scheduled('tkgadm_hourly_sync_event');
+    if ($auto_sync && !$next_sync) {
+        wp_schedule_event(time() + 300, 'hourly', 'tkgadm_hourly_sync_event');
+    } elseif (!$auto_sync && $next_sync) {
+        wp_clear_scheduled_hook('tkgadm_hourly_sync_event');
+    }
+    $has_rules = !empty(tkgadm_get_block_rules());
+    $next_scan = wp_next_scheduled('tkgadm_auto_block_scan_event');
+    if ($has_rules && !$next_scan) {
+        wp_schedule_event(time() + 60, 'tkgadm_15_minutes', 'tkgadm_auto_block_scan_event');
+    } elseif (!$has_rules && $next_scan) {
+        wp_clear_scheduled_hook('tkgadm_auto_block_scan_event');
+    }
+}
+
+/** Every hook this plugin schedules; cleared on deactivation. */
+function tkgadm_all_cron_hooks() {
+    return ['tkgadm_auto_block_scan_event', 'tkgadm_hourly_sync_event', 'tkgadm_sync_now_event',
+        'tkgadm_daily_maintenance', 'tkgadm_license_refresh_event', 'tkgadm_hourly_alert', 'tkgadm_daily_report'];
+}
+
+/**
+ * Daily housekeeping: stats retention and activity log trimming.
+ */
+add_action('tkgadm_daily_maintenance', 'tkgadm_run_daily_maintenance');
+function tkgadm_run_daily_maintenance() {
     global $wpdb;
-    $stats_table = $wpdb->prefix . 'gads_toolkit_stats';
-
-    foreach ($rules as $rule) {
-        // ... (Giữ nguyên logic cũ) ...
-        $limit = intval($rule['limit']);
-        $duration = intval($rule['duration']);
-        $unit = strtoupper($rule['unit']); 
-        
-        if (!in_array($unit, ['HOUR', 'DAY', 'WEEK', 'MONTH'])) $unit = 'HOUR';
-        if ($unit === 'WEEK') { $duration *= 7; $unit = 'DAY'; }
-
-        // phpcs:ignore WordPress.DB.PreparedSQL.StartWithParens
-        $sql = "SELECT COUNT(DISTINCT gclid) 
-                FROM $stats_table 
-                WHERE ip_address = %s
-                AND visit_time >= DATE_SUB(NOW(), INTERVAL %d $unit)
-                AND gclid IS NOT NULL AND gclid != ''";
-        
-        // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.DirectDatabaseQuery
-        $click_count = $wpdb->get_var($wpdb->prepare($sql, $ip, $duration));
-
-        if ($click_count >= $limit) {
-            // Translate Unit
-            $unit_vn = $rule['unit'] === 'HOUR' ? 'Giờ' : ($rule['unit'] === 'DAY' ? 'Ngày' : 'Tuần');
-            
-            // Vi phạm -> Chặn ngay
-            $reason_msg = "Chặn Tức Thì: $click_count click (Quy tắc: $limit click / 1 $unit_vn)";
-            
-            if (tkgadm_block_ip_internal($ip, $reason_msg)) {
-                
-                // === SET COOKIE ĐÁNH DẤU ===
-                // Đánh dấu trình duyệt này là "Đã bị cấm" trong 30 ngày
-                // Cookie này giúp phát hiện khi hắn đổi IP
-                setcookie('tkgadm_banned', '1', time() + (86400 * 30), "/");
-                
-                // 1. Đồng bộ Google Ads
-                if (function_exists('tkgadm_sync_ip_to_google_ads')) {
-                    tkgadm_sync_ip_to_google_ads([$ip]);
-                }
-                
-                // 2. Gửi thông báo
-                if (function_exists('tkgadm_send_auto_block_notification')) {
-                    $unit_text = $rule['unit'] === 'HOUR' ? 'giờ' : ($rule['unit'] === 'DAY' ? 'ngày' : 'tuần');
-                    tkgadm_send_auto_block_notification([['ip' => $ip, 'rule_text' => "{$rule['limit']} click trong {$rule['duration']} {$unit_text}"]]);
-                }
+    $days = (int) get_option('tkgadm_stats_retention_days', 180);
+    if ($days > 0) {
+        $table = $wpdb->prefix . 'gads_toolkit_stats';
+        $cutoff = wp_date('Y-m-d H:i:s', time() - $days * DAY_IN_SECONDS);
+        // Delete in batches to keep each statement short on large tables.
+        for ($i = 0; $i < 50; $i++) {
+            // phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+            $deleted = $wpdb->query($wpdb->prepare("DELETE FROM $table WHERE visit_time < %s LIMIT 5000", $cutoff));
+            if (!$deleted) {
                 break;
             }
         }
     }
-}
-
-/**
- * Enqueue time tracker script
- */
-add_action('wp_enqueue_scripts', 'tkgadm_enqueue_time_tracker');
-function tkgadm_enqueue_time_tracker() {
-    if (!tkgadm_license_is_valid()) { return; }
-
-    // Kiểm tra và loại bỏ Bot
-    $user_agent = isset($_SERVER['HTTP_USER_AGENT']) ? sanitize_textarea_field(wp_unslash($_SERVER['HTTP_USER_AGENT'])) : '';
-    $bots = array('bot', 'crawl', 'spider', 'slurp', 'mediapartners', 'facebookexternalhit', 'whatsapp', 'curl', 'wget', 'python', 'java', 'go-http');
-    
-    foreach ($bots as $bot) {
-        if (stripos($user_agent, $bot) !== false) {
-            return; // Không load script cho Bot
-        }
+    if (function_exists('tkgadm_trim_activity_log')) {
+        tkgadm_trim_activity_log();
     }
-    
-    wp_enqueue_script(
-        'tkgadm-time-tracker',
-        GADS_TOOLKIT_URL . 'assets/time-tracker.js',
-        array(),
-        GADS_TOOLKIT_VERSION,
-        true
-    );
-    
-    $user_ip = tkgadm_get_real_user_ip();
-    wp_localize_script('tkgadm-time-tracker', 'tkgadm_tracker', array(
-        'ajaxurl' => admin_url('admin-ajax.php'),
-        'user_ip' => $user_ip
-    ));
 }
 
 
@@ -565,10 +458,13 @@ function tkgadm_enqueue_admin_assets($hook) {
         return;
     }
 
-    // Inject Tailwind with preflight disabled before the CDN runtime loads.
-    wp_register_script('tailwindcss', 'https://cdn.tailwindcss.com', array(), '3.4.1', false);
-    wp_add_inline_script('tailwindcss', 'tailwind.config = { corePlugins: { preflight: false }, important: ".wp-wrap" }', 'before');
-    wp_enqueue_script('tailwindcss');
+    // Prebuilt Tailwind utilities (tools/tailwind), scoped to .wp-wrap, no preflight.
+    wp_enqueue_style(
+        'tkgadm-tailwind',
+        GADS_TOOLKIT_URL . 'assets/admin-tailwind.css',
+        array(),
+        GADS_TOOLKIT_VERSION
+    );
 
     wp_enqueue_style(
         'tkgadm-inter-font',
@@ -644,85 +540,44 @@ function tkgadm_run_auto_block_scan() {
     if (!get_option('tkgadm_auto_block_enabled')) {
         return;
     }
-    
-    $rules = get_option('tkgadm_auto_block_rules', []);
-    if (empty($rules) || !is_array($rules)) {
+
+    $rules = tkgadm_get_block_rules();
+    if (empty($rules)) {
         return;
     }
-    
+
     global $wpdb;
     $stats_table = $wpdb->prefix . 'gads_toolkit_stats';
-    
-    $new_blocked_ips = [];
-    $new_blocked_ips_data = [];
-    
+    $new_blocked = [];
+
     foreach ($rules as $rule) {
-        $limit = intval($rule['limit']);
-        $duration = intval($rule['duration']);
-        $unit = strtoupper($rule['unit']); // HOUR, DAY, WEEK
-        
-        // Validate unit to prevent SQL injection or errors
-        if (!in_array($unit, ['HOUR', 'DAY', 'WEEK', 'MONTH'])) $unit = 'HOUR';
-        if ($unit === 'WEEK') {
-            $duration *= 7;
-            $unit = 'DAY';
-        }
+        // COUNT(DISTINCT gclid): reloads of the same click do not inflate the count.
+        // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.DirectDatabaseQuery
+        $results = $wpdb->get_results($wpdb->prepare(
+            "SELECT ip_address, COUNT(DISTINCT gclid) AS click_count
+             FROM $stats_table
+             WHERE visit_time >= %s AND gclid IS NOT NULL AND gclid != ''
+             GROUP BY ip_address
+             HAVING COUNT(DISTINCT gclid) >= %d",
+            tkgadm_rule_window_start($rule), $rule['limit']
+        ));
 
-        // Query IPs thỏa mãn điều kiện (Có gclid = Click Ad)
-        // Dùng COUNT(DISTINCT gclid) để đồng nhất với real-time check (tkgadm_check_ip_instant),
-        // tránh inflate do cùng gclid reload nhiều lần trong cùng phiên.
-        // phpcs:ignore WordPress.DB.PreparedSQL.StartWithParens
-        $sql = "SELECT ip_address, COUNT(DISTINCT gclid) as click_count
-                FROM $stats_table
-                WHERE visit_time >= DATE_SUB(NOW(), INTERVAL %d $unit)
-                AND gclid IS NOT NULL AND gclid != ''
-                GROUP BY ip_address
-                HAVING click_count >= %d";
-
-        // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.DirectDatabaseQuery
-        $results = $wpdb->get_results($wpdb->prepare($sql, $duration, $limit));
-
-        foreach ($results as $row) {
-            $ip = $row->ip_address;
-
-            // Translate Unit
-            $unit_vn = $unit === 'HOUR' ? 'Giờ' : ($unit === 'DAY' ? 'Ngày' : 'Tuần');
-            $reason_msg = "Chặn Tự Động: {$row->click_count} GCLID unique (Quy tắc: $limit click / $duration $unit_vn)";
-
-            // Block IP
-            if (tkgadm_block_ip_internal($ip, $reason_msg)) {
-                $new_blocked_ips[] = $ip;
-                $new_blocked_ips_data[] = ['ip' => $ip, 'rule_text' => "$limit click trong " . "$duration " . strtolower($unit_vn)];
+        foreach ((array) $results as $row) {
+            $reason = sprintf('Chặn Tự Động: %d GCLID unique (Quy tắc: %s)', $row->click_count, tkgadm_rule_text($rule));
+            if (tkgadm_block_ip_internal($row->ip_address, $reason, 'auto')) {
+                $new_blocked[] = ['ip' => $row->ip_address, 'rule_text' => tkgadm_rule_text($rule)];
             }
         }
     }
-    
-    // Đồng bộ lên Google Ads nếu có IP mới bị chặn
-    if (!empty($new_blocked_ips)) {
-        // Assume module-google-ads.php is present via main plugin loader
-        if (function_exists('tkgadm_sync_ip_to_google_ads')) {
-            // Lọc thêm lần cuối: loại bỏ IP đã vào whitelist trong cùng cron run
-            // (tkgadm_block_ip_internal đã check, nhưng lọc lại để chắc chắn)
-            if (function_exists('tkgadm_is_ip_whitelisted')) {
-                $new_blocked_ips = array_values(array_filter($new_blocked_ips, function($ip) {
-                    return !tkgadm_is_ip_whitelisted($ip);
-                }));
-            }
 
-            if (!empty($new_blocked_ips)) {
-                $sync_result = tkgadm_sync_ip_to_google_ads($new_blocked_ips);
-
-                // Log result
-                update_option('tkgadm_last_auto_block_sync', [
-                    'time'   => time(),
-                    'count'  => count($new_blocked_ips),
-                    'result' => $sync_result,
-                ]);
-            }
-        }
-
-        // Gửi thông báo
-        tkgadm_send_auto_block_notification($new_blocked_ips_data);
+    // Real-time blocks waiting for a notice go out together with this run.
+    $pending = get_option('tkgadm_pending_block_notices', []);
+    if (is_array($pending) && $pending) {
+        delete_option('tkgadm_pending_block_notices');
+        $new_blocked = array_merge($pending, $new_blocked);
+    }
+    if ($new_blocked) {
+        tkgadm_send_auto_block_notification($new_blocked);
     }
 }
 

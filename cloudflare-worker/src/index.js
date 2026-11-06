@@ -14,7 +14,7 @@
  *   GADS_DEVELOPER_TOKEN → Google Ads Developer Token (secret)
  *   ADMIN_TOKEN        → Admin Dashboard login token (secret)
  *
- * @version 4.3.0
+ * @version 4.4.0
  */
 
 import { handleApiRequest } from './api.js';
@@ -85,7 +85,7 @@ export default {
 
     } catch (err) {
       console.error('Unhandled error:', err.message, err.stack);
-      return errorResponse(`Internal server error: ${err.message}`, 500);
+      return errorResponse('Internal server error', 500);
     }
   },
 

@@ -59,8 +59,8 @@ function tkgadm_render_maintenance_page() {
     // phpcs:ignore WordPress.DB.DirectDatabaseQuery
     $date_range = $wpdb->get_row("SELECT MIN(blocked_time) as min_date, MAX(blocked_time) as max_date FROM $table_blocked");
     
-    $default_start_date = $date_range && $date_range->min_date ? date('Y-m-d', strtotime($date_range->min_date)) : '';
-    $default_end_date = $date_range && $date_range->max_date ? date('Y-m-d', strtotime($date_range->max_date)) : '';
+    $default_start_date = $date_range && $date_range->min_date ? mysql2date('Y-m-d', $date_range->min_date) : '';
+    $default_end_date = $date_range && $date_range->max_date ? mysql2date('Y-m-d', $date_range->max_date) : '';
     
     ?>
         <div class="wp-wrap space-y-6" style="padding: 20px 20px 40px 0;">
@@ -549,8 +549,156 @@ function tkgadm_render_maintenance_page() {
                 <?php endif; ?>
             </div>
 
+            <!-- ══════════ GỢI Ý GỘP DẢI IP ══════════ -->
+            <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5" id="tkgadm-subnet-card">
+                <div class="flex flex-wrap items-center justify-between gap-3 mb-3">
+                    <div>
+                        <h3 class="text-base font-bold text-gray-800 flex items-center gap-2 m-0 mb-1">
+                            <i class="fa-solid fa-layer-group text-indigo-500"></i> Gợi ý gộp dải IP
+                        </h3>
+                        <p class="text-xs text-gray-500 m-0">Nhiều IP bị chặn cùng một dải /24 có thể gộp thành một mục, tiết kiệm chỗ trong giới hạn 500 IP của Google Ads. Có thể hoàn tác trong Nhật ký.</p>
+                    </div>
+                    <button type="button" id="tkgadm-subnet-reload" class="text-xs bg-gray-50 border border-gray-200 text-gray-700 px-3 py-1.5 rounded-lg cursor-pointer hover:bg-gray-100"><i class="fa-solid fa-rotate"></i> Tải lại</button>
+                </div>
+                <div id="tkgadm-subnet-list" class="text-sm text-gray-500">Đang tải…</div>
+            </div>
+
+            <!-- ══════════ NHẬT KÝ CHẶN ══════════ -->
+            <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5" id="tkgadm-log-card">
+                <div class="flex flex-wrap items-center justify-between gap-3 mb-3">
+                    <div>
+                        <h3 class="text-base font-bold text-gray-800 flex items-center gap-2 m-0 mb-1">
+                            <i class="fa-solid fa-clock-rotate-left text-blue-500"></i> Nhật ký chặn
+                        </h3>
+                        <p class="text-xs text-gray-500 m-0">Mọi lần chặn, bỏ chặn, xoay vòng, whitelist tự động và gộp dải. Bấm Hoàn tác để đảo lại; Google Ads được đồng bộ sau ít phút.</p>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <select id="tkgadm-log-filter" class="text-xs border border-gray-300 rounded-lg p-1.5 bg-white text-gray-700">
+                            <option value="">Tất cả</option>
+                            <option value="block">Chặn</option>
+                            <option value="unblock">Bỏ chặn</option>
+                            <option value="rotate">Xoay vòng</option>
+                            <option value="whitelist">Whitelist</option>
+                            <option value="merge">Gộp dải</option>
+                            <option value="sync">Đồng bộ</option>
+                        </select>
+                        <input type="text" id="tkgadm-log-search" placeholder="Tìm IP…" class="text-xs border border-gray-300 rounded-lg p-1.5 w-36">
+                    </div>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-xs text-gray-600 border-collapse m-0">
+                        <thead class="bg-gray-50 text-gray-700 uppercase font-semibold">
+                            <tr>
+                                <th class="px-3 py-2">Thời gian</th>
+                                <th class="px-3 py-2">Hành động</th>
+                                <th class="px-3 py-2">IP / dải</th>
+                                <th class="px-3 py-2">Lý do</th>
+                                <th class="px-3 py-2">Bởi</th>
+                                <th class="px-3 py-2 text-right"></th>
+                            </tr>
+                        </thead>
+                        <tbody id="tkgadm-log-body"><tr><td colspan="6" class="px-3 py-6 text-center text-gray-400">Đang tải…</td></tr></tbody>
+                    </table>
+                </div>
+                <div class="flex items-center justify-between pt-3 text-xs text-gray-500">
+                    <span id="tkgadm-log-info"></span>
+                    <div class="flex gap-1">
+                        <button type="button" id="tkgadm-log-prev" class="px-3 py-1 rounded border border-gray-200 bg-white cursor-pointer disabled:opacity-50">Trước</button>
+                        <button type="button" id="tkgadm-log-next" class="px-3 py-1 rounded border border-gray-200 bg-white cursor-pointer disabled:opacity-50">Tiếp</button>
+                    </div>
+                </div>
+            </div>
+
         </div>
     </div>
+    <script>
+    jQuery(function ($) {
+        var nonce = '<?php echo esc_js(wp_create_nonce('tkgadm_nonce')); ?>';
+        function esc(v) {
+            return String(v === undefined || v === null ? '' : v).replace(/[&<>"']/g, function (c) {
+                return {'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c];
+            });
+        }
+
+        // ---- Subnet suggestions ----
+        function loadSubnets() {
+            $('#tkgadm-subnet-list').text('Đang tải…');
+            $.post(ajaxurl, { action: 'tkgadm_get_subnet_suggestions', nonce: nonce }, function (res) {
+                if (!res || !res.success) { $('#tkgadm-subnet-list').text('Không tải được gợi ý.'); return; }
+                var list = res.data.suggestions || [];
+                if (!list.length) { $('#tkgadm-subnet-list').html('<p class="m-0 text-gray-400">Chưa có dải nào đủ 3 IP bị chặn.</p>'); return; }
+                var html = '<div class="divide-y divide-gray-100">';
+                list.forEach(function (g) {
+                    html += '<div class="py-2 flex flex-wrap items-center justify-between gap-2">'
+                        + '<div><code class="font-semibold text-gray-800">' + esc(g.subnet) + '</code> <span class="text-gray-500">— ' + esc(g.count) + ' IP</span>'
+                        + '<div class="text-[11px] text-gray-400 mt-0.5">' + esc(g.ips.slice(0, 6).join(', ')) + (g.ips.length > 6 ? '…' : '') + '</div></div>'
+                        + (g.mergeable
+                            ? '<button type="button" class="tkgadm-merge-btn text-xs bg-indigo-600 text-white px-3 py-1.5 rounded-lg border-none cursor-pointer" data-subnet="' + esc(g.subnet) + '">Gộp thành 1 dải</button>'
+                            : '<span class="text-[11px] text-gray-400">IPv6 — chỉ để tham khảo</span>')
+                        + '</div>';
+                });
+                $('#tkgadm-subnet-list').html(html + '</div>');
+            }).fail(function () { $('#tkgadm-subnet-list').text('Lỗi kết nối.'); });
+        }
+        $('#tkgadm-subnet-reload').on('click', loadSubnets);
+        $(document).on('click', '.tkgadm-merge-btn', function () {
+            var subnet = $(this).data('subnet');
+            if (!confirm('Gộp các IP bị chặn trong ' + subnet + ' thành một dải?\nMọi IP trong dải này sẽ bị chặn trên Google Ads.')) return;
+            var btn = $(this).prop('disabled', true).text('Đang gộp…');
+            $.post(ajaxurl, { action: 'tkgadm_merge_subnet', nonce: nonce, subnet: subnet }, function (res) {
+                alert(res && res.success ? res.data.message : 'Lỗi: ' + (res ? res.data : ''));
+                loadSubnets(); loadLog(1);
+            }).fail(function () { btn.prop('disabled', false).text('Gộp thành 1 dải'); alert('Lỗi kết nối.'); });
+        });
+
+        // ---- Activity log ----
+        var logPage = 1, logPages = 1, searchTimer = null;
+        var actionColors = { block: '#b91c1c', unblock: '#047857', rotate: '#92400e', whitelist: '#1d4ed8', merge: '#6d28d9', sync: '#475569' };
+        function loadLog(page) {
+            logPage = page || logPage;
+            $.post(ajaxurl, {
+                action: 'tkgadm_get_activity_log', nonce: nonce, page: logPage,
+                filter_action: $('#tkgadm-log-filter').val(), search: $('#tkgadm-log-search').val()
+            }, function (res) {
+                if (!res || !res.success) { $('#tkgadm-log-body').html('<tr><td colspan="6" class="px-3 py-6 text-center text-red-500">' + esc(res ? res.data : 'Lỗi') + '</td></tr>'); return; }
+                var d = res.data; logPages = d.pages;
+                if (!d.items.length) {
+                    $('#tkgadm-log-body').html('<tr><td colspan="6" class="px-3 py-6 text-center text-gray-400">Chưa có hoạt động nào.</td></tr>');
+                } else {
+                    $('#tkgadm-log-body').html(d.items.map(function (it) {
+                        var undo = it.undone ? '<span class="text-gray-400">Đã hoàn tác</span>'
+                            : (it.undoable ? '<button type="button" class="tkgadm-undo-btn text-xs text-blue-600 bg-transparent border border-blue-200 rounded px-2 py-0.5 cursor-pointer" data-id="' + esc(it.id) + '">Hoàn tác</button>' : '');
+                        return '<tr class="border-b border-gray-50' + (it.undone ? ' opacity-60' : '') + '">'
+                            + '<td class="px-3 py-2 whitespace-nowrap">' + esc(it.time) + '</td>'
+                            + '<td class="px-3 py-2 font-semibold" style="color:' + (actionColors[it.action] || '#334155') + '">' + esc(it.action_label) + '</td>'
+                            + '<td class="px-3 py-2 font-mono">' + esc(it.ip || '—') + '</td>'
+                            + '<td class="px-3 py-2">' + esc(it.reason) + '</td>'
+                            + '<td class="px-3 py-2">' + esc(it.actor) + '</td>'
+                            + '<td class="px-3 py-2 text-right whitespace-nowrap">' + undo + '</td></tr>';
+                    }).join(''));
+                }
+                $('#tkgadm-log-info').text('Trang ' + d.page + '/' + d.pages + ' · ' + d.total + ' mục');
+                $('#tkgadm-log-prev').prop('disabled', d.page <= 1);
+                $('#tkgadm-log-next').prop('disabled', d.page >= d.pages);
+            });
+        }
+        $('#tkgadm-log-prev').on('click', function () { if (logPage > 1) loadLog(logPage - 1); });
+        $('#tkgadm-log-next').on('click', function () { if (logPage < logPages) loadLog(logPage + 1); });
+        $('#tkgadm-log-filter').on('change', function () { loadLog(1); });
+        $('#tkgadm-log-search').on('input', function () { clearTimeout(searchTimer); searchTimer = setTimeout(function () { loadLog(1); }, 300); });
+        $(document).on('click', '.tkgadm-undo-btn', function () {
+            if (!confirm('Hoàn tác thao tác này?')) return;
+            var btn = $(this).prop('disabled', true).text('…');
+            $.post(ajaxurl, { action: 'tkgadm_undo_activity', nonce: nonce, id: $(this).data('id') }, function (res) {
+                if (!res || !res.success) { alert('Lỗi: ' + (res ? res.data : '')); btn.prop('disabled', false).text('Hoàn tác'); return; }
+                loadLog(); loadSubnets();
+            }).fail(function () { btn.prop('disabled', false).text('Hoàn tác'); alert('Lỗi kết nối.'); });
+        });
+
+        loadSubnets();
+        loadLog(1);
+    });
+    </script>
     <script>
     jQuery(document).ready(function($) {
         let currentIps = []; // Store current filtered IPs for copying
@@ -717,7 +865,7 @@ function tkgadm_render_maintenance_page() {
                             location.reload();
                         }, 2000);
                     } else {
-                        $('#delete-status').html('<span style="color: red;">❌ ' + response.data + '</span>');
+                        $('#delete-status').empty().append($('<span style="color: red;"></span>').text('❌ ' + response.data));
                     }
                 },
                 error: function() {
@@ -898,7 +1046,7 @@ function tkgadm_render_maintenance_page() {
 
         // Nút Đồng bộ IP chặn (Full Sync)
         $('#btn-gads-full-sync').on('click', function() {
-            if (!confirm('Hành động này sẽ XÓA TOÀN BỘ IP trên tài khoản Google Ads và TẢI LÊN lại toàn bộ danh sách IP hiện tại trong database của bạn. Thời gian xử lý có thể mất đến vài chục giây.\n\nBạn có chắc chắn muốn tiếp tục?')) return;
+            if (!confirm('Đồng bộ danh sách chặn của website với Google Ads?\n\n• Thêm các IP còn thiếu trên Google Ads.\n• Gỡ các IP plugin đã thêm nhưng website không còn chặn.\n• IP bạn tự thêm trên Google Ads được giữ nguyên.')) return;
             var btn = $(this);
             var originalHtml = btn.html();
             btn.prop('disabled', true).html('<i class="fa-solid fa-spinner fa-spin text-white"></i> Đang đồng bộ...');
@@ -1023,7 +1171,7 @@ function tkgadm_render_maintenance_page() {
         // Xóa một IP
         $(document).on('click', '.btn-gads-del-one', function() {
             var rn = $(this).data('rn'), ip = $(this).data('ip');
-            if (!confirm('Xóa IP ' + ip + ' khỏi Google Ads?\nHành động này không thể hoàn tác!')) return;
+            if (!confirm('Xóa IP ' + ip + ' khỏi Google Ads và bỏ chặn trên website?\nCó thể hoàn tác trong mục Nhật ký chặn.')) return;
             doDelete([rn]);
         });
 
@@ -1035,14 +1183,14 @@ function tkgadm_render_maintenance_page() {
                 ips.push($(this).closest('tr').data('ip'));
             });
             if (!rns.length) return;
-            if (!confirm('Xóa ' + rns.length + ' IP đã chọn khỏi Google Ads?\n\n' + ips.slice(0,8).join('\n') + (ips.length > 8 ? '\n...' : '') + '\n\nHành động không thể hoàn tác!')) return;
+            if (!confirm('Xóa ' + rns.length + ' IP đã chọn khỏi Google Ads?\n\n' + ips.slice(0,8).join('\n') + (ips.length > 8 ? '\n...' : '') + '\n\nCác IP này cũng được bỏ chặn trên website (có thể hoàn tác trong Nhật ký).')) return;
             doDelete(rns);
         });
 
         // Xóa N cũ nhất (từ Local DB)
         $('#btn-gads-del-oldest').on('click', function() {
             var n = parseInt($('#gads-oldest-n').val()) || 50;
-            if (!confirm('Hành động này sẽ XÓA (bỏ chặn) vĩnh viễn ' + n + ' IP cũ nhất khỏi cơ sở dữ liệu Website.\n\nSau khi xóa xong, bạn hãy chạy "Đồng bộ IP chặn" ở mục dưới để làm sạch Google Ads nhé.\n\nTiếp tục?')) return;
+            if (!confirm('Bỏ chặn ' + n + ' IP cũ nhất (ưu tiên IP có điểm gian lận thấp) và gỡ chúng khỏi Google Ads?\n\nCó thể hoàn tác trong mục Nhật ký chặn.')) return;
             var btn = $(this).prop('disabled', true).html('<i class="fa-solid fa-spinner fa-spin"></i> Xóa...');
             
             $.post(ajaxurl, { action: 'tkgadm_gads_delete_oldest', nonce: gNonce, count: n }, function(res) {
@@ -1149,7 +1297,7 @@ function tkgadm_ajax_get_blocked_ips() {
 
     foreach ($results as $row) {
         $row->visit_count = intval($row->visit_count);
-        $row->blocked_time_display = $row->blocked_time ? wp_date('d/m/Y H:i:s', strtotime($row->blocked_time)) : '';
+        $row->blocked_time_display = $row->blocked_time ? mysql2date('d/m/Y H:i:s', $row->blocked_time) : '';
     }
     
     wp_send_json_success($results);
@@ -1168,12 +1316,15 @@ function tkgadm_ajax_delete_data() {
     
     global $wpdb;
     $table = $wpdb->prefix . 'gads_toolkit_stats';
-    $type = $_POST['type'];
-    $rows_affected = 0;
+    $type = isset($_POST['type']) ? sanitize_key(wp_unslash($_POST['type'])) : '';
+    $rows_affected = false;
     
     if ($type === 'range') {
-        $from = sanitize_text_field($_POST['from']);
-        $to = sanitize_text_field($_POST['to']);
+        $from = sanitize_text_field(wp_unslash($_POST['from'] ?? ''));
+        $to = sanitize_text_field(wp_unslash($_POST['to'] ?? ''));
+        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $from) || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $to) || $from > $to) {
+            wp_send_json_error('Khoảng ngày không hợp lệ.');
+        }
         
         // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
         $query = $wpdb->prepare("DELETE FROM $table WHERE visit_time >= %s AND visit_time <= %s", $from . ' 00:00:00', $to . ' 23:59:59');
@@ -1181,18 +1332,23 @@ function tkgadm_ajax_delete_data() {
         $rows_affected = $wpdb->query($query);
         
     } elseif ($type === 'age') {
-        $days = $_POST['days'];
+        $days = isset($_POST['days']) ? sanitize_text_field(wp_unslash($_POST['days'])) : '';
         
+        if ($days !== 'all' && (!ctype_digit($days) || (int) $days < 1)) {
+            wp_send_json_error('Số ngày không hợp lệ.');
+        }
         if ($days === 'all') {
             // phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
             $rows_affected = $wpdb->query("TRUNCATE TABLE $table");
         } else {
             $days = intval($days);
             // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-            $query = $wpdb->prepare("DELETE FROM $table WHERE visit_time < DATE_SUB(NOW(), INTERVAL %d DAY)", $days);
+            $query = $wpdb->prepare("DELETE FROM $table WHERE visit_time < %s", wp_date('Y-m-d H:i:s', time() - $days * DAY_IN_SECONDS));
             // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.DirectDatabaseQuery
             $rows_affected = $wpdb->query($query);
         }
+    } else {
+        wp_send_json_error('Loại thao tác không hợp lệ.');
     }
     
     if ($rows_affected !== false) {

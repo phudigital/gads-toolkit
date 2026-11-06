@@ -84,8 +84,12 @@ function tkgadm_check_suspicious_ips() {
     $table_blocked = $wpdb->prefix . 'gads_toolkit_blocked';
     $threshold = get_option('tkgadm_alert_threshold', 5);
 
-    // Use WP timezone consistently (DB server timezone may differ)
-    $since_time = wp_date('Y-m-d H:i:s', current_time('timestamp') - HOUR_IN_SECONDS);
+    // visit_time is stored in site-local time: compute the window on the same clock.
+    // The window covers the time since the previous run (alerts can be hourly/12h/daily).
+    $windows = ['hourly' => HOUR_IN_SECONDS, 'twicedaily' => 12 * HOUR_IN_SECONDS, 'daily' => DAY_IN_SECONDS];
+    $frequency = get_option('tkgadm_alert_frequency', 'hourly');
+    $window = isset($windows[$frequency]) ? $windows[$frequency] : HOUR_IN_SECONDS;
+    $since_time = wp_date('Y-m-d H:i:s', time() - $window);
     
     // Lấy IP có nhiều clicks Ads nhưng chưa bị chặn
     // phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
@@ -106,6 +110,18 @@ function tkgadm_check_suspicious_ips() {
         ORDER BY ad_clicks DESC
     ", $since_time, $threshold));
     
+    // Skip whitelisted IPs and IPs already alerted in the last 24 hours.
+    $alerted = get_option('tkgadm_alerted_ips', []);
+    $alerted = is_array($alerted) ? array_filter($alerted, function ($ts) { return $ts > time() - DAY_IN_SECONDS; }) : [];
+    $suspicious_ips = array_values(array_filter((array) $suspicious_ips, function ($row) use ($alerted) {
+        return !isset($alerted[$row->ip_address])
+            && !(function_exists('tkgadm_is_ip_whitelisted') && tkgadm_is_ip_whitelisted($row->ip_address));
+    }));
+    foreach ($suspicious_ips as $row) {
+        $alerted[$row->ip_address] = time();
+    }
+    update_option('tkgadm_alerted_ips', $alerted, false);
+
     if (empty($suspicious_ips)) {
         return; // Không có IP nghi ngờ
     }
@@ -132,10 +148,11 @@ function tkgadm_check_suspicious_ips() {
         );
     }
     
-    $message_email .= "\nNgưỡng: {$threshold} click/1h\n";
+    $window_label = $window >= DAY_IN_SECONDS ? '24h' : ($window >= 12 * HOUR_IN_SECONDS ? '12h' : '1h');
+    $message_email .= "\nNgưỡng: {$threshold} click/{$window_label}\n";
     $message_email .= "[Mở Dashboard] " . admin_url('admin.php?page=tkgad-moi');
     
-    $message_telegram .= "\nNgưỡng: {$threshold} click/1h\n";
+    $message_telegram .= "\nNgưỡng: {$threshold} click/{$window_label}\n";
     $message_telegram .= "[Mở Dashboard](" . admin_url('admin.php?page=tkgad-moi') . ")";
     
     // Gửi thông báo theo platform đã chọn
@@ -229,6 +246,9 @@ function tkgadm_schedule_notifications() {
     
     // Schedule alert check theo frequency setting
     $frequency = get_option('tkgadm_alert_frequency', 'hourly');
+    if (!in_array($frequency, ['hourly', 'twicedaily', 'daily'], true)) {
+        $frequency = 'hourly';
+    }
     if (!wp_next_scheduled('tkgadm_hourly_alert')) {
         wp_schedule_event(time(), $frequency, 'tkgadm_hourly_alert');
     }
@@ -241,7 +261,7 @@ function tkgadm_schedule_notifications() {
         $minute = isset($parts[1]) ? intval($parts[1]) : 0;
 
         $tz = wp_timezone();
-        $now_ts = current_time('timestamp');
+        $now_ts = time();
         $today = (new DateTimeImmutable('now', $tz))->setTime($hour, $minute, 0);
         $scheduled_ts = $today->getTimestamp();
 
@@ -261,389 +281,6 @@ function tkgadm_unschedule_notifications() {
     wp_clear_scheduled_hook('tkgadm_daily_report');
 }
 
-
-/**
- * ============================================================================
- * 3. ADMIN UI (SETTINGS PAGE)
- * ============================================================================
- */
-function tkgadm_render_notifications_page() {
-    if (!tkgadm_license_is_valid()) { tkgadm_render_license_lock(); return; }
-
-    // Lưu settings
-    if (isset($_POST['tkgadm_save_notifications']) && check_admin_referer('tkgadm_notifications_nonce')) {
-        update_option('tkgadm_notification_emails', sanitize_text_field(wp_unslash($_POST['notification_emails'])));
-        update_option('tkgadm_telegram_bot_token', sanitize_text_field(wp_unslash($_POST['telegram_bot_token'])));
-        update_option('tkgadm_telegram_chat_id', sanitize_text_field(wp_unslash($_POST['telegram_chat_id'])));
-        update_option('tkgadm_alert_threshold', intval($_POST['alert_threshold']));
-        update_option('tkgadm_enable_hourly_alerts', isset($_POST['enable_hourly_alerts']) ? '1' : '0');
-        update_option('tkgadm_enable_daily_reports', isset($_POST['enable_daily_reports']) ? '1' : '0');
-        
-        // Alert platform & frequency settings
-        update_option('tkgadm_alert_platform_email', isset($_POST['alert_platform_email']) ? '1' : '0');
-        update_option('tkgadm_alert_platform_telegram', isset($_POST['alert_platform_telegram']) ? '1' : '0');
-        update_option('tkgadm_alert_frequency', sanitize_text_field(wp_unslash($_POST['alert_frequency'] ?? 'hourly')));
-        update_option('tkgadm_daily_report_time', sanitize_text_field(wp_unslash($_POST['daily_report_time'] ?? '08:00')));
-        
-        
-        // Reschedule cron jobs với settings mới
-        tkgadm_schedule_notifications();
-        
-        echo '<div class="notice notice-success"><p>✅ Đã lưu cấu hình thành công!</p></div>';
-    }
-    
-    // Get current settings
-    $emails = get_option('tkgadm_notification_emails', '');
-    $telegram_token = get_option('tkgadm_telegram_bot_token', '');
-    $telegram_chat_id = get_option('tkgadm_telegram_chat_id', '');
-    $threshold = get_option('tkgadm_alert_threshold', 5);
-    $hourly_enabled = get_option('tkgadm_enable_hourly_alerts', '1');
-    $daily_enabled = get_option('tkgadm_enable_daily_reports', '1');
-    
-    // Alert platform & frequency
-    $alert_platform_email = get_option('tkgadm_alert_platform_email', '1');
-    $alert_platform_telegram = get_option('tkgadm_alert_platform_telegram', '1');
-    $alert_frequency = get_option('tkgadm_alert_frequency', 'hourly');
-    $daily_report_time = get_option('tkgadm_daily_report_time', '08:00');
-    
-    
-    ?>
-    <div class="wrap">
-        <div class="tkgadm-wrap">
-            <div class="tkgadm-header">
-                <h1>🔔 Cấu Hình Thông Báo</h1>
-                <p style="color: #666; margin-top: 10px;">Nhận cảnh báo về IP nghi ngờ và báo cáo traffic hàng ngày</p>
-            </div>
-
-            <form method="post" action="">
-                <?php wp_nonce_field('tkgadm_notifications_nonce'); ?>
-                
-                <div style="background: white; padding: 25px; border-radius: 10px; border: 1px solid #ddd; margin-bottom: 20px;">
-                    
-                    <!-- Email & Telegram Settings in 2 columns -->
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 25px; margin-bottom: 25px;">
-                        
-                        <!-- Email Settings -->
-                        <div>
-                            <h2 style="margin: 0 0 15px 0; font-size: 16px;">📧 Cấu hình Email</h2>
-                            
-                            <div style="margin-bottom: 15px;">
-                                <label style="display: block; font-weight: 500; margin-bottom: 5px; font-size: 13px;">Email nhận thông báo</label>
-                                <input type="text" name="notification_emails" value="<?php echo esc_attr($emails); ?>" class="widefat" placeholder="email1@example.com, email2@example.com" style="padding: 6px; font-size: 13px;">
-                                <p class="description" style="margin-top: 3px; font-size: 12px;">Phân tách bằng dấu phẩy. Để trống nếu không dùng.</p>
-                            </div>
-
-                        </div>
-
-                        <!-- Telegram Settings -->
-                        <div>
-                            <h2 style="margin: 0 0 15px 0; font-size: 16px;">📱 Cấu hình Telegram</h2>
-                            
-                            <div style="margin-bottom: 15px;">
-                                <label style="display: block; font-weight: 500; margin-bottom: 5px; font-size: 13px;">Bot Token</label>
-                                <input type="text" name="telegram_bot_token" value="<?php echo esc_attr($telegram_token); ?>" class="widefat" placeholder="123456789:ABCdefGHIjklMNOpqrsTUVwxyz" style="padding: 6px; font-size: 13px;">
-                                <p class="description" style="margin-top: 3px; font-size: 12px;">Lấy từ <a href="https://t.me/BotFather" target="_blank">@BotFather</a></p>
-                            </div>
-
-                            <div style="margin-bottom: 15px;">
-                                <label style="display: block; font-weight: 500; margin-bottom: 5px; font-size: 13px;">Chat ID</label>
-                                <input type="text" name="telegram_chat_id" value="<?php echo esc_attr($telegram_chat_id); ?>" class="widefat" placeholder="-1001234567890" style="padding: 6px; font-size: 13px;">
-                                <p class="description" style="margin-top: 3px; font-size: 12px;">ID group/channel. Lấy từ <a href="https://t.me/userinfobot" target="_blank">@userinfobot</a></p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <hr style="margin: 20px 0; border: 0; border-top: 1px solid #eee;">
-
-                    <!-- Alert Settings & Cron Status in 2 columns -->
-                    <div style="display: grid; grid-template-columns: 1.5fr 1fr; gap: 25px;">
-                        
-                        <!-- Alert Settings -->
-                        <div>
-                            <h2 style="margin: 0 0 15px 0; font-size: 16px;">⚙️ Cấu hình Cảnh báo</h2>
-                            
-                            <div style="margin-bottom: 15px;">
-                                <label style="display: block; font-weight: 500; margin-bottom: 5px; font-size: 13px;">Ngưỡng cảnh báo</label>
-                                <div style="display: flex; align-items: center; gap: 8px;">
-                                    <input type="number" name="alert_threshold" value="<?php echo esc_attr($threshold); ?>" min="1" max="100" style="width: 80px; padding: 6px; font-size: 13px;">
-                                    <span style="font-size: 13px;">clicks từ Google Ads</span>
-                                </div>
-                                <p class="description" style="margin-top: 3px; font-size: 12px;">Cảnh báo khi IP vượt ngưỡng mà chưa bị chặn</p>
-                            </div>
-
-                            <div style="margin-bottom: 15px;">
-                                <label style="display: block; font-weight: 500; margin-bottom: 5px; font-size: 13px;">Nền tảng nhận cảnh báo</label>
-                                <div style="display: flex; gap: 15px;">
-                                    <label style="display: flex; align-items: center; gap: 5px; font-size: 13px; cursor: pointer;">
-                                        <span class="tkgadm-switch">
-                                            <input type="checkbox" name="alert_platform_email" value="1" class="tkgadm-switch__input" aria-label="Bật nhận cảnh báo qua email" <?php checked($alert_platform_email, '1'); ?>>
-                                            <span class="tkgadm-switch__track" aria-hidden="true"></span>
-                                        </span>
-                                        <span>📧 Email</span>
-                                    </label>
-                                    <label style="display: flex; align-items: center; gap: 5px; font-size: 13px; cursor: pointer;">
-                                        <span class="tkgadm-switch">
-                                            <input type="checkbox" name="alert_platform_telegram" value="1" class="tkgadm-switch__input" aria-label="Bật nhận cảnh báo qua Telegram" <?php checked($alert_platform_telegram, '1'); ?>>
-                                            <span class="tkgadm-switch__track" aria-hidden="true"></span>
-                                        </span>
-                                        <span>📱 Telegram</span>
-                                    </label>
-                                </div>
-                            </div>
-
-                            <div style="margin-bottom: 15px;">
-                                <label style="display: block; font-weight: 500; margin-bottom: 5px; font-size: 13px;">Tần suất kiểm tra IP nghi ngờ</label>
-                                <label style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px; font-size: 13px; cursor: pointer;">
-                                    <span class="tkgadm-switch">
-                                        <input type="checkbox" name="enable_hourly_alerts" value="1" class="tkgadm-switch__input" aria-label="Bật cảnh báo IP nghi ngờ" <?php checked($hourly_enabled, '1'); ?>>
-                                        <span class="tkgadm-switch__track" aria-hidden="true"></span>
-                                    </span>
-                                    <span>Bật cảnh báo IP nghi ngờ</span>
-                                </label>
-                                <select name="alert_frequency" style="width: 200px; padding: 6px; font-size: 13px;">
-                                    <option value="hourly" <?php selected($alert_frequency, 'hourly'); ?>>Mỗi giờ</option>
-                                    <option value="twicedaily" <?php selected($alert_frequency, 'twicedaily'); ?>>2 lần/ngày</option>
-                                    <option value="daily" <?php selected($alert_frequency, 'daily'); ?>>Mỗi ngày</option>
-                                </select>
-                            </div>
-
-                            <div style="margin-bottom: 15px;">
-                                <label style="display: block; font-weight: 500; margin-bottom: 5px; font-size: 13px;">Báo cáo hàng ngày</label>
-                                <label style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px; font-size: 13px; cursor: pointer;">
-                                    <span class="tkgadm-switch">
-                                        <input type="checkbox" name="enable_daily_reports" value="1" class="tkgadm-switch__input" aria-label="Bật báo cáo traffic tổng hợp" <?php checked($daily_enabled, '1'); ?>>
-                                        <span class="tkgadm-switch__track" aria-hidden="true"></span>
-                                    </span>
-                                    <span>Bật báo cáo tổng hợp traffic</span>
-                                </label>
-                                <div style="display: flex; align-items: center; gap: 8px;">
-                                    <label style="font-size: 13px;">Thời gian gửi:</label>
-                                    <input type="time" name="daily_report_time" value="<?php echo esc_attr($daily_report_time); ?>" style="width: 120px; padding: 6px; font-size: 13px;">
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Cron Status -->
-                        <div>
-                            <h2 style="margin: 0 0 15px 0; font-size: 16px;">⏰ Trạng thái Cron</h2>
-                            <?php
-                            $hourly_next = wp_next_scheduled('tkgadm_hourly_alert');
-                            $daily_next = wp_next_scheduled('tkgadm_daily_report');
-                            ?>
-                            
-                            <div style="background: #f9f9f9; padding: 12px; border-radius: 5px; border: 1px solid #ddd; margin-bottom: 12px;">
-                                <div style="font-weight: 500; font-size: 13px; margin-bottom: 5px;">🔍 Kiểm tra IP nghi ngờ</div>
-                                <div style="font-size: 12px; color: #666; margin-bottom: 3px;">
-                                    <?php echo $hourly_next ? '✅ Đang hoạt động' : '❌ Chưa kích hoạt'; ?>
-                                </div>
-                                <div style="font-size: 11px; color: #999;">
-                                    <?php echo $hourly_next ? 'Lần chạy tiếp: ' . wp_date('H:i d/m', $hourly_next) : 'Chưa lên lịch'; ?>
-                                </div>
-                            </div>
-
-                            <div style="background: #f9f9f9; padding: 12px; border-radius: 5px; border: 1px solid #ddd;">
-                                <div style="font-weight: 500; font-size: 13px; margin-bottom: 5px;">📊 Báo cáo hàng ngày</div>
-                                <div style="font-size: 12px; color: #666; margin-bottom: 3px;">
-                                    <?php echo $daily_next ? '✅ Đang hoạt động' : '❌ Chưa kích hoạt'; ?>
-                                </div>
-                                <div style="font-size: 11px; color: #999;">
-                                    <?php echo $daily_next ? 'Lần chạy tiếp: ' . wp_date('H:i d/m', $daily_next) : 'Chưa lên lịch'; ?>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div style="margin-top: 20px;">
-                        <button type="submit" name="tkgadm_save_notifications" class="button button-primary">💾 Lưu cấu hình</button>
-                    </div>
-                </div>
-            </form>
-
-
-            <!-- Deep Test Module -->
-            <div class="tkgadm-table-container" style="margin-top: 30px; border-left: 4px solid #9c27b0;">
-                <h2>🕵️ Test Case Độc Lập (Debug Mode)</h2>
-                <p>Chạy kiểm tra chuyên sâu để xem log chi tiết lỗi kết nối (nếu có).</p>
-                
-                <div style="display: flex; gap: 10px; margin-bottom: 20px;">
-                    <button type="button" id="btn-deep-test-email" class="button button-secondary">📧 Kiểm tra Email Chi tiết</button>
-                    <button type="button" id="btn-deep-test-telegram" class="button button-secondary">📱 Kiểm tra Telegram Chi tiết</button>
-                </div>
-                
-                <div id="deep-test-result" style="display: none; background: #23282d; color: #fff; padding: 15px; border-radius: 4px; font-family: monospace; max-height: 300px; overflow-y: auto;">
-                    <div id="test-log-content"></div>
-                </div>
-            </div>
-        </div>
-
-        <!-- IPv6 Diagnostic -->
-        <div style="background: white; padding: 25px; border-radius: 10px; border: 1px solid #ddd; margin-top: 20px; border-left: 4px solid #2196F3;">
-            <h2 style="margin: 0 0 15px 0; font-size: 18px;">🌐 Chẩn đoán IPv6</h2>
-            
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
-                <div>
-                    <h3 style="margin: 0 0 10px 0; font-size: 14px;">📊 Thông tin IP hiện tại</h3>
-                    <div style="background: #f9f9f9; padding: 12px; border-radius: 5px; border: 1px solid #ddd; font-family: monospace; font-size: 13px;">
-                        <?php
-                        $current_ip = tkgadm_get_real_user_ip();
-                        $is_ipv6 = filter_var($current_ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV6);
-                        $is_ipv4 = filter_var($current_ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4);
-                        ?>
-                        <div style="margin-bottom: 8px;">
-                            <strong>IP của bạn:</strong><br>
-                            <span style="color: <?php echo $is_ipv6 ? '#2196F3' : '#4CAF50'; ?>; font-size: 14px;">
-                                <?php echo esc_html($current_ip); ?>
-                            </span>
-                        </div>
-                        <div style="margin-bottom: 8px;">
-                            <strong>Loại:</strong> 
-                            <?php if ($is_ipv6): ?>
-                                <span style="color: #2196F3;">✅ IPv6</span>
-                            <?php elseif ($is_ipv4): ?>
-                                <span style="color: #4CAF50;">✅ IPv4</span>
-                            <?php else: ?>
-                                <span style="color: #999;">❓ Unknown</span>
-                            <?php endif; ?>
-                        </div>
-                        <?php
-                        // Check if server has IPv6 capability using cURL (more reliable)
-                        $ipv6_enabled = false;
-                        if (function_exists('curl_init')) {
-                            $ch = curl_init('https://ipv6.google.com');
-                            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-                            curl_setopt($ch, CURLOPT_IPRESOLVE, CURL_IPRESOLVE_V6);
-                            curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 3);
-                            curl_setopt($ch, CURLOPT_TIMEOUT, 3);
-                            curl_setopt($ch, CURLOPT_NOBODY, true); // HEAD request only
-                            
-                            $result = curl_exec($ch);
-                            if (!curl_errno($ch) && $result !== false) {
-                                $ipv6_enabled = true;
-                            }
-                            curl_close($ch);
-                        } else {
-                            // Fallback if cURL is missing
-                            $ipv6_enabled = @file_get_contents('https://ipv6.google.com', false, stream_context_create(['http' => ['method' => 'HEAD', 'timeout' => 3]])) !== false;
-                        }
-                        ?>
-                        <div>
-                            <strong>Server hỗ trợ IPv6:</strong> 
-                            <?php if ($ipv6_enabled): ?>
-                                <span style="color: #4CAF50;">✅ Đã kích hoạt (OK)</span>
-                            <?php else: ?>
-                                <span style="color: #ff9800;">⚠️ Code PHP chưa kết nối được IPv6</span>
-                                <p style="font-size: 11px; color: #666; margin: 5px 0 0 0; font-style: italic;">
-                                    (Nếu terminal đã OK mà ở đây vẫn báo vàng thì do cấu hình PHP chặn kết nối ra ngoài, nhưng server vẫn hoạt động bình thường).
-                                </p>
-                            <?php endif; ?>
-                        </div>
-                    </div>
-                </div>
-
-                <div>
-                    <h3 style="margin: 0 0 10px 0; font-size: 14px;">💡 Hướng dẫn kích hoạt IPv6</h3>
-                    <div style="background: #fff3cd; padding: 12px; border-radius: 5px; border: 1px solid #ffc107; font-size: 12px;">
-                        <p style="margin: 0 0 8px 0;"><strong>Nếu server chưa hỗ trợ IPv6:</strong></p>
-                        <ol style="margin: 0; padding-left: 20px;">
-                            <li style="margin-bottom: 5px;">Liên hệ nhà cung cấp hosting yêu cầu kích hoạt IPv6</li>
-                            <li style="margin-bottom: 5px;">Hoặc tự cấu hình trên VPS:
-                                <ul style="margin: 5px 0; padding-left: 15px; font-size: 11px;">
-                                    <li>Ubuntu/Debian: Sửa <code>/etc/netplan/</code></li>
-                                    <li>CentOS: Sửa <code>/etc/sysconfig/network-scripts/</code></li>
-                                </ul>
-                            </li>
-                            <li>Khởi động lại network: <code style="background: #333; color: #0f0; padding: 2px 4px; border-radius: 3px;">systemctl restart networking</code></li>
-                        </ol>
-                        <p style="margin: 10px 0 0 0; font-size: 11px; color: #856404;">
-                            <strong>Lưu ý:</strong> Plugin tự động thu thập cả IPv4 và IPv6. Không cần cấu hình thêm.
-                        </p>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-    
-    <script>
-    jQuery(document).ready(function($) {
-        
-        function runDeepTest(type) {
-            const btn = type === 'email' ? $('#btn-deep-test-email') : $('#btn-deep-test-telegram');
-            const originalText = btn.text();
-            
-            btn.text('⏳ Đang chạy...').prop('disabled', true);
-            $('#deep-test-result').slideDown();
-            $('#test-log-content').html('<span style="color: #aaa;">> Đang khởi tạo test case: ' + type + '...</span><br>');
-            
-            // Lấy giá trị hiện tại từ input để test (kể cả chưa lưu)
-            const customEmail = $('input[name="notification_emails"]').val();
-            const customToken = $('input[name="telegram_bot_token"]').val();
-            const customChatId = $('input[name="telegram_chat_id"]').val();
-            
-            $.ajax({
-                url: ajaxurl,
-                type: 'POST',
-                data: {
-                    action: 'tkgadm_run_deep_test',
-                    nonce: '<?php echo wp_create_nonce("tkgadm_test_nonce"); ?>',
-                    test_type: type,
-                    custom_email: customEmail,
-                    custom_token: customToken,
-                    custom_chat_id: customChatId
-                },
-                success: function(response) {
-                    btn.text(originalText).prop('disabled', false);
-                    
-                    if (response.success) {
-                        const data = response.data;
-                        let logHtml = '';
-                        
-                        // Status Header
-                        if (data.success) {
-                            logHtml += '<span style="color: #46b450; font-weight: bold;">[SUCCESS] Test case passed!</span><br>';
-                        } else {
-                            logHtml += '<span style="color: #dc3232; font-weight: bold;">[FAILED] Test case failed!</span><br>';
-                        }
-                        
-                        logHtml += '<hr style="border-color: #555;">';
-                        
-                        // Logs
-                        if (data.log && data.log.length > 0) {
-                            data.log.forEach(function(line) {
-                                let style = 'color: #fff;';
-                                if (line.indexOf('✅') !== -1) style = 'color: #46b450;';
-                                if (line.indexOf('❌') !== -1) style = 'color: #ff6b6b;';
-                                if (line.indexOf('⚠️') !== -1) style = 'color: #fca311;';
-                                if (line.indexOf('ℹ️') !== -1) style = 'color: #88c0d0;'; 
-                                if (line.indexOf('💡') !== -1) style = 'color: #e5e9f0; font-style: italic;'; 
-                                
-                                logHtml += '<span style="' + style + '">' + line + '</span><br>';
-                            });
-                        }
-                        
-                        $('#test-log-content').html(logHtml);
-                    } else {
-                        $('#test-log-content').html('<span style="color: #ff6b6b;">❌ Lỗi AJAX System: ' + response.data + '</span>');
-                    }
-                },
-                error: function(xhr, status, error) {
-                    btn.text(originalText).prop('disabled', false);
-                    $('#test-log-content').html('<span style="color: #ff6b6b;">❌ Lỗi Kết Nối Server: ' + error + '</span>');
-                }
-            });
-        }
-
-        $('#btn-deep-test-email').on('click', function() { runDeepTest('email'); });
-        $('#btn-deep-test-telegram').on('click', function() { runDeepTest('telegram'); });
-    });
-    </script>
-    <?php
-}
-
-/**
- * ============================================================================
- * 4. DEEP TEST MODULE W/ AJAX
- * ============================================================================
- */
 
 /**
  * Class xử lý test case thông báo với log chi tiết (Included Inline)

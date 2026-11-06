@@ -141,6 +141,9 @@ export async function handleApiRequest(request, env) {
       const apiVersion = await getConfig(env, 'api_version') || 'v25';
 
       // c. Validate IPs (IPv4, IPv6, or Google Ads-compatible x.x.x.* wildcard)
+      if (ips.length > 1000) {
+        return errorResponse('Tối đa 1000 IP mỗi lần đồng bộ.', 400);
+      }
       const validIps = [...new Set(ips.map(normalizeIpForGoogleAds).filter(Boolean))];
 
       if (validIps.length === 0) {
@@ -191,18 +194,34 @@ export async function handleApiRequest(request, env) {
         return errorResponse(errorMessage, adsResponse.status);
       }
 
+      // Results align with operations; a failed operation returns an empty object.
+      const results = Array.isArray(adsResult.results) ? adsResult.results : [];
+      const added = validIps.filter((ip, index) => results[index] && Object.keys(results[index]).length > 0);
+
       if (adsResult.partialFailureError) {
-        return errorResponse(formatGoogleAdsError({ error: adsResult.partialFailureError }), 502);
+        const partialError = formatGoogleAdsError({ error: adsResult.partialFailureError });
+        if (added.length === 0) {
+          await logActivity(env, 'sync_ips_failed', customerId, 'error', partialError);
+          return errorResponse(partialError, 502);
+        }
+        console.log('sync_ips_partial', customerId, `${added.length}/${validIps.length}`);
+        return jsonResponse({
+          success: true,
+          data: {
+            added,
+            partial_error: partialError,
+            message: `Đã thêm ${added.length}/${validIps.length} IP; một số IP lỗi: ${partialError}`,
+          },
+        });
       }
 
       // Success goes to Workers Logs only; KV activity log keeps failures (saves KV writes).
       console.log('sync_ips_success', customerId, `${validIps.length} IPs synced`);
 
-      // g. Return success/error result
       return jsonResponse({
         success: true,
         data: {
-          ...adsResult,
+          added: validIps,
           message: `Đã đồng bộ thành công ${validIps.length} IP.`
         }
       });
