@@ -1,8 +1,12 @@
-import test from 'node:test';
+import test, { beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { createHmac } from 'node:crypto';
 import { normalizeLicenseDomain, normalizeLicenseSite } from '../src/license-domain.js';
 import { handleApiRequest } from '../src/api.js';
+import { resetRuntimeCaches } from '../src/runtime-cache.js';
+import { PROOF_TTL_SECONDS } from '../src/license-domain.js';
+import { handleCron } from '../src/cron.js';
+beforeEach(() => resetRuntimeCaches());
 const token = 'a'.repeat(64);
 function environment(domain = 'licensed.com') {
   const store = new Map([['license:paid', JSON.stringify({ active: true, domain })]]);
@@ -63,6 +67,7 @@ test('correct installation verifies and caches for all protected API actions', a
   assert.equal(calls.length, 3);
   assert.equal((await handleApiRequest(request('https://licensed.com/', token, 'get_credentials'), env)).status, 200);
   assert.equal(calls.length, 3, 'Ownership cache avoids repeat callbacks');
+  assert.deepEqual([...env.store.keys()], ['license:paid'], 'License checks never write KV');
   const record = JSON.parse(env.store.get('license:paid')); record.active = false;
   env.store.set('license:paid', JSON.stringify(record));
   assert.equal((await handleApiRequest(request(), env)).status, 403, 'Cache cannot bypass revocation');
@@ -116,15 +121,38 @@ for (const action of ['list_ips', 'remove_ips', 'sync_ips', 'exchange_code', 're
 
 test('rate limit rejects before any ownership callback', async t => {
   const calls = mockOwnership(t); const env = environment();
-  env.GADS_KV.get = async key => key.startsWith('rate:') ? '100' : env.store.get(key) ?? null;
+  env.store.set('config:rate_limit', '1');
+  assert.equal((await handleApiRequest(request('https://evil.com/'), env)).status, 403);
   assert.equal((await handleApiRequest(request(), env)).status, 429);
   assert.equal(calls.length, 0);
+  assert.equal([...env.store.keys()].some(k => k.startsWith('rate:')), false, 'Rate limit does not write KV');
 });
 test('expired ownership cache requires another fresh challenge', async t => {
   const calls = mockOwnership(t); const env = environment();
   assert.equal((await handleApiRequest(request(), env)).status, 200);
-  for (const key of env.store.keys()) if (key.startsWith('license-proof:')) env.store.set(key, String(Date.now() - 1));
+  const later = Date.now() + PROOF_TTL_SECONDS * 1000 + 1000;
+  t.mock.method(Date, 'now', () => later);
   assert.equal((await handleApiRequest(request(), env)).status, 200);
   assert.equal(calls.length, 6);
   assert.notEqual(new URL(calls[2].url).searchParams.get('challenge'), new URL(calls[5].url).searchParams.get('challenge'));
+});
+
+test('cron reads one index key and rebuilds it only when missing', async t => {
+  const pinged = [];
+  t.mock.method(globalThis, 'fetch', async url => { pinged.push(new URL(url).origin); return new Response('ok'); });
+  const store = new Map([
+    ['client:https://a.com', JSON.stringify({ status: 'active' })],
+    ['client:https://b.com', JSON.stringify({ status: 'disabled' })],
+  ]);
+  const ops = { list: 0, put: 0 };
+  const env = { GADS_KV: {
+    get: async k => store.get(k) ?? null,
+    put: async (k, v) => { ops.put++; store.set(k, v); },
+    delete: async k => store.delete(k),
+    list: async ({ prefix }) => { ops.list++; return { keys: [...store.keys()].filter(k => k.startsWith(prefix)).map(name => ({ name })), list_complete: true }; },
+  } };
+  await handleCron(env);
+  await handleCron(env);
+  assert.deepEqual(pinged, ['https://a.com', 'https://a.com']);
+  assert.deepEqual(ops, { list: 1, put: 1 });
 });

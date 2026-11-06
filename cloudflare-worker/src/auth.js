@@ -8,6 +8,7 @@
 
 import { errorResponse, kvListByPrefix } from './utils.js';
 import { verifyLicenseDomain } from './license-domain.js';
+import { getConfig, isRateLimited } from './runtime-cache.js';
 
 const LICENSE_ERROR_MESSAGE = 'Khóa API không hợp lệ. Vui lòng gia hạn hoặc mua giấy phép mới tại https://gads.pdl.vn';
 
@@ -36,7 +37,7 @@ export async function verifyApiKey(request, env, requireLicense = false) {
   }
 
   // 1. Check legacy/master key
-  const legacyKey = await env.GADS_KV.get('config:legacy_api_key');
+  const legacyKey = await getConfig(env, 'legacy_api_key');
   if (!requireLicense && legacyKey && apiKey === legacyKey) {
     return checkRateLimit(request, env); // Legacy transport compatibility; never paid activation.
   }
@@ -128,7 +129,7 @@ function timingSafeEqual(left, right) {
 
 /**
  * Check rate limit for an IP address.
- * Uses KV with auto-expiry TTL.
+ * Best-effort per-isolate counter (no KV writes). Limit from config:rate_limit per hour.
  *
  * @param {Request} request
  * @param {Object} env
@@ -136,23 +137,9 @@ function timingSafeEqual(left, right) {
  */
 export async function checkRateLimit(request, env) {
   const ip = request.headers.get('CF-Connecting-IP') || 'unknown';
-  const currentHour = new Date().toISOString().slice(0, 13); // e.g., "2026-09-03T13"
-  const rateKey = `rate:${ip}:${currentHour}`;
-
-  // Get rate limit config
-  const limitStr = await env.GADS_KV.get('config:rate_limit');
-  const limit = parseInt(limitStr) || 100;
-
-  // Get current count
-  const countStr = await env.GADS_KV.get(rateKey);
-  const count = parseInt(countStr) || 0;
-
-  if (count >= limit) {
+  const limit = parseInt(await getConfig(env, 'rate_limit')) || 100;
+  if (isRateLimited(ip, limit)) {
     return errorResponse('Rate limit exceeded. Please try again later.', 429);
   }
-
-  // Increment counter with 1-hour TTL
-  await env.GADS_KV.put(rateKey, String(count + 1), { expirationTtl: 3600 });
-
   return null; // OK
 }

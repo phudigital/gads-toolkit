@@ -1,7 +1,9 @@
-import test from 'node:test';
+import test, { beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { createHmac } from 'node:crypto';
 import { handleApiRequest } from '../src/api.js';
+import { resetRuntimeCaches } from '../src/runtime-cache.js';
+beforeEach(() => resetRuntimeCaches());
 const request = (key) => new Request('https://service.test/api?action=validate_license', { headers: key ? { 'X-API-Key': key, 'X-GAds-Site': 'https://licensed.com/', 'X-GAds-Site-Token': 'a'.repeat(64) } : {} });
 function env(license) {
   return { GADS_KV: { get: async key => key === 'config:legacy_api_key' ? 'master' : key === 'license:paid' ? license : null, put: async () => {} } };

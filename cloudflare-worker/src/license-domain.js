@@ -1,4 +1,8 @@
 import { errorResponse } from './utils.js';
+import { hasProof, rememberProof } from './runtime-cache.js';
+
+// Verified ownership is cached outside KV (memory + Cache API) for 24 hours.
+export const PROOF_TTL_SECONDS = 24 * 60 * 60;
 
 // One public DNS hostname per license. www and bare-host are the only aliases.
 export function normalizeLicenseDomain(value) {
@@ -103,10 +107,8 @@ export async function verifyLicenseDomain(request, env, license, apiKey) {
   if (!/^[a-f0-9]{64}$/.test(token)) return errorResponse('Thiếu mã xác minh cài đặt. Vui lòng cập nhật GAds Toolkit.', 403);
   // Domain, key, installation token and site path all participate: edits invalidate ownership cache.
   const cacheKey = `license-proof:${await digest(JSON.stringify([apiKey, domain, site, token]))}`;
-  const cached = await env.GADS_KV.get(cacheKey);
-  const now = Date.now();
-  const until = Number(cached);
-  if (Number.isFinite(until) && until > now && until <= now + 300000) return null;
+  const cacheOrigin = new URL(request.url).origin;
+  if (await hasProof(cacheOrigin, cacheKey)) return null;
   try {
     await verifyPublicDns(new URL(site).hostname);
     const challenge = Array.from(crypto.getRandomValues(new Uint8Array(32)), b => b.toString(16).padStart(2, '0')).join('');
@@ -117,7 +119,7 @@ export async function verifyLicenseDomain(request, env, license, apiKey) {
     if (!result || normalizeLicenseSite(result.site_url) !== site || !await verifyProof(token, challenge, result.proof)) {
       return errorResponse('Không xác minh được cài đặt GAds Toolkit trên domain được cấp phép.', 403);
     }
-    await env.GADS_KV.put(cacheKey, String(now + 300000), { expirationTtl: 300 });
+    await rememberProof(cacheOrigin, cacheKey, PROOF_TTL_SECONDS);
     return null;
   } catch {
     return errorResponse('Không thể xác minh domain qua HTTPS. Kiểm tra DNS, SSL và endpoint REST của website rồi thử lại.', 503);

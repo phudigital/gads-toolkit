@@ -2,6 +2,8 @@ import { hashAdminToken, verifyAdminToken, verifyAdminTokenValue } from './auth.
 import { logActivity } from './utils.js';
 import { normalizeLicenseDomain } from './license-domain.js';
 import { APP_VERSION } from './version.js';
+import { clearConfigCache } from './runtime-cache.js';
+import { invalidateClientIndex } from './clients.js';
 
 const TURNSTILE_VERIFY_URL = 'https://challenges.cloudflare.com/turnstile/v0/siteverify';
 
@@ -242,6 +244,7 @@ export async function handleAdminRequest(request, env, path) {
       const body = await request.json();
       if (!body.url) return jsonResponse({ error: 'URL is required' }, 400);
       await env.GADS_KV.delete(`client:${body.url}`);
+      await invalidateClientIndex(env);
       return jsonResponse({ success: true });
     }
 
@@ -274,6 +277,7 @@ export async function handleAdminRequest(request, env, path) {
       if (body.allowed_origins !== undefined) await env.GADS_KV.put('config:allowed_origins', JSON.stringify(body.allowed_origins));
       if (body.oauth_redirect !== undefined) await env.GADS_KV.put('config:oauth_redirect', String(body.oauth_redirect));
       if (body.legacy_api_key !== undefined) await env.GADS_KV.put('config:legacy_api_key', String(body.legacy_api_key));
+      clearConfigCache();
 
       return jsonResponse({ success: true });
     }

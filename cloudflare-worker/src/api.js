@@ -10,6 +10,8 @@ import {
 import { APP_VERSION } from './version.js';
 import { normalizeLicenseSite, normalizeLicenseDomain } from './license-domain.js';
 import { handleIpManager } from './ip-manager.js';
+import { getConfig } from './runtime-cache.js';
+import { invalidateClientIndex } from './clients.js';
 
 export async function handleApiRequest(request, env) {
   const url = new URL(request.url);
@@ -49,8 +51,8 @@ export async function handleApiRequest(request, env) {
         success: true,
         data: {
           client_id: env.GADS_CLIENT_ID,
-          oauth_redirect_uri: await env.GADS_KV.get('config:oauth_redirect'),
-          api_version: await env.GADS_KV.get('config:api_version') || 'v25'
+          oauth_redirect_uri: await getConfig(env, 'oauth_redirect'),
+          api_version: await getConfig(env, 'api_version') || 'v25'
         }
       });
     }
@@ -74,7 +76,7 @@ export async function handleApiRequest(request, env) {
         return errorResponse('Missing code', 400);
       }
 
-      const redirectUri = await env.GADS_KV.get('config:oauth_redirect');
+      const redirectUri = await getConfig(env, 'oauth_redirect');
 
       const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
         method: 'POST',
@@ -136,7 +138,7 @@ export async function handleApiRequest(request, env) {
       const accessToken = tokenData.access_token;
 
       // b. Read API version
-      const apiVersion = await env.GADS_KV.get('config:api_version') || 'v25';
+      const apiVersion = await getConfig(env, 'api_version') || 'v25';
 
       // c. Validate IPs (IPv4, IPv6, or Google Ads-compatible x.x.x.* wildcard)
       const validIps = [...new Set(ips.map(normalizeIpForGoogleAds).filter(Boolean))];
@@ -193,7 +195,8 @@ export async function handleApiRequest(request, env) {
         return errorResponse(formatGoogleAdsError({ error: adsResult.partialFailureError }), 502);
       }
 
-      await logActivity(env, 'sync_ips_success', customerId, 'success', `${validIps.length} IPs synced`);
+      // Success goes to Workers Logs only; KV activity log keeps failures (saves KV writes).
+      console.log('sync_ips_success', customerId, `${validIps.length} IPs synced`);
 
       // g. Return success/error result
       return jsonResponse({
@@ -224,6 +227,15 @@ export async function handleApiRequest(request, env) {
         return errorResponse('Invalid site_url', 400);
       }
 
+      // Re-registering an active site is a no-op: avoid a KV write per settings save.
+      const clientKey = `client:${parsedUrl.origin}`;
+      try {
+        const existing = JSON.parse(await env.GADS_KV.get(clientKey) || 'null');
+        if (existing && existing.status === 'active') {
+          return jsonResponse({ success: true, message: 'Site registered successfully' });
+        }
+      } catch { /* malformed record: overwrite below */ }
+
       const clientIp = request.headers.get('CF-Connecting-IP') || 'unknown';
       const clientData = {
         registered_at: Date.now(),
@@ -231,7 +243,8 @@ export async function handleApiRequest(request, env) {
         status: 'active'
       };
 
-      await env.GADS_KV.put(`client:${parsedUrl.origin}`, JSON.stringify(clientData));
+      await env.GADS_KV.put(clientKey, JSON.stringify(clientData));
+      await invalidateClientIndex(env);
 
       return jsonResponse({ success: true, message: 'Site registered successfully' });
     }

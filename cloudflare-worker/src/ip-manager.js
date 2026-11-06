@@ -1,4 +1,5 @@
 import { jsonResponse, errorResponse, normalizeAdsCustomerId, formatGoogleAdsError } from './utils.js';
+import { getConfig } from './runtime-cache.js';
 
 // Called only after the API's license and rate-limit checks.
 export async function handleIpManager(action, body, env) {
@@ -41,7 +42,7 @@ export async function handleIpManager(action, body, env) {
     if (!tokenResponse.ok || !token.access_token) {
       return errorResponse('Không thể làm mới kết nối Google Ads. Vui lòng kết nối lại tài khoản.', 401);
     }
-    const apiVersion = await env.GADS_KV.get('config:api_version') || 'v25';
+    const apiVersion = await getConfig(env, 'api_version') || 'v25';
     const base = `https://googleads.googleapis.com/${apiVersion}/customers/${customerId}`;
     const headers = {
       Authorization: `Bearer ${token.access_token}`,

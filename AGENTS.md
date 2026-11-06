@@ -133,7 +133,9 @@ Các trang admin (sections trong một SPA):
 
 **Domain trong mã nguồn mới**: License Keys cần domain công khai và header `X-GAds-Site`/`X-GAds-Site-Token`. `license-domain.js` đối chiếu hostname và xác minh HMAC challenge tại endpoint REST WordPress qua HTTPS; chỉ alias `www` được phép, không tự mở rộng sang subdomain. Master key là ngoại lệ tương thích transport, không mở khóa plugin trả phí. Origin header một mình không chứng minh domain. Cần kiểm chứng bản triển khai trước khi khẳng định production đã áp dụng.
 
-Rate limit chạy trong `verifyApiKey()` sau khi xác minh key và trước DNS/callback ownership. `checkRateLimit()` dùng `rate:{ip}:{hour}` trong KV, TTL 1 giờ. Giới hạn đọc từ `config:rate_limit` (default 100).
+Rate limit chạy trong `verifyApiKey()` sau khi xác minh key và trước DNS/callback ownership. `checkRateLimit()` đếm theo IP/giờ trong bộ nhớ isolate (`runtime-cache.js`), **không ghi KV**; giới hạn là best-effort. Giới hạn đọc từ `config:rate_limit` (default 100). Các `config:*` nóng đọc qua `getConfig()` (cache 60 giây); admin lưu config thì xoá cache isolate đó, isolate khác cập nhật trong ≤60 giây.
+
+**Ngân sách KV (free: 1.000 ghi/ngày, 1.000 list/ngày):** luồng license/API của plugin không được ghi KV. Proof ownership cache 24 giờ trong bộ nhớ + Cache API; `logs:recent` chỉ ghi lỗi và thao tác admin (sync thành công chỉ `console.log`); `register_site` bỏ qua nếu site đã active. Code mới trên đường request phải giữ nguyên tắc này.
 
 ### 3.4 Token Admin và rotation
 
@@ -177,9 +179,9 @@ Timeout 10 giây cho mọi fetch. Lỗi timeout → 502 kèm hướng dẫn tả
 ### 3.7 Heartbeat Cron
 
 `cron.js:handleCron()` chạy mỗi 10 phút (wrangler cron `*/10 * * * *`):
-1. List tất cả `client:*` trong KV (một trang — xem giới hạn mục 5).
+1. Đọc một key `clients:index` (`clients.js`). Thiếu hoặc hết TTL 24 giờ thì dựng lại từ `client:*` (list có phân trang) và ghi lại một lần. `register_site` (site mới) và admin xoá client sẽ xoá index để lần cron sau dựng lại.
 2. Với mỗi client có `status: 'active'`: fetch `{siteUrl}/wp-cron.php?doing_wp_cron={timestamp}` timeout 5 giây.
-3. Chạy parallel với `Promise.allSettled()`.
+3. Chạy theo lô 20 site với `Promise.allSettled()`.
 4. Log summary ra console (không ghi vào `logs:recent`).
 
 **Đây không phải health check thuần đọc** — kích hoạt WordPress cron thật của site khách.
@@ -205,9 +207,9 @@ Timeout 10 giây cho mọi fetch. Lỗi timeout → 502 kèm hướng dẫn tả
 | `config:legacy_api_key` | Master API key bypass license check | Admin config |
 | `config:allowed_origins` | JSON array thêm origins cho OAuth | Admin config |
 | `config:admin_token_hash` | SHA-256 hash của ADMIN_TOKEN sau rotation | Admin security |
-| `logs:recent` | JSON array tối đa 200 entries rolling | `logActivity()` trong Worker |
-| `license-proof:{sha256}` | Hạn ownership đã xác minh, TTL 300 giây; hash gồm key/domain/site/mã cài đặt | `license-domain.js` |
-| `rate:{ip}:{hour}` | Rate counter, TTL 1 giờ | `checkRateLimit()` |
+| `logs:recent` | JSON array tối đa 200 entries rolling; chỉ lỗi sync và thao tác admin | `logActivity()` trong Worker |
+| `clients:index` | JSON `[{url, status}]` cho cron, TTL 24 giờ | `clients.js` |
+| (không còn trong KV) `license-proof:*`, `rate:*` | Proof ownership (24 giờ) và rate counter nay ở bộ nhớ isolate/Cache API; key cũ trong KV tự hết TTL | `runtime-cache.js` |
 | `release:gads-toolkit:stable` | Metadata release stable | Build script |
 | `release:gads-toolkit:version:{v}` | Metadata release theo version | Build script |
 | `gads-toolkit/{v}/{sha}.zip` | File ZIP trong R2 | Build script |
