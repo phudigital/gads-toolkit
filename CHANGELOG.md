@@ -2,6 +2,11 @@
 
 All notable changes to **GAds Toolkit - Phần mềm chống click ảo Google Ads** will be documented in this file.
 
+## [4.4.1] - 2026-11-06
+
+### Giao diện
+- Bỏ thông báo xanh "License Key hợp lệ." hiện cố định trên mọi trang của plugin; chỉ hiện cảnh báo khi license thiếu, hết hạn hoặc không xác thực được.
+
 ## [4.4.0] - 2026-11-06
 
 ### Bảo mật & độ chính xác

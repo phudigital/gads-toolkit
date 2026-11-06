@@ -194,7 +194,8 @@ function tkgadm_license_admin_notice() {
     $page = $_GET['page'] ?? '';
     if (!current_user_can('manage_options') || !is_string($page) || strpos($page, 'tkgad') !== 0) { return; }
     $status = tkgadm_license_status();
-    echo '<div class="notice ' . ($status['valid'] ? 'notice-success' : 'notice-warning') . '"><p>'
-        . esc_html($status['message']) . '</p></div>';
+    // Only speak up when something is wrong; a valid license needs no permanent banner.
+    if ($status['valid']) { return; }
+    echo '<div class="notice notice-warning"><p>' . esc_html($status['message']) . '</p></div>';
 }
 add_action('admin_notices', 'tkgadm_license_admin_notice');
